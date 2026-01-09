@@ -5,3 +5,4 @@ pytest
 python-dotenv
 supabase
 Pillow>=10.0.0
+pytesseract
