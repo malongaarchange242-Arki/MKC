@@ -5,11 +5,24 @@ const express_1 = require("express");
 const admin_controller_1 = require("./admin.controller");
 const auth_middleware_1 = require("../../middlewares/auth.middleware");
 const role_middleware_1 = require("../../middlewares/role.middleware");
+const request_user_1 = require("../../utils/request-user");
+const logger_1 = require("../../utils/logger");
 const upload_middleware_1 = require("../../middlewares/upload.middleware");
 const adminModule = () => {
     const router = (0, express_1.Router)();
     // Apply module-wide protection: only ADMIN or SYSTEM
-    router.use(auth_middleware_1.authMiddleware, (0, role_middleware_1.requireRole)(['ADMIN', 'SYSTEM']));
+    // Add a short logging middleware after auth to capture attempts for diagnosis
+    router.use(auth_middleware_1.authMiddleware, (req, _res, next) => {
+        try {
+            const uid = (0, request_user_1.getAuthUserId)(req);
+            const role = (0, request_user_1.getAuthUserRole)(req);
+            logger_1.logger.info('Admin route access attempt', { path: req.path, userId: uid, role });
+        }
+        catch (e) {
+            logger_1.logger.warn('Failed to log admin access attempt', { error: e });
+        }
+        next();
+    }, (0, role_middleware_1.requireRole)(['ADMIN', 'SYSTEM']));
     // Users
     router.get('/users', admin_controller_1.AdminController.listUsers);
     router.get('/users/:id', admin_controller_1.AdminController.getUserById);

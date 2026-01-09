@@ -5,6 +5,7 @@ exports.AuthService = void 0;
 const supabase_1 = require("../../config/supabase");
 const logger_1 = require("../../utils/logger");
 const jwt_1 = require("../../utils/jwt");
+const users_service_1 = require("../users/users.service");
 class AuthService {
     // ===============================
     // REGISTER (CLIENT UNIQUEMENT)
@@ -24,7 +25,28 @@ class AuthService {
         });
         if (error || !data.user) {
             logger_1.logger.error('Register failed', { error });
+            const msg = error?.message || '';
+            if (msg.toLowerCase().includes('already') || msg.toLowerCase().includes('email')) {
+                // Do not treat as server error; inform client that email exists
+                throw new Error('Email already registered');
+            }
             throw new Error(error?.message || 'Registration failed');
+        }
+        // Ensure a profile row exists in `profiles` table. Use UsersService.ensureProfile
+        // to perform an idempotent upsert. In production there may be a DB trigger that
+        // creates the profile automatically; this code guarantees the profile exists
+        // even if the trigger/migration is absent.
+        try {
+            await users_service_1.UsersService.ensureProfile(data.user.id, {
+                email: data.user.email ?? email,
+                nom: nom || data.user.user_metadata?.nom || null,
+                prenom: prenom || data.user.user_metadata?.prenom || null,
+                role: data.user.user_metadata?.role || 'CLIENT'
+            });
+            logger_1.logger.info('Ensured profile after register', { userId: data.user.id });
+        }
+        catch (e) {
+            logger_1.logger.warn('Ensure profile exists failed', { error: e });
         }
         // ✅ profil créé automatiquement par trigger
         return {
@@ -44,6 +66,19 @@ class AuthService {
         if (error || !data.session) {
             logger_1.logger.warn('Login failed', { email, error });
             throw new Error('Invalid email or password');
+        }
+        // Ensure profile exists (in case DB trigger is missing). Use UsersService.ensureProfile
+        // which performs an idempotent upsert and avoids race conditions.
+        try {
+            await users_service_1.UsersService.ensureProfile(data.user.id, {
+                email: data.user.email ?? email,
+                nom: data.user.user_metadata?.nom || null,
+                prenom: data.user.user_metadata?.prenom || null,
+                role: data.user.user_metadata?.role || 'CLIENT'
+            });
+        }
+        catch (e) {
+            logger_1.logger.warn('Ensure profile on login failed', { error: e });
         }
         // Récupérer le rôle depuis user_metadata (évite la récursion RLS)
         // On évite d'appeler getProfile() qui peut déclencher une récursion infinie dans RLS
@@ -83,27 +118,14 @@ class AuthService {
     // ===============================
     // GET PROFILE (ME)
     // ===============================
-    static async getProfile(authUserId: string) {
-    if (!authUserId) {
-        throw new Error('authUserId is required');
+    static async getProfile(authUserId) {
+        if (!authUserId) {
+            throw new Error('authUserId is required');
+        }
+        logger_1.logger.info('Fetching user profile', { userId: authUserId });
+        const profile = await users_service_1.UsersService.getMe(authUserId);
+        return profile;
     }
-
-    logger.info('Fetching user profile', { userId: authUserId });
-
-    const { data, error } = await supabase_1.supabase
-        .from('profiles')
-        .select('id, email, nom, prenom, role, created_at')
-        .eq('id', authUserId)
-        .maybeSingle();
-
-    if (error) throw error;
-    if (!data) {
-        throw new Error('Profile not found');
-    }
-
-    return data;
-    }
-
 }
 exports.AuthService = AuthService;
 //# sourceMappingURL=auth.service.js.map

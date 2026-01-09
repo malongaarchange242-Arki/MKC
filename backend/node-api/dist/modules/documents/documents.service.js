@@ -5,7 +5,6 @@ exports.DocumentsService = void 0;
 const supabaseAdmin_1 = require("../../config/supabaseAdmin");
 const logger_1 = require("../../utils/logger");
 const uuid_1 = require("uuid");
-const requests_service_1 = require("../requests/requests.service");
 // ===============================
 // CONSTANTS
 // ===============================
@@ -102,8 +101,14 @@ class DocumentsService {
             upsert: true
         });
         if (uploadError) {
-            logger_1.logger.error('Storage upload failed', { uploadError });
-            throw new Error('Failed to upload file to storage');
+            const errMeta = {
+                message: uploadError?.message || null,
+                status: uploadError?.status || uploadError?.statusCode || null,
+                details: uploadError?.details || null,
+                raw: uploadError
+            };
+            logger_1.logger.error('Storage upload failed', { uploadError: errMeta, uploadData });
+            throw new Error('Failed to upload file to storage: ' + (errMeta.message || 'unknown'));
         }
         // Use the exact path we generated for upload and store that in DB (single source of truth)
         const storedPath = storagePath;
@@ -152,17 +157,10 @@ class DocumentsService {
             logger_1.logger.error('Failed to save document metadata', { dbError });
             throw new Error('Failed to save document metadata');
         }
-        // Si c'est le premier document uploadé, mettre à jour le statut de la demande
-        if (nextVersion === 1 && request.status === 'CREATED') {
-            await requests_service_1.RequestsService.transitionStatus({
-                requestId,
-                to: 'AWAITING_DOCUMENTS',
-                actorRole: userRole,
-                actorId: uploadedBy
-            }).catch(err => {
-                logger_1.logger.warn('Failed to transition request status', { err });
-            });
-        }
+        // NOTE: do NOT transition status here. Status will be determined after parsing/OCR
+        // and updated by the controller to either 'PROCESSING' (if OCR detects valid BL)
+        // or 'AWAITING_DOCUMENTS' (if no usable extraction). This avoids sending an
+        // early notification for AWAITING_DOCUMENTS before OCR completes.
         logger_1.logger.info('Document uploaded successfully', { documentId, requestId, type: docType });
         return documentData;
     }
@@ -210,9 +208,19 @@ class DocumentsService {
     // ===============================
     static async listDocuments(filters, userId, userRole) {
         logger_1.logger.info('Listing documents', { filters, userId, userRole });
+        // Select a concise set of fields and use created_at as the canonical timestamp
         let query = supabaseAdmin_1.supabaseAdmin
             .from('documents')
-            .select('*', { count: 'exact' });
+            .select(`
+        id,
+        request_id,
+        created_at,
+        uploaded_by,
+        file_name,
+        file_size,
+        mime_type,
+        type
+      `, { count: 'exact' });
         // Filtres selon le rôle
         if (userRole === 'CLIENT') {
             // Les clients voient uniquement les documents de leurs demandes
@@ -235,7 +243,7 @@ class DocumentsService {
             await this.checkRequestAccess(filters.requestId, userId, userRole);
             query = query.eq('request_id', filters.requestId);
         }
-        query = query.order('uploaded_at', { ascending: false });
+        query = query.order('created_at', { ascending: false });
         if (filters.limit) {
             query = query.limit(filters.limit);
         }
@@ -451,8 +459,14 @@ class DocumentsService {
             upsert: true
         });
         if (uploadError) {
-            logger_1.logger.error('Storage upload failed (admin document)', { uploadError });
-            throw new Error('Failed to upload admin document to storage');
+            const errMeta = {
+                message: uploadError?.message || null,
+                status: uploadError?.status || uploadError?.statusCode || null,
+                details: uploadError?.details || null,
+                raw: uploadError
+            };
+            logger_1.logger.error('Storage upload failed (admin document)', { uploadError: errMeta, uploadData });
+            throw new Error('Failed to upload admin document to storage: ' + (errMeta.message || 'unknown'));
         }
         // Persist the exact generated path used for upload
         const storedPath = storagePath;
@@ -514,8 +528,14 @@ class DocumentsService {
             upsert: true
         });
         if (uploadError) {
-            logger_1.logger.error('Storage upload failed (client document)', { uploadError });
-            throw new Error('Failed to upload client document to storage');
+            const errMeta = {
+                message: uploadError?.message || null,
+                status: uploadError?.status || uploadError?.statusCode || null,
+                details: uploadError?.details || null,
+                raw: uploadError
+            };
+            logger_1.logger.error('Storage upload failed (client document)', { uploadError: errMeta, uploadData });
+            throw new Error('Failed to upload client document to storage: ' + (errMeta.message || 'unknown'));
         }
         const storedPath = storagePath;
         // Log the storage path used for debugging
@@ -571,8 +591,14 @@ class DocumentsService {
             upsert: true
         });
         if (uploadError) {
-            logger_1.logger.error('Storage upload failed (final document)', { uploadError });
-            throw new Error('Failed to upload final document to storage');
+            const errMeta = {
+                message: uploadError?.message || null,
+                status: uploadError?.status || uploadError?.statusCode || null,
+                details: uploadError?.details || null,
+                raw: uploadError
+            };
+            logger_1.logger.error('Storage upload failed (final document)', { uploadError: errMeta, uploadData });
+            throw new Error('Failed to upload final document to storage: ' + (errMeta.message || 'unknown'));
         }
         const storedPath = storagePath;
         // Log the storage path used for debugging

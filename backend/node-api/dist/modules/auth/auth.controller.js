@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthController = void 0;
 const zod_1 = require("zod");
 const auth_service_1 = require("./auth.service");
+const request_user_1 = require("../../utils/request-user");
 const logger_1 = require("../../utils/logger");
 // ===============================
 // SCHEMAS (ZOD)
@@ -22,8 +23,9 @@ const loginSchema = zod_1.z.object({
 // HELPER ERROR HANDLER
 // ===============================
 const handleControllerError = (res, error, context = '') => {
-    logger_1.logger.error(`${context} failed`, { error });
+    // Normalize error logging so the message and stack are visible in logs
     if (error instanceof zod_1.ZodError) {
+        logger_1.logger.error(`${context} failed`, { message: 'Validation error', details: error.format() });
         return res.status(422).json({
             success: false,
             message: 'Invalid payload',
@@ -31,11 +33,18 @@ const handleControllerError = (res, error, context = '') => {
         });
     }
     if (error instanceof Error) {
+        logger_1.logger.error(`${context} failed`, { message: error.message, stack: error.stack });
+        // Map common business errors to more appropriate status codes
+        const msg = error.message || '';
+        if (msg.toLowerCase().includes('already') || msg.toLowerCase().includes('exists') || msg.toLowerCase().includes('email')) {
+            return res.status(409).json({ success: false, message: msg });
+        }
         return res.status(400).json({
             success: false,
-            message: error.message
+            message: msg
         });
     }
+    logger_1.logger.error(`${context} failed`, { error });
     return res.status(500).json({
         success: false,
         message: 'Unexpected error'
@@ -97,16 +106,20 @@ class AuthController {
     // ===============================
     // GET PROFILE
     // ===============================
+    // ===============================
+    // GET PROFILE (ME)
+    // ===============================
     static async profile(req, res) {
         try {
-            const user = req.user;
-            if (!user?.id) {
+            const authUserId = (0, request_user_1.getAuthUserId)(req);
+            if (!authUserId) {
                 return res.status(401).json({
                     success: false,
                     message: 'Unauthorized'
                 });
             }
-            const profile = await auth_service_1.AuthService.getProfile(user.id);
+            logger_1.logger.info('Controller get profile', { userId: authUserId });
+            const profile = await auth_service_1.AuthService.getProfile(authUserId);
             return res.status(200).json({
                 success: true,
                 profile

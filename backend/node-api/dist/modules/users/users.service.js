@@ -19,14 +19,17 @@ class UsersService {
             .from('profiles')
             .select('id, email, nom, prenom, role, created_at')
             .eq('id', userId)
-            .single();
-        if (error || !data) {
-            logger_1.logger.error('Profile not found', { userId, error });
-            // Si erreur de récursion RLS, donner plus d'infos
+            .maybeSingle();
+        if (error) {
+            logger_1.logger.error('Error fetching profile', { userId, error });
             if (error?.code === '42P17') {
                 logger_1.logger.error('RLS recursion detected - check Supabase policies', { userId });
                 throw new Error('Database policy error - please contact administrator');
             }
+            throw new Error('Failed to fetch profile');
+        }
+        if (!data) {
+            logger_1.logger.warn('Profile not found', { userId });
             throw new Error('Profile not found');
         }
         return data;
@@ -112,12 +115,87 @@ class UsersService {
             .from('profiles')
             .select('id, email, nom, prenom, role, created_at')
             .eq('id', userId)
-            .single();
-        if (error || !data) {
-            logger_1.logger.error('User not found', { userId, error });
+            .maybeSingle();
+        if (error) {
+            logger_1.logger.error('Error fetching user by id', { userId, error });
+            throw new Error('User not found');
+        }
+        if (!data) {
+            logger_1.logger.error('User not found', { userId });
             throw new Error('User not found');
         }
         return data;
+    }
+    // Ensure that a profile exists for a given auth user id.
+    // This function is idempotent and uses upsert to avoid race conditions.
+    static async ensureProfile(userId, opts) {
+        logger_1.logger.info('Ensuring profile exists', { userId });
+        // Check if profile already exists using maybeSingle() to avoid throwing on 0 rows
+        const { data: existing, error: checkError } = await supabase_1.supabase
+            .from('profiles')
+            .select('id, email, nom, prenom, role, created_at')
+            .eq('id', userId)
+            .maybeSingle();
+        if (checkError) {
+            logger_1.logger.warn('Error checking existing profile', { userId, checkError });
+        }
+        if (existing) {
+            return existing;
+        }
+        // Build payload from provided opts. Try to be compatible with different
+        // database schemas: some installations use `id` as PK (matching auth.uid()),
+        // others may use a `user_id` column. We'll try both strategies and log
+        // detailed errors to help debug schema mismatches in production.
+        const basePayload = {
+            email: opts?.email || null,
+            nom: opts?.nom ?? null,
+            prenom: opts?.prenom ?? null,
+            role: opts?.role || 'CLIENT'
+        };
+        // First attempt: upsert using `id` column (recommended schema).
+        try {
+            const payloadId = { id: userId, ...basePayload };
+            const { data: created, error: insertError } = await supabase_1.supabase
+                .from('profiles')
+                .upsert(payloadId, { onConflict: 'id' })
+                .select('id, email, nom, prenom, role, created_at')
+                .maybeSingle();
+            if (!insertError && created) {
+                logger_1.logger.info('Profile ensured using `id` column', { userId });
+                return created;
+            }
+            if (insertError) {
+                logger_1.logger.warn('Upsert using `id` failed, will try `user_id` fallback', { userId, insertError });
+            }
+        }
+        catch (e) {
+            logger_1.logger.warn('Upsert with `id` raised unexpected error, will try fallback', { userId, error: e });
+        }
+        // Second attempt: some schemas use `user_id` column. Try insert/upsert there.
+        try {
+            const payloadUserId = { user_id: userId, ...basePayload };
+            // Try upsert on user_id first
+            const { data: created2, error: insertError2 } = await supabase_1.supabase
+                .from('profiles')
+                .upsert(payloadUserId, { onConflict: 'user_id' })
+                .select('user_id, email, nom, prenom, role, created_at')
+                .maybeSingle();
+            if (!insertError2 && created2) {
+                logger_1.logger.info('Profile ensured using `user_id` column', { userId });
+                // Normalize return shape to UserProfile (id field)
+                const normalized = { id: created2.user_id || userId, email: created2.email, nom: created2.nom, prenom: created2.prenom, role: created2.role, created_at: created2.created_at };
+                return normalized;
+            }
+            if (insertError2) {
+                logger_1.logger.warn('Upsert using `user_id` failed', { userId, insertError2 });
+                throw new Error('Failed to ensure profile using both id and user_id');
+            }
+        }
+        catch (e) {
+            logger_1.logger.error('ensureProfile fallback error', { userId, error: e });
+            throw e;
+        }
+        throw new Error('Unable to ensure profile');
     }
     // ===============================
     // LIST ALL USERS (ADMIN ONLY)

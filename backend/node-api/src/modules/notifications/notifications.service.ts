@@ -13,6 +13,13 @@ export interface NotificationPayload {
 	type: string;
 	title: string;
 	message: string;
+	client_name?: string;
+	client_email?: string;
+	status?: string;
+	date?: string;
+	admin_dashboard_url?: string;
+	requestRef?: string;
+	request_id?: string;
 	entityType?: string;
 	entityId?: string;
 	language?: 'fr' | 'en';

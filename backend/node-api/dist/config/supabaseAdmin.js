@@ -1,8 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.supabaseAdmin = void 0;
-const supabase_1 = require("./supabase");
-// Simple re-export to provide a consistent `supabaseAdmin` named export
-exports.supabaseAdmin = supabase_1.supabase;
+const supabase_js_1 = require("@supabase/supabase-js");
+exports.supabaseAdmin = (0, supabase_js_1.createClient)(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, // 🔑 LA CLÉ QUI MANQUAIT
+{
+    auth: {
+        persistSession: false,
+        autoRefreshToken: false
+    }
+});
 exports.default = exports.supabaseAdmin;
 //# sourceMappingURL=supabaseAdmin.js.map

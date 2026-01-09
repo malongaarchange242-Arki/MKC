@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.UsersController = void 0;
 const zod_1 = require("zod");
 const users_service_1 = require("./users.service");
+const request_user_1 = require("../../utils/request-user");
 const logger_1 = require("../../utils/logger");
 // ===============================
 // SCHEMAS
@@ -43,10 +44,10 @@ class UsersController {
     // ===============================
     static async getMe(req, res) {
         try {
-            if (!req.user) {
+            const userId = (0, request_user_1.getAuthUserId)(req);
+            if (!userId)
                 return res.status(401).json({ message: 'Unauthorized' });
-            }
-            const profile = await users_service_1.UsersService.getMe(req.user.id);
+            const profile = await users_service_1.UsersService.getMe(userId);
             return res.status(200).json({
                 success: true,
                 profile
@@ -61,11 +62,11 @@ class UsersController {
     // ===============================
     static async updateMe(req, res) {
         try {
-            if (!req.user) {
+            const userId = (0, request_user_1.getAuthUserId)(req);
+            if (!userId)
                 return res.status(401).json({ message: 'Unauthorized' });
-            }
             const body = updateProfileSchema.parse(req.body);
-            const profile = await users_service_1.UsersService.updateMe(req.user.id, body);
+            const profile = await users_service_1.UsersService.updateMe(userId, body);
             return res.status(200).json({
                 success: true,
                 profile

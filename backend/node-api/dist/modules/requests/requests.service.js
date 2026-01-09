@@ -117,6 +117,42 @@ class RequestsService {
             logger_1.logger.error('Failed to force update status', { requestId, status, error });
             throw new Error('Failed to update request status');
         }
+        // Notify user (best-effort) for forced updates
+        (async () => {
+            try {
+                const { NotificationsService } = await Promise.resolve().then(() => __importStar(require('../notifications/notifications.service')));
+                const clientId = data.client_id;
+                // Try to resolve client profile (best-effort)
+                let client_name;
+                let client_email;
+                try {
+                    const prof = await supabase_1.supabase.from('profiles').select('prenom,email').eq('id', clientId).single();
+                    client_name = prof.data?.prenom;
+                    client_email = prof.data?.email;
+                }
+                catch (e) {
+                    logger_1.logger.warn('Failed to load client profile for forced update notification', { e, clientId });
+                }
+                await NotificationsService.send({
+                    userId: clientId,
+                    type: 'REQUEST_STATUS_CHANGED',
+                    title: `Request status updated to ${status}`,
+                    message: `Your request ${requestId} status was set to ${status}`,
+                    entityType: 'request',
+                    entityId: requestId,
+                    channels: ['in_app', 'email'],
+                    // Admin template fields
+                    client_name,
+                    client_email,
+                    status,
+                    date: new Date().toISOString(),
+                    admin_dashboard_url: process.env.ADMIN_DASHBOARD_URL
+                });
+            }
+            catch (e) {
+                logger_1.logger.warn('Failed to send notification for forced status update', { requestId, status, err: e });
+            }
+        })();
         return data;
     }
     // ===============================
@@ -154,6 +190,11 @@ class RequestsService {
             .select('*')
             .single();
         if (updateError || !updated) {
+            // Provide clearer diagnostics for common Postgres enum errors
+            if (updateError && updateError.code === '22P02') {
+                logger_1.logger.error('Supabase update failed invalid input value for enum', { updateError, attemptedStatus: to });
+                throw new Error(`Database does not accept status value '${to}'. Add this value to the request_status enum in the DB.`);
+            }
             logger_1.logger.error('Status transition failed', { updateError });
             throw new Error('Unable to transition request');
         }
@@ -175,14 +216,45 @@ class RequestsService {
         (async () => {
             try {
                 const { NotificationsService } = await Promise.resolve().then(() => __importStar(require('../notifications/notifications.service')));
+                // Resolve client id and profile separately and do not fail the notification if Supabase errors
+                let clientId;
+                let client_name;
+                let client_email;
+                if (actorRole === 'CLIENT') {
+                    clientId = actorId;
+                }
+                else {
+                    try {
+                        const resp = await supabase_1.supabase.from('requests').select('client_id').eq('id', requestId).single();
+                        clientId = resp.data?.client_id;
+                    }
+                    catch (e) {
+                        logger_1.logger.warn('Failed to resolve client_id for notification (supabase)', { e, requestId });
+                    }
+                }
+                if (clientId) {
+                    try {
+                        const prof = await supabase_1.supabase.from('profiles').select('prenom,email').eq('id', clientId).single();
+                        client_name = prof.data?.prenom;
+                        client_email = prof.data?.email;
+                    }
+                    catch (e) {
+                        logger_1.logger.warn('Failed to fetch client profile for notification', { e, clientId });
+                    }
+                }
                 await NotificationsService.send({
-                    userId: actorRole === 'CLIENT' ? actorId : (await supabase_1.supabase.from('requests').select('client_id').eq('id', requestId).single()).data?.client_id,
+                    userId: clientId ?? '',
                     type: 'REQUEST_STATUS_CHANGED',
                     title: `Request status updated to ${to}`,
                     message: `Your request ${requestId} status changed from ${from} to ${to}`,
                     entityType: 'request',
                     entityId: requestId,
-                    channels: ['in_app', 'email']
+                    channels: ['in_app', 'email'],
+                    client_name,
+                    client_email,
+                    status: to,
+                    date: new Date().toISOString(),
+                    admin_dashboard_url: process.env.ADMIN_DASHBOARD_URL
                 });
             }
             catch (e) {

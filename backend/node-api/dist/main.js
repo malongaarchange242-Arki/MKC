@@ -26,6 +26,7 @@ const auth_module_1 = require("./modules/auth/auth.module");
 const users_module_1 = require("./modules/users/users.module");
 const documents_module_1 = require("./modules/documents/documents.module");
 const admin_module_1 = require("./modules/admin/admin.module");
+const drafts_module_1 = require("./modules/drafts/drafts.module");
 const supabase_1 = require("./config/supabase");
 const auth_middleware_1 = require("./middlewares/auth.middleware");
 const notifications_module_1 = __importDefault(require("./modules/notifications/notifications.module"));
@@ -99,6 +100,7 @@ app.use('/requests', auth_middleware_1.authMiddleware, (0, requests_module_1.req
 app.use('/documents', (0, documents_module_1.documentsModule)());
 app.use('/admin', (0, admin_module_1.adminModule)());
 app.use('/notifications', notifications_module_1.default);
+app.use('/drafts', (0, drafts_module_1.draftsModule)());
 /**
  * ===============================
  * GLOBAL ERROR HANDLER

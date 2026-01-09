@@ -13,9 +13,9 @@ const upload_middleware_1 = require("../../middlewares/upload.middleware");
 const requestsModule = () => {
     const router = (0, express_1.Router)();
     // ===============================
-    // LIST REQUESTS (CLIENT)
+    // LIST REQUESTS (CLIENT) - explicit /me route
     // ===============================
-    router.get('/', auth_middleware_1.authMiddleware, (0, role_middleware_1.requireRole)(['CLIENT']), requests_controller_1.RequestsController.list);
+    router.get('/me', auth_middleware_1.authMiddleware, (0, role_middleware_1.requireRole)(['CLIENT']), requests_controller_1.RequestsController.list);
     // ===============================
     // CREATE REQUEST (CLIENT ONLY)
     // ===============================

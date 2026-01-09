@@ -1,50 +1,130 @@
 "use strict";
+// modules/notifications/notifications.controller.ts
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.NotificationsController = void 0;
 const supabase_1 = require("../../config/supabase");
+const request_user_1 = require("../../utils/request-user");
+const logger_1 = require("../../utils/logger");
 class NotificationsController {
+    /**
+     * 📬 GET /notifications?page=1&limit=20
+     * ⚠️ Jamais de 500 pour le frontend
+     */
     static async listMyNotifications(req, res) {
+        const page = Math.max(1, Number(req.query.page) || 1);
+        const limit = Math.min(50, Number(req.query.limit) || 20);
+        const from = (page - 1) * limit;
+        const to = from + limit - 1;
         try {
-            // prefer canonical authUserId set by middleware, fall back to legacy req.user
-            const userId = (req.authUserId) ? req.authUserId : (req.user ? req.user.id : null);
-            if (!userId)
-                return res.status(401).json({ success: false, message: 'Unauthorized' });
-
+            const userId = (0, request_user_1.getAuthUserId)(req);
+            if (!userId) {
+                return res.status(200).json({
+                    success: false,
+                    data: [],
+                    pagination: { page, limit, total: 0 },
+                    warning: 'Unauthorized'
+                });
+            }
             const { data, error, count } = await supabase_1.supabase
                 .from('notifications')
-                .select('\n          id,\n          type,\n          title,\n          message,\n          entity_type,\n          entity_id,\n          is_read,\n          created_at\n          ', { count: 'exact' })
+                .select(`
+						id,
+						type,
+						title,
+						message,
+						entity_type,
+						entity_id,
+						is_read,
+						created_at
+					`, { count: 'exact' })
                 .eq('user_id', userId)
                 .order('created_at', { ascending: false })
-                .range(0, 49);
-
+                .range(from, to);
             if (error) {
-                // do not expose 500 to the frontend when upstream (Supabase) is down
-                console.error('Notifications fetch error', error);
-                return res.status(200).json({ success: true, data: [], pagination: { page: 1, limit: 20, total: 0 }, warning: 'Notifications temporarily unavailable' });
+                logger_1.logger.error('[notifications] Supabase list error', {
+                    error,
+                    userId
+                });
+                return res.status(200).json({
+                    success: true,
+                    data: [],
+                    pagination: { page, limit, total: 0 },
+                    warning: 'Notifications temporarily unavailable'
+                });
             }
-
-            return res.json({ success: true, data: data || [], pagination: { page: 1, limit: 20, total: count || (data ? data.length : 0) } });
+            const safeData = (data ?? []).map(n => ({
+                id: n.id,
+                type: n.type ?? 'REQUEST_STATUS_CHANGED',
+                title: n.title ?? 'Notification',
+                message: n.message ?? 'You have a new notification.',
+                entity_type: n.entity_type ?? null,
+                entity_id: n.entity_id ?? null,
+                is_read: n.is_read ?? false,
+                created_at: n.created_at
+            }));
+            return res.status(200).json({
+                success: true,
+                data: safeData,
+                pagination: {
+                    page,
+                    limit,
+                    total: count ?? safeData.length
+                }
+            });
         }
         catch (err) {
-            console.error('List notifications failed', err && err.stack ? err.stack : err);
-            return res.status(200).json({ success: true, data: [], pagination: { page: 1, limit: 20, total: 0 }, warning: 'Notifications temporarily unavailable' });
+            logger_1.logger.error('[notifications] List failed (catch)', { err });
+            return res.status(200).json({
+                success: true,
+                data: [],
+                pagination: { page, limit, total: 0 },
+                warning: 'Notifications temporarily unavailable'
+            });
         }
     }
+    /**
+     * ✅ PATCH /notifications/:id/read
+     */
     static async markAsRead(req, res) {
         try {
-            if (!req.user)
-                return res.status(401).json({ success: false, message: 'Unauthorized' });
-            const userId = req.user.id;
+            const userId = (0, request_user_1.getAuthUserId)(req);
+            if (!userId) {
+                return res.status(401).json({
+                    success: false,
+                    message: 'Unauthorized'
+                });
+            }
             const notificationId = req.params.id;
-            await supabase_1.supabase
+            if (!notificationId || !/^[0-9a-f-]{36}$/i.test(notificationId)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid notification id'
+                });
+            }
+            const { data, error } = await supabase_1.supabase
                 .from('notifications')
-                .update({ is_read: true })
+                .update({
+                is_read: true,
+                updated_at: new Date().toISOString()
+            })
                 .eq('id', notificationId)
-                .eq('user_id', userId);
-            return res.json({ success: true });
+                .eq('user_id', userId)
+                .select('id')
+                .single();
+            if (error || !data) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Notification not found'
+                });
+            }
+            return res.status(200).json({ success: true });
         }
         catch (err) {
-            return res.status(500).json({ success: false });
+            logger_1.logger.error('[notifications] Mark as read failed', { err });
+            return res.status(200).json({
+                success: false,
+                message: 'Unable to mark notification as read'
+            });
         }
     }
 }

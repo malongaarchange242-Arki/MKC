@@ -36,29 +36,31 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.RequestsController = void 0;
 const zod_1 = require("zod");
 const requests_service_1 = require("./requests.service");
+const request_user_1 = require("../../utils/request-user");
 const request_state_machine_1 = require("./request.state-machine");
 const logger_1 = require("../../utils/logger");
 const documents_service_1 = require("../documents/documents.service");
 // ===============================
 // SCHEMAS
 // ===============================
-// Création de demande
 const createRequestSchema = zod_1.z.object({
     type: zod_1.z.enum(['FERI_ONLY', 'AD_ONLY', 'FERI_AND_AD'])
 });
-// Transition de status
 const statusEnum = [...request_state_machine_1.REQUEST_STATUSES];
 const transitionSchema = zod_1.z.object({
     requestId: zod_1.z.string().uuid(),
     to: zod_1.z.enum(statusEnum)
 });
 // ===============================
-// HELPER pour gérer les erreurs
+// ERROR HANDLER
 // ===============================
 const handleControllerError = (res, error, context = '') => {
     logger_1.logger.error(`${context} failed`, { error });
     if (error instanceof zod_1.ZodError) {
-        return res.status(422).json({ message: 'Invalid payload', errors: error.flatten().fieldErrors });
+        return res.status(422).json({
+            message: 'Invalid payload',
+            errors: error.flatten().fieldErrors
+        });
     }
     if (error instanceof Error) {
         return res.status(400).json({ message: error.message });
@@ -70,16 +72,16 @@ const handleControllerError = (res, error, context = '') => {
 // ===============================
 class RequestsController {
     // ===============================
-    // CREATE REQUEST
+    // CREATE REQUEST (CLIENT)
     // ===============================
     static async create(req, res) {
         try {
-            if (!req.user) {
+            const userId = (0, request_user_1.getAuthUserId)(req);
+            if (!userId)
                 return res.status(401).json({ message: 'Unauthorized' });
-            }
             const body = createRequestSchema.parse(req.body);
             const request = await requests_service_1.RequestsService.createRequest({
-                clientId: req.user.id,
+                clientId: userId,
                 type: body.type
             });
             return res.status(201).json(request);
@@ -89,33 +91,40 @@ class RequestsController {
         }
     }
     // ===============================
-    // LIST REQUESTS (CLIENT)
+    // LIST REQUESTS (CLIENT ONLY)
     // ===============================
     static async list(req, res) {
         try {
-            if (!req.user)
+            const userId = (0, request_user_1.getAuthUserId)(req);
+            const role = (0, request_user_1.getAuthUserRole)(req);
+            if (!userId)
                 return res.status(401).json({ message: 'Unauthorized' });
-            const rows = await requests_service_1.RequestsService.listRequests({ userId: req.user.id });
-            return res.status(200).json(rows || []);
+            if (role !== 'CLIENT') {
+                logger_1.logger.warn('Forbidden access to client list', { userId, role });
+                return res.status(403).json({ message: 'Forbidden' });
+            }
+            const rows = await requests_service_1.RequestsService.listRequests({ userId });
+            return res.status(200).json(rows ?? []);
         }
         catch (error) {
             return handleControllerError(res, error, 'List requests');
         }
     }
     // ===============================
-    // TRANSITION STATUS
+    // TRANSITION STATUS (ADMIN / SYSTEM / CLIENT via rules)
     // ===============================
     static async transition(req, res) {
         try {
-            if (!req.user) {
+            const userId = (0, request_user_1.getAuthUserId)(req);
+            const userRole = (0, request_user_1.getAuthUserRole)(req);
+            if (!userId)
                 return res.status(401).json({ message: 'Unauthorized' });
-            }
             const body = transitionSchema.parse(req.body);
             const result = await requests_service_1.RequestsService.transitionStatus({
                 requestId: body.requestId,
                 to: body.to,
-                actorRole: req.user.role,
-                actorId: req.user.id
+                actorRole: userRole,
+                actorId: userId
             });
             return res.status(200).json(result);
         }
@@ -124,94 +133,83 @@ class RequestsController {
         }
     }
     // ===============================
-    // CLIENT SUBMIT (manual)
+    // CLIENT SUBMIT REQUEST
     // ===============================
     static async submit(req, res) {
         try {
-            if (!req.user) {
+            const userId = (0, request_user_1.getAuthUserId)(req);
+            if (!userId)
                 return res.status(401).json({ message: 'Unauthorized' });
-            }
-            const requestId = req.params.requestId;
+            const { requestId } = req.params;
             if (!requestId) {
                 return res.status(400).json({ message: 'requestId is required' });
             }
-            // Validate that client can submit (ownership, state, documents)
-            await requests_service_1.RequestsService.canClientSubmit(requestId, req.user.id);
+            await requests_service_1.RequestsService.canClientSubmit(requestId, userId);
             const result = await requests_service_1.RequestsService.transitionStatus({
                 requestId,
                 to: 'SUBMITTED',
                 actorRole: 'CLIENT',
-                actorId: req.user.id
+                actorId: userId
             });
             return res.status(200).json(result);
         }
         catch (error) {
-            return handleControllerError(res, error, 'Submit');
+            return handleControllerError(res, error, 'Submit request');
         }
     }
     // ===============================
-    // CLIENT: UPLOAD PAYMENT PROOF
+    // CLIENT UPLOAD PAYMENT PROOF
     // ===============================
     static async submitPaymentProof(req, res) {
         try {
-            if (!req.user)
+            const userId = (0, request_user_1.getAuthUserId)(req);
+            if (!userId)
                 return res.status(401).json({ message: 'Unauthorized' });
-            const requestId = req.params.requestId;
+            const { requestId } = req.params;
             const file = req.file;
             if (!file)
                 return res.status(400).json({ message: 'No file provided' });
-            // Validate request exists and status
             const request = await requests_service_1.RequestsService.getRequestById(requestId);
             if (!request)
                 return res.status(404).json({ message: 'Request not found' });
-            if (request.status !== 'DRAFT_SENT')
-                return res.status(400).json({ message: 'Cannot upload payment proof unless request is DRAFT_SENT' });
-            // Create client document (PAYMENT_PROOF)
-            const doc = await documents_service_1.DocumentsService.createClientDocument({
+            if (request.status !== 'DRAFT_SENT') {
+                return res.status(400).json({
+                    message: 'Payment proof can only be uploaded after draft is sent'
+                });
+            }
+            const document = await documents_service_1.DocumentsService.createClientDocument({
                 requestId,
                 file,
-                uploadedBy: req.user.id,
+                uploadedBy: userId,
                 type: 'PAYMENT_PROOF',
                 visibility: 'ADMIN'
             });
-            // Transition to PAYMENT_PROOF_UPLOADED
             await requests_service_1.RequestsService.transitionStatus({
                 requestId,
                 to: 'PAYMENT_PROOF_UPLOADED',
                 actorRole: 'CLIENT',
-                actorId: req.user.id
+                actorId: userId
             });
-            // Audit
-            try {
-                const { AuditService } = await Promise.resolve().then(() => __importStar(require('../audit/audit.service')));
-                await AuditService.log({
-                    actor_id: req.user.id,
-                    action: 'UPLOAD_PAYMENT_PROOF',
-                    entity: 'request',
-                    entity_id: requestId,
-                    metadata: { documentId: doc.id }
-                });
-            }
-            catch (e) {
-                logger_1.logger.warn('Failed to write audit for payment proof', { e });
-            }
-            // Notify client (and admins) using NotificationsService
+            // 🔔 Notify client
             try {
                 const { NotificationsService } = await Promise.resolve().then(() => __importStar(require('../notifications/notifications.service')));
                 await NotificationsService.send({
                     userId: request.client_id,
                     type: 'PAYMENT_PROOF_UPLOADED',
                     title: 'Preuve de paiement reçue',
-                    message: 'Votre preuve de paiement a été reçue et est en attente de vérification par un administrateur.',
+                    message: 'Votre preuve de paiement a été reçue et est en attente de validation par un administrateur.',
                     entityType: 'request',
                     entityId: requestId,
                     channels: ['in_app', 'email']
                 });
             }
             catch (e) {
-                logger_1.logger.warn('Failed to send payment proof notification', { e });
+                logger_1.logger.warn('Client notification failed', { e });
             }
-            return res.status(200).json({ success: true, document: doc });
+            return res.status(200).json({
+                success: true,
+                document
+            });
         }
         catch (error) {
             return handleControllerError(res, error, 'Submit payment proof');

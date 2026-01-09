@@ -5,14 +5,11 @@ exports.REQUEST_STATUSES = [
     'CREATED',
     'AWAITING_DOCUMENTS',
     'SUBMITTED',
-    'PROCESSING', // ✅ AJOUT
+    'PROCESSING',
     'UNDER_REVIEW',
     'DRAFT_SENT',
     'PAYMENT_PROOF_UPLOADED',
     'PAYMENT_CONFIRMED',
-    'DRAFT_READY',
-    'AWAITING_PAYMENT_PROOF',
-    'PAYMENT_SUBMITTED',
     'VALIDATED',
     'ISSUED',
     'REJECTED',
@@ -30,24 +27,18 @@ const STATE_TRANSITIONS = {
         { to: 'CANCELLED', allowedRoles: ['CLIENT'] }
     ],
     SUBMITTED: [
-        { to: 'PROCESSING', allowedRoles: ['SYSTEM'] }, // ✅ OCR / BL extraction
+        { to: 'PROCESSING', allowedRoles: ['SYSTEM'] },
         { to: 'UNDER_REVIEW', allowedRoles: ['ADMIN'] },
         { to: 'REJECTED', allowedRoles: ['ADMIN'] }
     ],
     PROCESSING: [
-        { to: 'UNDER_REVIEW', allowedRoles: ['SYSTEM', 'ADMIN'] },
-        { to: 'REJECTED', allowedRoles: ['SYSTEM'] }
+        { to: 'UNDER_REVIEW', allowedRoles: ['SYSTEM', 'ADMIN'] }
     ],
     UNDER_REVIEW: [
-        { to: 'DRAFT_READY', allowedRoles: ['ADMIN'] },
         { to: 'DRAFT_SENT', allowedRoles: ['ADMIN'] },
         { to: 'REJECTED', allowedRoles: ['ADMIN'] }
     ],
-    DRAFT_READY: [
-        { to: 'AWAITING_PAYMENT_PROOF', allowedRoles: ['ADMIN'] }
-    ],
     DRAFT_SENT: [
-        { to: 'AWAITING_PAYMENT_PROOF', allowedRoles: ['CLIENT'] },
         { to: 'PAYMENT_PROOF_UPLOADED', allowedRoles: ['CLIENT'] },
         { to: 'CANCELLED', allowedRoles: ['CLIENT'] }
     ],
@@ -56,16 +47,7 @@ const STATE_TRANSITIONS = {
         { to: 'REJECTED', allowedRoles: ['ADMIN'] }
     ],
     PAYMENT_CONFIRMED: [
-        { to: 'VALIDATED', allowedRoles: ['ADMIN'] },
-        { to: 'ISSUED', allowedRoles: ['ADMIN', 'SYSTEM'] }
-    ],
-    AWAITING_PAYMENT_PROOF: [
-        { to: 'PAYMENT_SUBMITTED', allowedRoles: ['CLIENT'] },
-        { to: 'CANCELLED', allowedRoles: ['CLIENT'] }
-    ],
-    PAYMENT_SUBMITTED: [
-        { to: 'VALIDATED', allowedRoles: ['ADMIN'] },
-        { to: 'REJECTED', allowedRoles: ['ADMIN'] }
+        { to: 'VALIDATED', allowedRoles: ['ADMIN'] }
     ],
     VALIDATED: [
         { to: 'ISSUED', allowedRoles: ['ADMIN', 'SYSTEM'] }

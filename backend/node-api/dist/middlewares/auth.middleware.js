@@ -1,13 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.authMiddleware = void 0;
-const supabase_1 = require("../config/supabase");
 const logger_1 = require("../utils/logger");
 const jwt_1 = require("../utils/jwt");
-// ===============================
-// AUTH MIDDLEWARE
-// ===============================
-const authMiddleware = async (req, res, next) => {
+// AUTH MIDDLEWARE (STRICT)
+// - Decode JWT (no Supabase call)
+// - Set ONLY `req.authUserId` from JWT.sub
+// - Remove any legacy `req.user` to discourage its usage
+const authMiddleware = (req, res, next) => {
     try {
         const authHeader = req.headers.authorization;
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -16,48 +16,34 @@ const authMiddleware = async (req, res, next) => {
             return;
         }
         const token = authHeader.replace('Bearer ', '').trim();
-        // ===============================
-        // VERIFY TOKEN (JWT personnalisé ou Supabase)
-        // ===============================
+        let payload;
         try {
-            // Essayer d'abord avec notre JWT personnalisé (24h)
-            const jwtPayload = jwt_1.JWTUtils.verifyToken(token);
-            // Token JWT personnalisé valide
-            req.user = {
-                id: jwtPayload.sub,
-                email: jwtPayload.email,
-                role: jwtPayload.role
-            };
+            // Verify the token signature to ensure authenticity
+            payload = jwt_1.JWTUtils.verifyToken(token);
         }
-        catch (jwtError) {
-            // Si le token JWT personnalisé échoue, essayer avec Supabase
-            try {
-                const { data: { user }, error } = await supabase_1.supabase.auth.getUser(token);
-                if (error || !user) {
-                    logger_1.logger.warn('Invalid token (both JWT and Supabase failed)', {
-                        jwtError: jwtError instanceof Error ? jwtError.message : jwtError,
-                        supabaseError: error
-                    });
-                    res.status(401).json({ message: 'Invalid token' });
-                    return;
-                }
-                // Token Supabase valide
-                const role = user.user_metadata?.role === 'ADMIN' ? 'ADMIN' : 'CLIENT';
-                req.user = {
-                    id: user.id,
-                    email: user.email ?? '',
-                    role
-                };
-            }
-            catch (supabaseError) {
-                logger_1.logger.warn('Token verification failed', {
-                    jwtError: jwtError instanceof Error ? jwtError.message : jwtError,
-                    supabaseError: supabaseError instanceof Error ? supabaseError.message : supabaseError
-                });
-                res.status(401).json({ message: 'Invalid token' });
-                return;
-            }
+        catch (verifyErr) {
+            logger_1.logger.warn('JWT verify failed', { error: verifyErr instanceof Error ? verifyErr.message : verifyErr });
+            res.status(401).json({ message: 'Invalid or expired token' });
+            return;
         }
+        if (!payload || !payload.sub) {
+            logger_1.logger.warn('JWT payload missing subject after verify');
+            res.status(401).json({ message: 'Invalid token' });
+            return;
+        }
+        // Canonical auth id (auth.users.id) exposed for handlers
+        req.authUserId = payload.sub;
+        // Attach role from JWT payload as canonical role
+        req.authUserRole = payload.role ?? null;
+        // Explicitly remove legacy `req.user` if present to avoid accidental use
+        try {
+            if (req.user)
+                delete req.user;
+        }
+        catch (e) {
+            // no-op
+        }
+        logger_1.logger.debug('Auth middleware set authUserId and authUserRole', { authUserId: payload.sub, authUserRole: payload.role ?? null });
         next();
     }
     catch (error) {

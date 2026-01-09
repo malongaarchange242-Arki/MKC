@@ -24,7 +24,7 @@ router.use(authMiddleware);
  */
 router.get('/', async (req: Request, res: Response) => {
 	try {
-		await NotificationsController.listMyNotifications(
+		return await NotificationsController.listMyNotifications(
 			req as any,
 			res as any
 		);
@@ -49,7 +49,7 @@ router.get('/', async (req: Request, res: Response) => {
  */
 router.patch('/:id/read', async (req: Request, res: Response) => {
 	try {
-		await NotificationsController.markAsRead(
+		return await NotificationsController.markAsRead(
 			req as any,
 			res as any
 		);

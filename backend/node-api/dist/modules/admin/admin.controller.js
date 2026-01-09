@@ -36,10 +36,22 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AdminController = void 0;
 const zod_1 = require("zod");
 const admin_service_1 = require("./admin.service");
+const request_user_1 = require("../../utils/request-user");
 const requests_service_1 = require("../requests/requests.service");
 const audit_service_1 = require("../audit/audit.service");
-const documents_service_1 = require("../documents/documents.service");
 const logger_1 = require("../../utils/logger");
+// Helper: ensure the caller is ADMIN or SYSTEM. Returns true if allowed, otherwise
+// sends a 403 response and logs the attempt.
+function ensureAdminOrSystem(req, res) {
+    const role = (0, request_user_1.getAuthUserRole)(req);
+    const uid = (0, request_user_1.getAuthUserId)(req);
+    if (role !== 'ADMIN' && role !== 'SYSTEM') {
+        logger_1.logger.warn('Non-admin accessed admin route', { userId: uid, role });
+        res.status(403).json({ message: 'Forbidden' });
+        return false;
+    }
+    return true;
+}
 const handleControllerError = (res, error, context = '') => {
     logger_1.logger.error(`${context} failed`, { error });
     if (error instanceof zod_1.ZodError) {
@@ -53,6 +65,8 @@ const handleControllerError = (res, error, context = '') => {
 class AdminController {
     static async listUsers(req, res) {
         try {
+            if (!ensureAdminOrSystem(req, res))
+                return;
             const limit = Number(req.query.limit ?? 50) || 50;
             const offset = Number(req.query.offset ?? 0) || 0;
             const users = await admin_service_1.AdminService.listUsers(limit, offset);
@@ -64,6 +78,8 @@ class AdminController {
     }
     static async getUserById(req, res) {
         try {
+            if (!ensureAdminOrSystem(req, res))
+                return;
             const userId = req.params.id;
             const user = await admin_service_1.AdminService.getUserById(userId);
             return res.status(200).json(user);
@@ -74,6 +90,8 @@ class AdminController {
     }
     static async updateUserRole(req, res) {
         try {
+            if (!ensureAdminOrSystem(req, res))
+                return;
             const schema = zod_1.z.object({ role: zod_1.z.enum(['CLIENT', 'ADMIN', 'SYSTEM']) });
             const body = schema.parse(req.body);
             const userId = req.params.id;
@@ -86,6 +104,8 @@ class AdminController {
     }
     static async listRequests(req, res) {
         try {
+            if (!ensureAdminOrSystem(req, res))
+                return;
             const filters = {
                 status: req.query.status,
                 type: req.query.type,
@@ -100,6 +120,8 @@ class AdminController {
     }
     static async getRequestById(req, res) {
         try {
+            if (!ensureAdminOrSystem(req, res))
+                return;
             const requestId = req.params.id;
             const data = await admin_service_1.AdminService.getRequestById(requestId);
             return res.status(200).json({ success: true, data });
@@ -110,7 +132,10 @@ class AdminController {
     }
     static async markUnderReview(req, res) {
         try {
-            if (!req.user)
+            if (!ensureAdminOrSystem(req, res))
+                return;
+            const adminId = (0, request_user_1.getAuthUserId)(req);
+            if (!adminId)
                 return res.status(401).json({ message: 'Unauthorized' });
             const requestId = req.params.id;
             // transition to UNDER_REVIEW
@@ -118,7 +143,7 @@ class AdminController {
                 requestId,
                 to: 'UNDER_REVIEW',
                 actorRole: 'ADMIN',
-                actorId: req.user.id
+                actorId: adminId
             });
             return res.status(200).json({ success: true, result });
         }
@@ -128,12 +153,15 @@ class AdminController {
     }
     static async forceUpdateRequestStatus(req, res) {
         try {
+            if (!ensureAdminOrSystem(req, res))
+                return;
             const schema = zod_1.z.object({ status: zod_1.z.string() });
             const body = schema.parse(req.body);
-            if (!req.user)
+            const adminId = (0, request_user_1.getAuthUserId)(req);
+            if (!adminId)
                 return res.status(401).json({ message: 'Unauthorized' });
             const requestId = req.params.id;
-            const result = await admin_service_1.AdminService.forceUpdateRequestStatus(requestId, body.status, req.user.id);
+            const result = await admin_service_1.AdminService.forceUpdateRequestStatus(requestId, body.status, adminId);
             return res.status(200).json(result);
         }
         catch (error) {
@@ -142,13 +170,15 @@ class AdminController {
     }
     static async listDocuments(req, res) {
         try {
+            if (!ensureAdminOrSystem(req, res))
+                return;
             const filters = {
                 requestId: req.query.requestId,
                 userId: req.query.userId,
                 limit: req.query.limit ? Number(req.query.limit) : undefined,
                 offset: req.query.offset ? Number(req.query.offset) : undefined
             };
-            const adminId = req.user?.id ?? '';
+            const adminId = (0, request_user_1.getAuthUserId)(req) ?? '';
             const docs = await admin_service_1.AdminService.listDocuments(adminId, filters);
             return res.status(200).json(docs);
         }
@@ -158,8 +188,10 @@ class AdminController {
     }
     static async getDocumentById(req, res) {
         try {
+            if (!ensureAdminOrSystem(req, res))
+                return;
             const documentId = req.params.id;
-            const adminId = req.user?.id ?? '';
+            const adminId = (0, request_user_1.getAuthUserId)(req) ?? '';
             const doc = await admin_service_1.AdminService.getDocumentById(documentId, adminId);
             return res.status(200).json(doc);
         }
@@ -169,10 +201,13 @@ class AdminController {
     }
     static async deleteDocument(req, res) {
         try {
-            if (!req.user)
+            if (!ensureAdminOrSystem(req, res))
+                return;
+            const adminId = (0, request_user_1.getAuthUserId)(req);
+            if (!adminId)
                 return res.status(401).json({ message: 'Unauthorized' });
             const documentId = req.params.id;
-            const result = await admin_service_1.AdminService.deleteDocument(documentId, req.user.id);
+            const result = await admin_service_1.AdminService.deleteDocument(documentId, adminId);
             return res.status(200).json(result);
         }
         catch (error) {
@@ -181,11 +216,14 @@ class AdminController {
     }
     static async publishFinalDocuments(req, res) {
         try {
-            if (!req.user)
+            if (!ensureAdminOrSystem(req, res))
+                return;
+            const adminId = (0, request_user_1.getAuthUserId)(req);
+            if (!adminId)
                 return res.status(401).json({ message: 'Unauthorized' });
             const requestId = req.params.id;
             const opts = req.body || {};
-            const result = await admin_service_1.AdminService.publishFinalDocuments(requestId, req.user.id, opts);
+            const result = await admin_service_1.AdminService.publishFinalDocuments(requestId, adminId, opts);
             return res.status(200).json({ success: true, ...result });
         }
         catch (error) {
@@ -194,10 +232,12 @@ class AdminController {
     }
     static async uploadDraft(req, res) {
         try {
-            if (!req.user)
+            if (!ensureAdminOrSystem(req, res))
+                return;
+            const adminId = (0, request_user_1.getAuthUserId)(req);
+            if (!adminId)
                 return res.status(401).json({ message: 'Unauthorized' });
             const requestId = req.params.id;
-            const adminId = req.user.id;
             // Validate documentType
             const docType = (req.body.documentType || req.body.documentType?.toString());
             if (!docType || !['DRAFT_FERI', 'PROFORMA'].includes(docType)) {
@@ -215,58 +255,55 @@ class AdminController {
             if (request.status !== 'UNDER_REVIEW')
                 return res.status(400).json({ message: 'Cannot upload draft unless request is UNDER_REVIEW' });
             // Only ADMIN allowed (module guard exists but double-check)
-            if (req.user.role !== 'ADMIN' && req.user.role !== 'SYSTEM')
+            const role = (0, request_user_1.getAuthUserRole)(req);
+            if (role !== 'ADMIN' && role !== 'SYSTEM')
                 return res.status(403).json({ message: 'Forbidden' });
-            const createdDocs = [];
+            // Use DraftsService to create request_drafts entries in dedicated bucket
+            const createdDrafts = [];
             for (const f of files) {
-                const doc = await AdminController._createAdminDocumentInternal(requestId, adminId, docType, f);
-                createdDocs.push(doc);
+                const amountVal = req.body.amount ? Number(req.body.amount) : null;
+                const currencyVal = req.body.currency ? String(req.body.currency) : 'USD';
+                const { DraftsService } = await Promise.resolve().then(() => __importStar(require('../drafts/drafts.service')));
+                const draft = await DraftsService.createDraft({ requestId, file: f, uploadedBy: adminId, amount: amountVal, currency: currencyVal });
+                createdDrafts.push(draft);
             }
             // Transition to DRAFT_SENT (single transition)
-            await requests_service_1.RequestsService.transitionStatus({
-                requestId,
-                to: 'DRAFT_SENT',
-                actorRole: 'ADMIN',
-                actorId: adminId
-            });
+            await requests_service_1.RequestsService.transitionStatus({ requestId, to: 'DRAFT_SENT', actorRole: 'ADMIN', actorId: adminId });
             // Audit
-            await audit_service_1.AuditService.log({
-                actor_id: adminId,
-                action: 'UPLOAD_DRAFT',
-                entity: 'request',
-                entity_id: requestId,
-                metadata: { documents: createdDocs.map(d => d.id), type: docType }
-            });
-            // Prepare attachments for email + in-app links
-            const attachments = [];
-            for (const d of createdDocs) {
+            await audit_service_1.AuditService.log({ actor_id: adminId, action: 'UPLOAD_DRAFT', entity: 'request', entity_id: requestId, metadata: { drafts: createdDrafts.map(d => d.id), type: docType } });
+            // Prepare links (signed urls) and metadata for notifications — do NOT embed file content in notifications
+            const links = [];
+            const metadataItems = [];
+            for (const d of createdDrafts) {
                 try {
-                    const { file: fileBuffer, document } = await documents_service_1.DocumentsService.downloadDocument(d.id, adminId, 'ADMIN');
-                    attachments.push({ name: document.file_name, mime: document.mime_type, base64: fileBuffer.toString('base64') });
+                    const { DraftsService } = await Promise.resolve().then(() => __importStar(require('../drafts/drafts.service')));
+                    const signed = await DraftsService.generateSignedUrl(d.id, 60 * 60);
+                    links.push({ name: d.file_name || 'Draft', url: signed, expires_in: 3600 });
+                    metadataItems.push({ draft_id: d.id, file_name: d.file_name, file_path: d.file_path, amount: d.amount, currency: d.currency });
                 }
                 catch (e) {
-                    logger_1.logger.warn('Failed to fetch file for attachment', { docId: d.id, e });
+                    logger_1.logger.warn('Failed to create signed url for draft', { draftId: d.id, e });
                 }
             }
-            // Send notification + email
+            // Send notification + email referencing the draft via metadata (no file content)
             try {
                 const { NotificationsService } = await Promise.resolve().then(() => __importStar(require('../notifications/notifications.service')));
                 await NotificationsService.send({
                     userId: request.client_id,
                     type: 'DRAFT_AVAILABLE',
-                    title: 'Documents provisoires disponibles',
-                    message: 'Votre draft et/ou proforma est disponible. Merci de vérifier et procéder au paiement.',
+                    title: 'Draft & Proforma disponibles',
+                    message: 'Votre draft et votre facture proforma sont disponibles. Merci de procéder au paiement.',
                     entityType: 'request',
                     entityId: requestId,
                     channels: ['in_app', 'email'],
-                    attachments,
-                    links: [{ name: 'Voir la demande', url: `${process.env.FRONTEND_URL || 'https://app.example.com'}/requests/${requestId}`, expires_in: 3600 }]
+                    links: links.length > 0 ? links : [{ name: 'Voir la demande', url: `${process.env.FRONTEND_URL || 'https://app.example.com'}/requests/${requestId}`, expires_in: 3600 }],
+                    metadata: metadataItems.length === 1 ? metadataItems[0] : metadataItems
                 });
             }
             catch (e) {
                 logger_1.logger.warn('Failed to send draft notification', { e });
             }
-            return res.status(200).json({ success: true, documents: createdDocs });
+            return res.status(200).json({ success: true, drafts: createdDrafts });
         }
         catch (error) {
             return handleControllerError(res, error, 'Upload draft');
@@ -274,7 +311,8 @@ class AdminController {
     }
     static async confirmPayment(req, res) {
         try {
-            if (!req.user)
+            const adminId = (0, request_user_1.getAuthUserId)(req);
+            if (!adminId)
                 return res.status(401).json({ message: 'Unauthorized' });
             const requestId = req.params.id;
             const request = await requests_service_1.RequestsService.getRequestById(requestId);
@@ -287,11 +325,11 @@ class AdminController {
                 requestId,
                 to: 'PAYMENT_CONFIRMED',
                 actorRole: 'ADMIN',
-                actorId: req.user.id
+                actorId: adminId
             });
             // Audit
             await audit_service_1.AuditService.log({
-                actor_id: req.user.id,
+                actor_id: adminId,
                 action: 'CONFIRM_PAYMENT',
                 entity: 'request',
                 entity_id: requestId
@@ -320,10 +358,11 @@ class AdminController {
     }
     static async generateFeri(req, res) {
         try {
-            if (!req.user)
-                return res.status(401).json({ message: 'Unauthorized' });
             const requestId = req.params.id;
-            const doc = await admin_service_1.AdminService.generateFinalDocument(requestId, req.user.id, 'FERI');
+            const adminId = (0, request_user_1.getAuthUserId)(req);
+            if (!adminId)
+                return res.status(401).json({ message: 'Unauthorized' });
+            const doc = await admin_service_1.AdminService.generateFinalDocument(requestId, adminId, 'FERI');
             return res.status(200).json({ success: true, document: doc });
         }
         catch (error) {
@@ -332,10 +371,11 @@ class AdminController {
     }
     static async generateAd(req, res) {
         try {
-            if (!req.user)
-                return res.status(401).json({ message: 'Unauthorized' });
             const requestId = req.params.id;
-            const doc = await admin_service_1.AdminService.generateFinalDocument(requestId, req.user.id, 'AD');
+            const adminId = (0, request_user_1.getAuthUserId)(req);
+            if (!adminId)
+                return res.status(401).json({ message: 'Unauthorized' });
+            const doc = await admin_service_1.AdminService.generateFinalDocument(requestId, adminId, 'AD');
             return res.status(200).json({ success: true, document: doc });
         }
         catch (error) {
