@@ -12,15 +12,18 @@ RUN apt-get update && apt-get install -y \
 # Définir le répertoire de travail
 WORKDIR /app
 
-# Copier les fichiers requirements et le code
-COPY requirements.txt .
+# Copier le requirements.txt depuis python-service
+COPY python-service/requirements.txt .
+
+# Installer les dépendances Python
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
-COPY . .
+# Copier tout le code depuis python-service
+COPY python-service/ .
 
 # Exposer le port utilisé par FastAPI
 EXPOSE 8000
 
-# Lancer l'application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Lancer l'application FastAPI
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
