@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LOGI-RDC | Dashboard</title>
+  <link rel="stylesheet" href="dashboard_client.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+
+<body>
+  <div class="app-container">
+
+    <nav class="sidebar" id="sidebar" aria-label="Navigation principale">
+      <div class="sidebar-header-mobile">
+        <div class="logo">
+          <h2>C</h2>
+        </div>
+        <button class="icon-btn close-sidebar" id="close-sidebar-btn" aria-label="Fermer le menu" type="button">
+          <i class="fas fa-times" aria-hidden="true"></i>
+        </button>
+      </div>
+
+      <div class="logo desktop-logo">
+        <h2>MARITIME KARGO</h2>
+        <span class="subtitle">Consulting</span>
+      </div>
+
+      <ul role="menu">
+        <li class="active" role="menuitem" tabindex="0"><i class="fas fa-home" aria-hidden="true"></i> Dashboard</li>
+        <li role="menuitem" tabindex="0" onclick="window.location.href='PaiementClient.html'"><i class="fas fa-file-invoice-dollar" aria-hidden="true"></i> Paiements</li>
+      </ul>
+      <div class="logout" role="button" tabindex="0" id="logoutBtn">
+        <i class="fas fa-sign-out-alt" aria-hidden="true"></i> Déconnexion
+      </div>
+
+      <script>
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          window.location.href = 'index.html';
+        });
+      </script>
+
+    </nav>
+
+    <main class="main-content" role="main">
+      <header class="top-header">
+        <div class="header-left">
+          <button class="fas fa-bars menu-trigger icon-btn" id="menu-trigger" aria-label="Ouvrir le menu"
+            type="button"></button>
+          <div class="search-wrap" role="search" aria-label="Recherche">
+            <i class="fas fa-search" aria-hidden="true"></i>
+            <input type="text" placeholder="Search..." aria-label="Recherche générale">
+          </div>
+        </div>
+
+        <div class="header-right">
+          <button class="far fa-bell icon-btn" id="notif-btn" aria-haspopup="dialog" aria-controls="popup-notif"
+            aria-expanded="false" type="button">
+            <span id="notif-badge" class="notif-badge" aria-hidden="true" style="display:none;"></span>
+          </button>
+          <button class="fas fa-cog icon-btn" id="settings-btn" aria-haspopup="dialog" aria-controls="popup-settings"
+            aria-expanded="false" type="button"></button>
+          <div class="user-profile" aria-label="Profil utilisateur">
+            <div class="user-info">
+              <span class="name"></span>
+              <span class="role"></span>
+            </div>
+            <div class="avatar-placeholder" aria-hidden="true"
+              style="width:36px; height:36px; background:#ddd; border-radius:50%; display:flex; align-items:center; justify-content:center;">
+              
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <section class="action-bar" aria-label="Barre d'actions">
+        <div class="actions-left">
+          <button class="btn-green" id="open-modal-btn" aria-haspopup="dialog" aria-controls="modal" type="button">New
+            Request <i class="fas fa-chevron-down" aria-hidden="true"></i></button>
+          <button class="btn-white" id="clear-btn" type="button"><i class="fas fa-filter" aria-hidden="true"></i>
+            Clear</button>
+        </div>
+        <div class="action-center">
+          <span class="pay-link">Pay through PayCargo</span>
+        </div>
+        <div class="actions-right">
+          <div class="keyword-input" role="search">
+            <button class="fas fa-sync-alt refresh-icon icon-btn" id="refresh-btn" aria-label="Rafraîchir"
+              type="button"></button>
+            <input type="text" id="keywordSearch" placeholder="Keyword Search" aria-label="Recherche par mot-clé">
+            <i class="fas fa-search search-icon" aria-hidden="true"></i>
+          </div>
+        </div>
+      </section>
+
+      <div class="table-responsive" role="region" aria-label="Tableau des demandes">
+        <table class="dashboard-table" aria-describedby="entries-info">
+          <thead>
+            <tr>
+              <th scope="col">BL Number <i class="fas fa-filter text-muted" aria-hidden="true"></i></th>
+              <th scope="col">Ref #</th>
+              <th scope="col">Last Updated <i class="fas fa-sort-amount-down text-blue" aria-hidden="true"></i></th>
+              <th scope="col">Status <i class="fas fa-sort text-muted" aria-hidden="true"></i></th>
+              <th scope="col">Country <i class="fas fa-sort text-muted" aria-hidden="true"></i></th>
+              <th scope="col">Invoice # <i class="fas fa-sort text-muted" aria-hidden="true"></i></th>
+              <th scope="col">FERI # <i class="fas fa-sort text-muted" aria-hidden="true"></i></th>
+              <th scope="col">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
+
+      <div class="pagination-footer" aria-live="polite">
+        <div class="page-numbers" role="navigation" aria-label="Pagination">
+          <button aria-label="Page précédente" type="button"><i class="fas fa-angle-left"
+              aria-hidden="true"></i></button>
+          <button class="active" aria-current="page" type="button">1</button>
+          <button aria-label="Page suivante" type="button"><i class="fas fa-angle-right"
+              aria-hidden="true"></i></button>
+        </div>
+        <span class="showing-text" id="entries-info"></span>
+      </div>
+    </main>
+  </div>
+
+  <div id="modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title"
+    aria-hidden="true">
+    <div class="modal-box" role="document">
+      <div class="modal-header">
+        <h3 id="modal-title">Select Request Type</h3>
+      </div>
+      <div class="modal-body">
+        <div id="step-1">
+          <p class="label-text">What type of document do you need?</p>
+          <div class="option-grid" role="list">
+            <button class="option-btn" data-type="FERI" type="button">FERI</button>
+            <button class="option-btn" data-type="AD" type="button">AD</button>
+            <button class="option-btn" data-type="FERI + AD" type="button">FERI + AD</button>
+          </div>
+        </div>
+
+        <div id="step-2" style="display: none;">
+          <input type="text" class="input-ref" id="refInput" placeholder="Your Ref Number (optional)"
+            aria-label="Numéro de référence (optionnel)">
+          <div class="country-select" role="button" tabindex="0" aria-label="Sélectionner le pays">
+            <div class="flag-text">
+              <img
+                src="https://upload.wikimedia.org/wikipedia/commons/6/6f/Flag_of_the_Democratic_Republic_of_the_Congo.svg"
+                width="24" alt="Drapeau RDC">
+              Democratic Republic of Congo
+            </div>
+          </div>
+          <div class="requirements-section">
+            <h4 id="selected-type-display">Requirements</h4>
+            <p class="sub-text">Dem. Republic of Congo requires the following documents:</p>
+
+            <div class="upload-group" aria-label="Zone de téléchargement des documents">
+              <label class="doc-upload-btn" id="btn-bl" for="file-bl" role="button" tabindex="0">
+                <i class="fas fa-cloud-upload-alt" aria-hidden="true"></i> <span id="label-bl">Bill of Lading</span>
+                <input id="file-bl" type="file" hidden aria-label="Charger Bill of Lading"
+                  accept=".pdf,.jpg,.jpeg,.png">
+              </label>
+
+              <label class="doc-upload-btn" id="btn-fi" for="file-fi" role="button" tabindex="0">
+                <i class="fas fa-cloud-upload-alt" aria-hidden="true"></i> <span id="label-fi">Freight Invoice</span>
+                <input id="file-fi" type="file" hidden aria-label="Charger Freight Invoice"
+                  accept=".pdf,.jpg,.jpeg,.png">
+              </label>
+
+              <label class="doc-upload-btn" id="btn-ci" for="file-ci" role="button" tabindex="0">
+                <i class="fas fa-cloud-upload-alt" aria-hidden="true"></i> <span id="label-ci">Commercial Invoice</span>
+                <input id="file-ci" type="file" hidden aria-label="Charger Commercial Invoice"
+                  accept=".pdf,.jpg,.jpeg,.png">
+              </label>
+
+              <label class="doc-upload-btn" id="btn-ed" for="file-ed" role="button" tabindex="0">
+                <i class="fas fa-cloud-upload-alt" aria-hidden="true"></i> <span id="label-ed">Export Declaration</span>
+                <input id="file-ed" type="file" hidden aria-label="Charger Export Declaration"
+                  accept=".pdf,.jpg,.jpeg,.png">
+              </label>
+            </div>
+          </div>
+          <p class="validation-note">Validation is required before the vessel arrives.</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-close" id="modal-close-btn" type="button"><i class="fas fa-times" aria-hidden="true"></i>
+          Close</button>
+        <button id="submit-btn" class="btn-submit" type="button" style="display: none;"> <i class="fas fa-check"
+            aria-hidden="true"></i> Submit</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="popup-notif" class="dropdown-popup" aria-hidden="true" role="dialog" aria-label="Notifications"
+    style="display:none;">
+    <div class="popup-header">Notifications</div>
+    <div class="popup-body" id="popup-notif-body">
+      <div class="notif-item">Aucune notification</div>
+    </div>
+  </div>
+
+  <style>
+    .notif-badge {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      min-width: 20px;
+      height: 20px;
+      padding: 0 6px;
+      background: #ff7a00;
+      color: white;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 20px;
+      text-align: center;
+      box-shadow: 0 0 0 2px white;
+      display: none;
+      white-space: nowrap;
+    }
+    .dropdown-popup .notif-item { padding: 12px; border-bottom: 1px solid #eee; }
+    .dropdown-popup .notif-item .title { font-weight: 600; margin-bottom: 6px; }
+    .dropdown-popup .notif-item .meta { font-size: 12px; color: #666; margin-top:8px }
+  </style>
+
+  <div id="popup-settings" class="dropdown-popup" aria-hidden="true" role="dialog" aria-label="Paramètres"
+    style="display:none;">
+    <div class="popup-header">Paramètres</div>
+    <div class="popup-body">
+      <div class="setting-link">Profil</div>
+    </div>
+  </div>
+
+  <script type="module" src="dashboard_client.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,338 @@
+﻿[
+    {
+        "bodySnippet":  "Impossible de se connecter au serveur distant",
+        "ok":  false,
+        "path":  "/health",
+        "method":  "GET",
+        "url":  "http://localhost:3000/health",
+        "status":  "ERR"
+    },
+    {
+        "bodySnippet":  "Impossible de se connecter au serveur distant",
+        "ok":  false,
+        "path":  "/auth/register",
+        "method":  "POST",
+        "url":  "http://localhost:3000/auth/register",
+        "status":  "ERR"
+    },
+    {
+        "bodySnippet":  "Impossible de se connecter au serveur distant",
+        "ok":  false,
+        "path":  "/auth/login",
+        "method":  "POST",
+        "url":  "http://localhost:3000/auth/login",
+        "status":  "ERR"
+    },
+    {
+        "bodySnippet":  "Impossible de se connecter au serveur distant",
+        "ok":  false,
+        "path":  "/auth/logout",
+        "method":  "POST",
+        "url":  "http://localhost:3000/auth/logout",
+        "status":  "ERR"
+    },
+    {
+        "bodySnippet":  "Impossible de se connecter au serveur distant",
+        "ok":  false,
+        "path":  "/auth/me",
+        "method":  "GET",
+        "url":  "http://localhost:3000/auth/me",
+        "status":  "ERR"
+    },
+    {
+        "bodySnippet":  "Impossible de se connecter au serveur distant",
+        "ok":  false,
+        "path":  "/users/me",
+        "method":  "GET",
+        "url":  "http://localhost:3000/users/me",
+        "status":  "ERR"
+    },
+    {
+        "bodySnippet":  "Impossible de se connecter au serveur distant",
+        "ok":  false,
+        "path":  "/users/me",
+        "method":  "PATCH",
+        "url":  "http://localhost:3000/users/me",
+        "status":  "ERR"
+    },
+    {
+        "bodySnippet":  "Impossible de se connecter au serveur distant",
+        "ok":  false,
+        "path":  "/users",
+        "method":  "GET",
+        "url":  "http://localhost:3000/users",
+        "status":  "ERR"
+    },
+    {
+        "bodySnippet":  "Impossible de se connecter au serveur distant",
+        "ok":  false,
+        "path":  "/users/{id}",
+        "method":  "GET",
+        "url":  "http://localhost:3000/users/{id}",
+        "status":  "ERR"
+    },
+    {
+        "bodySnippet":  "Impossible de se connecter au serveur distant",
+        "ok":  false,
+        "path":  "/users/{id}",
+        "method":  "PATCH",
+        "url":  "http://localhost:3000/users/{id}",
+        "status":  "ERR"
+    },
+    {
+        "bodySnippet":  "Impossible de se connecter au serveur distant",
+        "ok":  false,
+        "path":  "/requests",
+        "method":  "POST",
+        "url":  "http://localhost:3000/requests",
+        "status":  "ERR"
+    },
+    {
+        "bodySnippet":  "Impossible de se connecter au serveur distant",
+        "ok":  false,
+        "path":  "/requests/{requestId}/payment-proof",
+        "method":  "POST",
+        "url":  "http://localhost:3000/requests/{requestId}/payment-proof",
+        "status":  "ERR"
+    },
+    {
+        "bodySnippet":  "Impossible de se connecter au serveur distant",
+        "ok":  false,
+        "path":  "/requests/transition",
+        "method":  "POST",
+        "url":  "http://localhost:3000/requests/transition",
+        "status":  "ERR"
+    },
+    {
+        "bodySnippet":  "Impossible de se connecter au serveur distant",
+        "ok":  false,
+        "path":  "/requests/{requestId}/submit",
+        "method":  "POST",
+        "url":  "http://localhost:3000/requests/{requestId}/submit",
+        "status":  "ERR"
+    },
+    {
+        "bodySnippet":  "Impossible de se connecter au serveur distant",
+        "ok":  false,
+        "path":  "/documents/{requestId}/upload",
+        "method":  "POST",
+        "url":  "http://localhost:3000/documents/{requestId}/upload",
+        "status":  "ERR"
+    },
+    {
+        "bodySnippet":  "Impossible de se connecter au serveur distant",
+        "ok":  false,
+        "path":  "/documents/me",
+        "method":  "GET",
+        "url":  "http://localhost:3000/documents/me",
+        "status":  "ERR"
+    },
+    {
+        "bodySnippet":  "Impossible de se connecter au serveur distant",
+        "ok":  false,
+        "path":  "/documents/{id}",
+        "method":  "GET",
+        "url":  "http://localhost:3000/documents/{id}",
+        "status":  "ERR"
+    },
+    {
+        "bodySnippet":  "Impossible de se connecter au serveur distant",
+        "ok":  false,
+        "path":  "/documents/{id}",
+        "method":  "DELETE",
+        "url":  "http://localhost:3000/documents/{id}",
+        "status":  "ERR"
+    },
+    {
+        "bodySnippet":  "Impossible de se connecter au serveur distant",
+        "ok":  false,
+        "path":  "/documents/{id}/download",
+        "method":  "GET",
+        "url":  "http://localhost:3000/documents/{id}/download",
+        "status":  "ERR"
+    },
+    {
+        "bodySnippet":  "Impossible de se connecter au serveur distant",
+        "ok":  false,
+        "path":  "/documents",
+        "method":  "GET",
+        "url":  "http://localhost:3000/documents",
+        "status":  "ERR"
+    },
+    {
+        "bodySnippet":  "Impossible de se connecter au serveur distant",
+        "ok":  false,
+        "path":  "/admin/users",
+        "method":  "GET",
+        "url":  "http://localhost:3000/admin/users",
+        "status":  "ERR"
+    },
+    {
+        "bodySnippet":  "Impossible de se connecter au serveur distant",
+        "ok":  false,
+        "path":  "/admin/users/{id}",
+        "method":  "GET",
+        "url":  "http://localhost:3000/admin/users/{id}",
+        "status":  "ERR"
+    },
+    {
+        "bodySnippet":  "Impossible de se connecter au serveur distant",
+        "ok":  false,
+        "path":  "/admin/users/{id}",
+        "method":  "PATCH",
+        "url":  "http://localhost:3000/admin/users/{id}",
+        "status":  "ERR"
+    },
+    {
+        "bodySnippet":  "Impossible de se connecter au serveur distant",
+        "ok":  false,
+        "path":  "/admin/requests",
+        "method":  "GET",
+        "url":  "http://localhost:3000/admin/requests",
+        "status":  "ERR"
+    },
+    {
+        "bodySnippet":  "Impossible de se connecter au serveur distant",
+        "ok":  false,
+        "path":  "/admin/requests/{id}",
+        "method":  "GET",
+        "url":  "http://localhost:3000/admin/requests/{id}",
+        "status":  "ERR"
+    },
+    {
+        "bodySnippet":  "Impossible de se connecter au serveur distant",
+        "ok":  false,
+        "path":  "/admin/requests/{id}",
+        "method":  "POST",
+        "url":  "http://localhost:3000/admin/requests/{id}",
+        "status":  "ERR"
+    },
+    {
+        "bodySnippet":  "Impossible de se connecter au serveur distant",
+        "ok":  false,
+        "path":  "/admin/requests/{id}/under-review",
+        "method":  "POST",
+        "url":  "http://localhost:3000/admin/requests/{id}/under-review",
+        "status":  "ERR"
+    },
+    {
+        "bodySnippet":  "Impossible de se connecter au serveur distant",
+        "ok":  false,
+        "path":  "/admin/requests/{id}/status",
+        "method":  "PATCH",
+        "url":  "http://localhost:3000/admin/requests/{id}/status",
+        "status":  "ERR"
+    },
+    {
+        "bodySnippet":  "Impossible de se connecter au serveur distant",
+        "ok":  false,
+        "path":  "/admin/requests/{id}/publish",
+        "method":  "POST",
+        "url":  "http://localhost:3000/admin/requests/{id}/publish",
+        "status":  "ERR"
+    },
+    {
+        "bodySnippet":  "Impossible de se connecter au serveur distant",
+        "ok":  false,
+        "path":  "/admin/requests/{id}/confirm-payment",
+        "method":  "POST",
+        "url":  "http://localhost:3000/admin/requests/{id}/confirm-payment",
+        "status":  "ERR"
+    },
+    {
+        "bodySnippet":  "Impossible de se connecter au serveur distant",
+        "ok":  false,
+        "path":  "/admin/requests/{id}/generate-feri",
+        "method":  "POST",
+        "url":  "http://localhost:3000/admin/requests/{id}/generate-feri",
+        "status":  "ERR"
+    },
+    {
+        "bodySnippet":  "Impossible de se connecter au serveur distant",
+        "ok":  false,
+        "path":  "/admin/requests/{id}/generate-ad",
+        "method":  "POST",
+        "url":  "http://localhost:3000/admin/requests/{id}/generate-ad",
+        "status":  "ERR"
+    },
+    {
+        "bodySnippet":  "Impossible de se connecter au serveur distant",
+        "ok":  false,
+        "path":  "/admin/requests/{id}/upload-draft",
+        "method":  "POST",
+        "url":  "http://localhost:3000/admin/requests/{id}/upload-draft",
+        "status":  "ERR"
+    },
+    {
+        "bodySnippet":  "Impossible de se connecter au serveur distant",
+        "ok":  false,
+        "path":  "/admin/documents",
+        "method":  "GET",
+        "url":  "http://localhost:3000/admin/documents",
+        "status":  "ERR"
+    },
+    {
+        "bodySnippet":  "Impossible de se connecter au serveur distant",
+        "ok":  false,
+        "path":  "/admin/documents/{id}",
+        "method":  "GET",
+        "url":  "http://localhost:3000/admin/documents/{id}",
+        "status":  "ERR"
+    },
+    {
+        "bodySnippet":  "Impossible de se connecter au serveur distant",
+        "ok":  false,
+        "path":  "/admin/documents/{id}",
+        "method":  "DELETE",
+        "url":  "http://localhost:3000/admin/documents/{id}",
+        "status":  "ERR"
+    },
+    {
+        "bodySnippet":  "Impossible de se connecter au serveur distant",
+        "ok":  false,
+        "path":  "/notifications",
+        "method":  "GET",
+        "url":  "http://localhost:3000/notifications",
+        "status":  "ERR"
+    },
+    {
+        "bodySnippet":  "Impossible de se connecter au serveur distant",
+        "ok":  false,
+        "path":  "/notifications/{id}/read",
+        "method":  "PATCH",
+        "url":  "http://localhost:3000/notifications/{id}/read",
+        "status":  "ERR"
+    },
+    {
+        "bodySnippet":  "Impossible de se connecter au serveur distant",
+        "ok":  false,
+        "path":  "/api/v1/health",
+        "method":  "GET",
+        "url":  "http://localhost:8000/api/v1/health",
+        "status":  "ERR"
+    },
+    {
+        "bodySnippet":  "Impossible de se connecter au serveur distant",
+        "ok":  false,
+        "path":  "/api/v1/parse/document",
+        "method":  "POST",
+        "url":  "http://localhost:8000/api/v1/parse/document",
+        "status":  "ERR"
+    },
+    {
+        "bodySnippet":  "Impossible de se connecter au serveur distant",
+        "ok":  false,
+        "path":  "/api/v1/generate/feri",
+        "method":  "POST",
+        "url":  "http://localhost:8000/api/v1/generate/feri",
+        "status":  "ERR"
+    },
+    {
+        "bodySnippet":  "Impossible de se connecter au serveur distant",
+        "ok":  false,
+        "path":  "/api/v1/generate/ad",
+        "method":  "POST",
+        "url":  "http://localhost:8000/api/v1/generate/ad",
+        "status":  "ERR"
+    }
+]

@@ -1,0 +1,46 @@
+import { Request, Response } from 'express';
+import { z, ZodError } from 'zod';
+import { DraftsService } from './drafts.service';
+import { getAuthUserId, getAuthUserRole } from '../../utils/request-user';
+import { logger } from '../../utils/logger';
+
+type AuthRequest = Request & {};
+
+const handleControllerError = (res: Response, error: unknown, context = '') => {
+  logger.error(`${context} failed`, { error });
+  if (error instanceof ZodError) return res.status(422).json({ message: 'Invalid payload', errors: error.flatten().fieldErrors });
+  if (error instanceof Error) return res.status(400).json({ message: error.message });
+  return res.status(500).json({ message: 'Unexpected error' });
+};
+
+export class DraftsController {
+  // GET /drafts/:id/download -> returns a signed url (only client owner or admin)
+  static async download(req: AuthRequest, res: Response) {
+    try {
+      const userId = getAuthUserId(req);
+      const role = getAuthUserRole(req);
+      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+      const draftId = req.params.id;
+      const draft = await DraftsService.getDraftById(draftId);
+
+      // Verify ownership: client owner of request OR ADMIN/SYSTEM
+      if (role !== 'ADMIN' && role !== 'SYSTEM') {
+        // verify that the requester is the client of the related request
+        const { data: reqRow, error } = await (await import('../../config/supabase')).supabase
+          .from('requests')
+          .select('client_id')
+          .eq('id', draft.request_id)
+          .single();
+        if (error || !reqRow || reqRow.client_id !== userId) {
+          return res.status(403).json({ message: 'Forbidden' });
+        }
+      }
+
+      const url = await DraftsService.generateSignedUrl(draftId, 60 * 10);
+      return res.status(200).json({ success: true, url });
+    } catch (error: unknown) {
+      return handleControllerError(res, error, 'Download draft');
+    }
+  }
+}

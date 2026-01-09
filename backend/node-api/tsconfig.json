@@ -1,0 +1,35 @@
+{
+  "compilerOptions": {
+    /* === Projet === */
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+
+    /* === Dossiers === */
+    "rootDir": "src",
+    "outDir": "dist",
+
+    /* === TypeScript strict (important) === */
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+
+    /* === Interop & confort === */
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+
+    /* === Qualité === */
+    "forceConsistentCasingInFileNames": true,
+
+    /* === Types globaux (CRUCIAL) === */
+    "typeRoots": ["./src/types", "./node_modules/@types"],
+
+    /* === Source maps === */
+    "sourceMap": true
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

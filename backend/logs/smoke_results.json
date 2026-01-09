@@ -1,0 +1,338 @@
+[
+  {
+    "path": "/health",
+    "method": "GET",
+    "url": "http://localhost:3000/health",
+    "status": 200,
+    "ok": true,
+    "bodySnippet": "{\"status\":\"ok\",\"service\":\"FERI / AD Backend\",\"environment\":\"development\",\"timestamp\":\"2025-12-31T07:54:17.565Z\"}"
+  },
+  {
+    "path": "/auth/register",
+    "method": "POST",
+    "url": "http://localhost:3000/auth/register",
+    "status": 422,
+    "ok": false,
+    "bodySnippet": "{\"success\":false,\"message\":\"Invalid payload\",\"errors\":{\"_errors\":[],\"email\":{\"_errors\":[\"Invalid input: expected string, received undefined\"]},\"password\":{\"_errors\":[\"Invalid input: expected string, r"
+  },
+  {
+    "path": "/auth/login",
+    "method": "POST",
+    "url": "http://localhost:3000/auth/login",
+    "status": 422,
+    "ok": false,
+    "bodySnippet": "{\"success\":false,\"message\":\"Invalid payload\",\"errors\":{\"_errors\":[],\"email\":{\"_errors\":[\"Invalid input: expected string, received undefined\"]},\"password\":{\"_errors\":[\"Invalid input: expected string, r"
+  },
+  {
+    "path": "/auth/logout",
+    "method": "POST",
+    "url": "http://localhost:3000/auth/logout",
+    "status": 401,
+    "ok": false,
+    "bodySnippet": "{\"message\":\"Unauthorized\"}"
+  },
+  {
+    "path": "/auth/me",
+    "method": "GET",
+    "url": "http://localhost:3000/auth/me",
+    "status": 401,
+    "ok": false,
+    "bodySnippet": "{\"message\":\"Unauthorized\"}"
+  },
+  {
+    "path": "/users/me",
+    "method": "GET",
+    "url": "http://localhost:3000/users/me",
+    "status": 401,
+    "ok": false,
+    "bodySnippet": "{\"message\":\"Unauthorized\"}"
+  },
+  {
+    "path": "/users/me",
+    "method": "PATCH",
+    "url": "http://localhost:3000/users/me",
+    "status": 401,
+    "ok": false,
+    "bodySnippet": "{\"message\":\"Unauthorized\"}"
+  },
+  {
+    "path": "/users",
+    "method": "GET",
+    "url": "http://localhost:3000/users",
+    "status": 401,
+    "ok": false,
+    "bodySnippet": "{\"message\":\"Unauthorized\"}"
+  },
+  {
+    "path": "/users/{id}",
+    "method": "GET",
+    "url": "http://localhost:3000/users/{id}",
+    "status": 401,
+    "ok": false,
+    "bodySnippet": "{\"message\":\"Unauthorized\"}"
+  },
+  {
+    "path": "/users/{id}",
+    "method": "PATCH",
+    "url": "http://localhost:3000/users/{id}",
+    "status": 404,
+    "ok": false,
+    "bodySnippet": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot PATCH /users/%7Bid%7D</pre>\n</body>\n</html>\n"
+  },
+  {
+    "path": "/requests",
+    "method": "POST",
+    "url": "http://localhost:3000/requests",
+    "status": 401,
+    "ok": false,
+    "bodySnippet": "{\"message\":\"Unauthorized\"}"
+  },
+  {
+    "path": "/requests/{requestId}/payment-proof",
+    "method": "POST",
+    "url": "http://localhost:3000/requests/{requestId}/payment-proof",
+    "status": 401,
+    "ok": false,
+    "bodySnippet": "{\"message\":\"Unauthorized\"}"
+  },
+  {
+    "path": "/requests/transition",
+    "method": "POST",
+    "url": "http://localhost:3000/requests/transition",
+    "status": 401,
+    "ok": false,
+    "bodySnippet": "{\"message\":\"Unauthorized\"}"
+  },
+  {
+    "path": "/requests/{requestId}/submit",
+    "method": "POST",
+    "url": "http://localhost:3000/requests/{requestId}/submit",
+    "status": 401,
+    "ok": false,
+    "bodySnippet": "{\"message\":\"Unauthorized\"}"
+  },
+  {
+    "path": "/documents/{requestId}/upload",
+    "method": "POST",
+    "url": "http://localhost:3000/documents/{requestId}/upload",
+    "status": 401,
+    "ok": false,
+    "bodySnippet": "{\"message\":\"Unauthorized\"}"
+  },
+  {
+    "path": "/documents/me",
+    "method": "GET",
+    "url": "http://localhost:3000/documents/me",
+    "status": 401,
+    "ok": false,
+    "bodySnippet": "{\"message\":\"Unauthorized\"}"
+  },
+  {
+    "path": "/documents/{id}",
+    "method": "GET",
+    "url": "http://localhost:3000/documents/{id}",
+    "status": 401,
+    "ok": false,
+    "bodySnippet": "{\"message\":\"Unauthorized\"}"
+  },
+  {
+    "path": "/documents/{id}",
+    "method": "DELETE",
+    "url": "http://localhost:3000/documents/{id}",
+    "status": 401,
+    "ok": false,
+    "bodySnippet": "{\"message\":\"Unauthorized\"}"
+  },
+  {
+    "path": "/documents/{id}/download",
+    "method": "GET",
+    "url": "http://localhost:3000/documents/{id}/download",
+    "status": 401,
+    "ok": false,
+    "bodySnippet": "{\"message\":\"Unauthorized\"}"
+  },
+  {
+    "path": "/documents",
+    "method": "GET",
+    "url": "http://localhost:3000/documents",
+    "status": 401,
+    "ok": false,
+    "bodySnippet": "{\"message\":\"Unauthorized\"}"
+  },
+  {
+    "path": "/admin/users",
+    "method": "GET",
+    "url": "http://localhost:3000/admin/users",
+    "status": 401,
+    "ok": false,
+    "bodySnippet": "{\"message\":\"Unauthorized\"}"
+  },
+  {
+    "path": "/admin/users/{id}",
+    "method": "GET",
+    "url": "http://localhost:3000/admin/users/{id}",
+    "status": 401,
+    "ok": false,
+    "bodySnippet": "{\"message\":\"Unauthorized\"}"
+  },
+  {
+    "path": "/admin/users/{id}",
+    "method": "PATCH",
+    "url": "http://localhost:3000/admin/users/{id}",
+    "status": 401,
+    "ok": false,
+    "bodySnippet": "{\"message\":\"Unauthorized\"}"
+  },
+  {
+    "path": "/admin/requests",
+    "method": "GET",
+    "url": "http://localhost:3000/admin/requests",
+    "status": 401,
+    "ok": false,
+    "bodySnippet": "{\"message\":\"Unauthorized\"}"
+  },
+  {
+    "path": "/admin/requests/{id}",
+    "method": "GET",
+    "url": "http://localhost:3000/admin/requests/{id}",
+    "status": 401,
+    "ok": false,
+    "bodySnippet": "{\"message\":\"Unauthorized\"}"
+  },
+  {
+    "path": "/admin/requests/{id}",
+    "method": "POST",
+    "url": "http://localhost:3000/admin/requests/{id}",
+    "status": 401,
+    "ok": false,
+    "bodySnippet": "{\"message\":\"Unauthorized\"}"
+  },
+  {
+    "path": "/admin/requests/{id}/under-review",
+    "method": "POST",
+    "url": "http://localhost:3000/admin/requests/{id}/under-review",
+    "status": 401,
+    "ok": false,
+    "bodySnippet": "{\"message\":\"Unauthorized\"}"
+  },
+  {
+    "path": "/admin/requests/{id}/status",
+    "method": "PATCH",
+    "url": "http://localhost:3000/admin/requests/{id}/status",
+    "status": 401,
+    "ok": false,
+    "bodySnippet": "{\"message\":\"Unauthorized\"}"
+  },
+  {
+    "path": "/admin/requests/{id}/publish",
+    "method": "POST",
+    "url": "http://localhost:3000/admin/requests/{id}/publish",
+    "status": 401,
+    "ok": false,
+    "bodySnippet": "{\"message\":\"Unauthorized\"}"
+  },
+  {
+    "path": "/admin/requests/{id}/confirm-payment",
+    "method": "POST",
+    "url": "http://localhost:3000/admin/requests/{id}/confirm-payment",
+    "status": 401,
+    "ok": false,
+    "bodySnippet": "{\"message\":\"Unauthorized\"}"
+  },
+  {
+    "path": "/admin/requests/{id}/generate-feri",
+    "method": "POST",
+    "url": "http://localhost:3000/admin/requests/{id}/generate-feri",
+    "status": 401,
+    "ok": false,
+    "bodySnippet": "{\"message\":\"Unauthorized\"}"
+  },
+  {
+    "path": "/admin/requests/{id}/generate-ad",
+    "method": "POST",
+    "url": "http://localhost:3000/admin/requests/{id}/generate-ad",
+    "status": 401,
+    "ok": false,
+    "bodySnippet": "{\"message\":\"Unauthorized\"}"
+  },
+  {
+    "path": "/admin/requests/{id}/upload-draft",
+    "method": "POST",
+    "url": "http://localhost:3000/admin/requests/{id}/upload-draft",
+    "status": 401,
+    "ok": false,
+    "bodySnippet": "{\"message\":\"Unauthorized\"}"
+  },
+  {
+    "path": "/admin/documents",
+    "method": "GET",
+    "url": "http://localhost:3000/admin/documents",
+    "status": 401,
+    "ok": false,
+    "bodySnippet": "{\"message\":\"Unauthorized\"}"
+  },
+  {
+    "path": "/admin/documents/{id}",
+    "method": "GET",
+    "url": "http://localhost:3000/admin/documents/{id}",
+    "status": 401,
+    "ok": false,
+    "bodySnippet": "{\"message\":\"Unauthorized\"}"
+  },
+  {
+    "path": "/admin/documents/{id}",
+    "method": "DELETE",
+    "url": "http://localhost:3000/admin/documents/{id}",
+    "status": 401,
+    "ok": false,
+    "bodySnippet": "{\"message\":\"Unauthorized\"}"
+  },
+  {
+    "path": "/notifications",
+    "method": "GET",
+    "url": "http://localhost:3000/notifications",
+    "status": 401,
+    "ok": false,
+    "bodySnippet": "{\"message\":\"Unauthorized\"}"
+  },
+  {
+    "path": "/notifications/{id}/read",
+    "method": "PATCH",
+    "url": "http://localhost:3000/notifications/{id}/read",
+    "status": 401,
+    "ok": false,
+    "bodySnippet": "{\"message\":\"Unauthorized\"}"
+  },
+  {
+    "path": "/api/v1/health",
+    "method": "GET",
+    "url": "http://localhost:8000/api/v1/health",
+    "status": 200,
+    "ok": true,
+    "bodySnippet": "{\"status\":\"ok\",\"service\":\"FERI-AD Document Service\"}"
+  },
+  {
+    "path": "/api/v1/parse/document",
+    "method": "POST",
+    "url": "http://localhost:8000/api/v1/parse/document",
+    "status": 401,
+    "ok": false,
+    "bodySnippet": "{\"detail\":\"Invalid API key\"}"
+  },
+  {
+    "path": "/api/v1/generate/feri",
+    "method": "POST",
+    "url": "http://localhost:8000/api/v1/generate/feri",
+    "status": 401,
+    "ok": false,
+    "bodySnippet": "{\"detail\":\"Invalid API key\"}"
+  },
+  {
+    "path": "/api/v1/generate/ad",
+    "method": "POST",
+    "url": "http://localhost:8000/api/v1/generate/ad",
+    "status": 401,
+    "ok": false,
+    "bodySnippet": "{\"detail\":\"Invalid API key\"}"
+  }
+] 
