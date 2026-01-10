@@ -159,9 +159,12 @@ class NotificationsService {
                             .from('profiles')
                             .select('email, prenom')
                             .eq('id', payload.userId)
-                            .single();
+                            .maybeSingle();
                         if (error) {
                             logger_1.logger.warn('Failed to load profile', { error, userId: payload.userId });
+                        }
+                        if (!data) {
+                            logger_1.logger.warn('Profile missing for user', { userId: payload.userId });
                         }
                         userEmail = data?.email;
                         prenom = data?.prenom;

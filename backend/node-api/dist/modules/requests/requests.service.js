@@ -53,7 +53,7 @@ class RequestsService {
             .from('requests')
             .insert({
             id: (0, uuid_1.v4)(),
-            client_id: input.clientId,
+            user_id: input.clientId,
             type: input.type,
             status: 'CREATED'
         })
@@ -77,7 +77,7 @@ class RequestsService {
         if (filters.type)
             query = query.eq('type', filters.type);
         if (filters.userId)
-            query = query.eq('client_id', filters.userId);
+            query = query.eq('user_id', filters.userId);
         query = query.order('created_at', { ascending: false }).limit(100);
         const { data, error } = await query;
         if (error) {
@@ -121,7 +121,7 @@ class RequestsService {
         (async () => {
             try {
                 const { NotificationsService } = await Promise.resolve().then(() => __importStar(require('../notifications/notifications.service')));
-                const clientId = data.client_id;
+                const clientId = data.user_id;
                 // Try to resolve client profile (best-effort)
                 let client_name;
                 let client_email;
@@ -225,11 +225,11 @@ class RequestsService {
                 }
                 else {
                     try {
-                        const resp = await supabase_1.supabase.from('requests').select('client_id').eq('id', requestId).single();
-                        clientId = resp.data?.client_id;
+                        const resp = await supabase_1.supabase.from('requests').select('user_id').eq('id', requestId).single();
+                        clientId = resp.data?.user_id;
                     }
                     catch (e) {
-                        logger_1.logger.warn('Failed to resolve client_id for notification (supabase)', { e, requestId });
+                        logger_1.logger.warn('Failed to resolve user_id for notification (supabase)', { e, requestId });
                     }
                 }
                 if (clientId) {
@@ -268,15 +268,15 @@ class RequestsService {
     // ===============================
     static async canClientSubmit(requestId, clientId) {
         // Fetch request
-        const { data: request, error } = await supabase_1.supabase
-            .from('requests')
-            .select('id, client_id, status, type')
-            .eq('id', requestId)
-            .single();
+            const { data: request, error } = await supabase_1.supabase
+                .from('requests')
+                .select('id, user_id, status, type')
+                .eq('id', requestId)
+                .single();
         if (error || !request) {
             throw new Error('Request not found');
         }
-        if (request.client_id !== clientId) {
+        if (request.user_id !== clientId) {
             throw new Error('Access denied: not the owner of the request');
         }
         // Only allow from CREATED or AWAITING_DOCUMENTS

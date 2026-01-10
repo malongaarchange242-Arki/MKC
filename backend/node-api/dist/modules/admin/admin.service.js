@@ -176,7 +176,7 @@ class AdminService {
         try {
             const { NotificationsService } = await Promise.resolve().then(() => __importStar(require('../notifications/notifications.service')));
             await NotificationsService.send({
-                userId: request.client_id,
+                userId: request.user_id,
                 type: 'REQUEST_COMPLETED',
                 title: 'Vos documents officiels sont disponibles',
                 message: 'Votre FERI / AD a été validée. Vous pouvez télécharger vos documents sur la plateforme. Ils sont également joints à cet email.',
@@ -269,7 +269,7 @@ class AdminService {
                 const url = await documents_service_1.DocumentsService.generateSignedUrlFromDocument(doc.id, 60 * 60);
                 const { NotificationsService } = await Promise.resolve().then(() => __importStar(require('../notifications/notifications.service')));
                 await NotificationsService.send({
-                    userId: request.client_id,
+                    userId: request.user_id,
                     type: 'REQUEST_COMPLETED',
                     title: 'Documents officiels disponibles',
                     message: 'Vos documents officiels sont disponibles. Merci de les télécharger depuis votre espace client.',

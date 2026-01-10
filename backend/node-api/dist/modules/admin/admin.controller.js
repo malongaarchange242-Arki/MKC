@@ -277,8 +277,8 @@ class AdminController {
             for (const d of createdDrafts) {
                 try {
                     const { DraftsService } = await Promise.resolve().then(() => __importStar(require('../drafts/drafts.service')));
-                    const signed = await DraftsService.generateSignedUrl(d.id, 60 * 60);
-                    links.push({ name: d.file_name || 'Draft', url: signed, expires_in: 3600 });
+                    const signed = await DraftsService.generateSignedUrl(d.id, 60 * 60 * 24 * 3);
+                    links.push({ name: d.file_name || 'Draft', url: signed, expires_in: 60 * 60 * 24 * 3 });
                     metadataItems.push({ draft_id: d.id, file_name: d.file_name, file_path: d.file_path, amount: d.amount, currency: d.currency });
                 }
                 catch (e) {
@@ -289,14 +289,14 @@ class AdminController {
             try {
                 const { NotificationsService } = await Promise.resolve().then(() => __importStar(require('../notifications/notifications.service')));
                 await NotificationsService.send({
-                    userId: request.client_id,
+                    userId: request.user_id,
                     type: 'DRAFT_AVAILABLE',
                     title: 'Draft & Proforma disponibles',
                     message: 'Votre draft et votre facture proforma sont disponibles. Merci de procéder au paiement.',
                     entityType: 'request',
                     entityId: requestId,
                     channels: ['in_app', 'email'],
-                    links: links.length > 0 ? links : [{ name: 'Voir la demande', url: `${process.env.FRONTEND_URL || 'https://app.example.com'}/requests/${requestId}`, expires_in: 3600 }],
+                    links: links.length > 0 ? links : [{ name: 'Voir la demande', url: `${process.env.FRONTEND_URL || 'https://app.example.com'}/requests/${requestId}`, expires_in: 60 * 60 * 24 * 3 }],
                     metadata: metadataItems.length === 1 ? metadataItems[0] : metadataItems
                 });
             }
@@ -338,7 +338,7 @@ class AdminController {
             try {
                 const { NotificationsService } = await Promise.resolve().then(() => __importStar(require('../notifications/notifications.service')));
                 await NotificationsService.send({
-                    userId: request.client_id,
+                    userId: request.user_id,
                     type: 'PAYMENT_CONFIRMED',
                     title: 'Paiement confirmé',
                     message: 'Votre paiement a été confirmé par l\'administration. La génération des documents finaux sera lancée.',

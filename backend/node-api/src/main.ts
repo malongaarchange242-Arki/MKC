@@ -24,6 +24,7 @@ import { usersModule } from './modules/users/users.module';
 import { documentsModule } from './modules/documents/documents.module';
 import { adminModule } from './modules/admin/admin.module';
 import { draftsModule } from './modules/drafts/drafts.module';
+import { paymentsModule } from './modules/payments/payments.module';
 import { checkSupabaseConnection } from './config/supabase';
 import { authMiddleware } from './middlewares/auth.middleware';
 import notificationsRouter from './modules/notifications/notifications.module';
@@ -106,6 +107,8 @@ app.use('/documents', documentsModule());
 app.use('/admin', adminModule());
 app.use('/notifications', notificationsRouter);
 app.use('/drafts', draftsModule());
+// Client-facing billing endpoints (protected)
+app.use('/api/client', authMiddleware, paymentsModule());
 
 /**
  * ===============================

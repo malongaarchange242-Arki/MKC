@@ -53,7 +53,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
       // Ensure a request row exists for the requestId to satisfy FK
       const { data: reqData, error: reqErr } = await supabase.from('requests').insert({
         id: requestId,
-        client_id: uploadedBy,
+        user_id: uploadedBy,
         type: 'FERI_AND_AD',
         status: 'CREATED'
       }).select().single();

@@ -59,12 +59,12 @@ class DraftsController {
             // Verify ownership: client owner of request OR ADMIN/SYSTEM
             if (role !== 'ADMIN' && role !== 'SYSTEM') {
                 // verify that the requester is the client of the related request
-                const { data: reqRow, error } = await (await Promise.resolve().then(() => __importStar(require('../../config/supabase')))).supabase
-                    .from('requests')
-                    .select('client_id')
-                    .eq('id', draft.request_id)
-                    .single();
-                if (error || !reqRow || reqRow.client_id !== userId) {
+                    const { data: reqRow, error } = await (await Promise.resolve().then(() => __importStar(require('../../config/supabase')))).supabase
+                        .from('requests')
+                        .select('user_id')
+                        .eq('id', draft.request_id)
+                        .single();
+                if (error || !reqRow || reqRow.user_id !== userId) {
                     return res.status(403).json({ message: 'Forbidden' });
                 }
             }

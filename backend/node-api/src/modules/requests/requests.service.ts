@@ -14,7 +14,7 @@ import { AuditService } from '../audit/audit.service';
 // TYPES
 // ===============================
 export interface CreateRequestInput {
-  clientId: string;
+  userId: string;
   type: 'FERI_ONLY' | 'AD_ONLY' | 'FERI_AND_AD';
 }
 
@@ -39,7 +39,7 @@ export class RequestsService {
       .from('requests')
       .insert({
         id: uuidv4(),
-        client_id: input.clientId,
+        user_id: input.userId,
         type: input.type,
         status: 'CREATED'
       })
@@ -65,7 +65,7 @@ export class RequestsService {
 
     if (filters.status) query = query.eq('status', filters.status);
     if (filters.type) query = query.eq('type', filters.type);
-    if (filters.userId) query = query.eq('client_id', filters.userId);
+    if (filters.userId) query = query.eq('user_id', filters.userId);
 
     query = query.order('created_at', { ascending: false }).limit(100);
 
@@ -76,7 +76,66 @@ export class RequestsService {
       throw new Error('Failed to list requests');
     }
 
-    return (data || []);
+    const rows = (data || []);
+
+    // If there are results, enrich them with latest COMPLETED feri_deliveries.feri_ref where available
+    try {
+      const ids = rows.map((r: any) => r.id).filter(Boolean);
+      if (ids.length > 0) {
+        const { data: deliveries, error: dErr } = await supabase
+          .from('feri_deliveries')
+          .select('request_id, feri_ref, pdf_url, status, delivered_at')
+          .in('request_id', ids)
+          .eq('status', 'COMPLETED')
+          .order('delivered_at', { ascending: false });
+
+        if (!dErr && Array.isArray(deliveries) && deliveries.length > 0) {
+          const latestByRequest: Record<string, any> = {};
+          for (const d of deliveries) {
+            if (!latestByRequest[d.request_id]) latestByRequest[d.request_id] = d;
+          }
+
+          // Prepare signed URLs for any pdf_url present (best-effort)
+          const bucket = 'feri_documents';
+
+          // collect tasks
+          const signTasks: Array<Promise<void>> = [];
+
+          for (const r of rows) {
+            const found = latestByRequest[r.id];
+            if (found) {
+              if (found.feri_ref) r.feri_ref = found.feri_ref;
+              if (found.pdf_url) {
+                // create a closure task to generate signed url
+                signTasks.push((async () => {
+                  try {
+                    const path = found.pdf_url;
+                    const { data: signed, error: signedErr } = await supabase.storage.from(bucket).createSignedUrl(path, 60 * 60);
+                    if (!signedErr && signed && (signed as any).signedUrl) {
+                      r.feri_signed_url = (signed as any).signedUrl;
+                    } else {
+                      logger.warn('Failed to create signed url for request feri_delivery', { requestId: r.id, path, err: signedErr });
+                    }
+                  } catch (e) {
+                    logger.warn('Exception when creating signed url for feri_delivery', { err: (e as any)?.message ?? String(e), requestId: r.id });
+                  }
+                })());
+              }
+            }
+          }
+
+          // await all signing tasks but do not fail listing on failures
+          if (signTasks.length > 0) {
+            try { await Promise.all(signTasks); } catch (e) { logger.warn('One or more signed url tasks failed', { err: (e as any)?.message ?? String(e) }); }
+          }
+        }
+      }
+    } catch (e) {
+      // best-effort: do not fail the whole request listing if enrichment fails
+      logger.warn('Failed to enrich requests with feri_deliveries', { err: (e as any)?.message ?? String(e) });
+    }
+
+    return rows;
   }
 
   // ===============================
@@ -105,7 +164,7 @@ export class RequestsService {
   static async forceUpdateStatus(requestId: string, status: string) {
     logger.warn('Force updating request status (admin)', { requestId, status });
 
-    const { data, error } = await supabase
+        const { data, error } = await supabase
       .from('requests')
       .update({ status })
       .eq('id', requestId)
@@ -121,7 +180,7 @@ export class RequestsService {
     (async () => {
       try {
         const { NotificationsService } = await import('../notifications/notifications.service');
-        const clientId = data.client_id;
+        const clientId = data.user_id;
 
         // Try to resolve client profile (best-effort)
         let client_name: string | undefined;
@@ -239,10 +298,10 @@ export class RequestsService {
           clientId = actorId;
         } else {
           try {
-            const resp = await supabase.from('requests').select('client_id').eq('id', requestId).single();
-            clientId = resp.data?.client_id;
+                const resp = await supabase.from('requests').select('user_id').eq('id', requestId).single();
+                clientId = resp.data?.user_id;
           } catch (e) {
-            logger.warn('Failed to resolve client_id for notification (supabase)', { e, requestId });
+                logger.warn('Failed to resolve user_id for notification (supabase)', { e, requestId });
           }
         }
 
@@ -285,7 +344,7 @@ export class RequestsService {
     // Fetch request
     const { data: request, error } = await supabase
       .from('requests')
-      .select('id, client_id, status, type')
+      .select('id, user_id, status, type')
       .eq('id', requestId)
       .single();
 
@@ -293,7 +352,7 @@ export class RequestsService {
       throw new Error('Request not found');
     }
 
-    if (request.client_id !== clientId) {
+    if (request.user_id !== clientId) {
       throw new Error('Access denied: not the owner of the request');
     }
 

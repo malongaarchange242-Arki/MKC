@@ -100,7 +100,15 @@ export class AdminService {
   // PUBLISH FINAL DOCUMENTS
   // ===============================
   static async publishFinalDocuments(requestId: string, adminId: string, opts: any = {}) {
-    logger.info('Admin: publish final documents', { requestId, adminId, opts });
+    // Avoid logging binary data from opts.file; only log minimal metadata
+    const logMeta: any = { requestId, adminId };
+    if (opts && opts.feri_ref) logMeta.feri_ref = opts.feri_ref;
+    if (opts && opts.file) {
+      logMeta.file_name = opts.file.originalname || null;
+      logMeta.file_size = opts.file.size || null;
+      logMeta.mime_type = opts.file.mimetype || null;
+    }
+    logger.info('Admin: publish final documents', logMeta);
 
     // 1. Load request
     const request = await RequestsService.getRequestById(requestId);
@@ -112,30 +120,100 @@ export class AdminService {
       throw new Error('Request already completed');
     }
 
-    // 3. Find existing FINAL documents
-    const existing = await DocumentsService.listDocuments({ requestId }, adminId, 'ADMIN');
-    const finalDocs = existing.documents.filter((d: any) => d.category === 'FINAL');
+    // If an admin attached a final PDF, persist it to feri_documents and create a feri_deliveries record
+    if (opts && opts.file) {
+      try {
+        const file: Express.Multer.File = opts.file;
+        const { v4: uuidv4 } = await import('uuid');
+        const orig = file.originalname || `${requestId}.pdf`;
+        const ext = orig.includes('.') ? orig.split('.').pop() : 'pdf';
+        const storagePath = `${requestId}/${uuidv4()}.${ext}`;
+
+        // Upload to private bucket 'feri_documents' (buffer only sent to Supabase SDK)
+        const { data: uploadData, error: uploadErr } = await supabase.storage
+          .from('feri_documents')
+          .upload(storagePath, file.buffer as Buffer, { contentType: file.mimetype || 'application/pdf', upsert: false });
+
+        if (uploadErr) {
+          logger.error('Failed to upload final FERI to storage', { requestId, err: uploadErr });
+          throw new Error('Failed to upload final document');
+        }
+
+        // Insert into feri_deliveries table — store only metadata, never the buffer
+        // Build a clean payload (whitelist) to avoid accepting client-provided fields
+        const deliveryPayload = {
+          request_id: requestId,
+          pdf_url: storagePath,
+          file_name: orig,
+          file_size: file.size || null,
+          mime_type: file.mimetype || 'application/pdf',
+          admin_id: adminId,
+          feri_ref: opts.feri_ref || null,
+          status: 'COMPLETED',
+          delivered_at: new Date().toISOString()
+        } as any;
+
+        const { data: inserted, error: insertErr } = await supabase
+          .from('feri_deliveries')
+          .insert(deliveryPayload)
+          .select()
+          .single();
+
+        if (insertErr || !inserted) {
+          // rollback storage
+          await supabase.storage.from('feri_documents').remove([storagePath]).catch(() => null);
+          logger.error('Failed to insert feri_deliveries record', { requestId, err: insertErr });
+          throw new Error('Failed to record final delivery');
+        }
+
+        // Audit the delivery (log only metadata)
+        await AuditService.log({ actor_id: adminId, action: 'PUBLISH_FINAL_DOCUMENT_DELIVERY', entity: 'request', entity_id: requestId, metadata: { deliveryId: inserted.id, file_name: inserted.file_name, file_path: inserted.pdf_url } });
+      } catch (e) {
+        logger.error('Publish final documents (file handling) failed', { requestId, err: (e as any)?.message ?? String(e) });
+        throw e;
+      }
+    }
+
+    // 3. Prefer feri_deliveries entries as the authoritative final documents
+    const { data: deliveries, error: deliveriesErr } = await supabase
+      .from('feri_deliveries')
+      .select('*')
+      .eq('request_id', requestId)
+      .order('delivered_at', { ascending: true });
 
     let createdDocs: any[] = [];
+    if (deliveriesErr) {
+      logger.warn('Failed to read feri_deliveries', { requestId, err: deliveriesErr });
+    }
 
-    if (finalDocs.length > 0) {
-      createdDocs = finalDocs;
+    if (Array.isArray(deliveries) && deliveries.length > 0) {
+      createdDocs = deliveries.map((d: any) => ({
+        id: d.id,
+        pdf_url: d.pdf_url,
+        file_name: d.file_name,
+        mime_type: d.mime_type,
+        category: 'FINAL'
+      }));
     } else {
-      // If not present, try to promote matching client documents to FINAL by creating new entries
-      const candidateDocs = existing.documents.filter((d: any) => !!d.file_path && (!d.category || d.category !== 'FINAL'));
-
-      for (const c of candidateDocs) {
-        // simple heuristic: if filename contains FERI or AD
-        const name = (c.file_name || '').toLowerCase();
-        let type: 'FERI' | 'AD' | null = null;
-        if (name.includes('feri')) type = 'FERI';
-        if (name.includes('ad')) type = 'AD';
-
-        try {
-          const created = await DocumentsService.createFinalDocumentFromExisting(c, adminId, type);
-          createdDocs.push(created);
-        } catch (err) {
-          logger.warn('Failed to create final document from candidate', { candidateId: c.id, err });
+      // Fallback to existing DocumentsService flow (promote or use FINAL documents)
+      const existing = await DocumentsService.listDocuments({ requestId }, adminId, 'ADMIN');
+      const finalDocs = existing.documents.filter((d: any) => d.category === 'FINAL');
+      if (finalDocs.length > 0) {
+        createdDocs = finalDocs;
+      } else {
+        // Try promoting candidate docs
+        const candidateDocs = existing.documents.filter((d: any) => !!d.file_path && (!d.category || d.category !== 'FINAL'));
+        for (const c of candidateDocs) {
+          const name = (c.file_name || '').toLowerCase();
+          let type: 'FERI' | 'AD' | null = null;
+          if (name.includes('feri')) type = 'FERI';
+          if (name.includes('ad')) type = 'AD';
+          try {
+            const created = await DocumentsService.createFinalDocumentFromExisting(c, adminId, type);
+            createdDocs.push(created);
+          } catch (err) {
+            logger.warn('Failed to create final document from candidate', { candidateId: c.id, err });
+          }
         }
       }
     }
@@ -160,10 +238,26 @@ export class AdminService {
     const docsWithUrls = [] as any[];
     for (const d of createdDocs) {
       try {
-        const url = await DocumentsService.generateSignedUrlFromDocument(d.id, 60 * 60);
-        docsWithUrls.push({ id: d.id, type: (d as any).type || null, category: d.category || 'FINAL', format: d.format || 'PDF', downloadUrl: url });
+        if (d.pdf_url) {
+          // feri_deliveries entry — create signed url from storage path
+          const bucket = 'feri_documents';
+          const path = d.pdf_url;
+          try {
+            const { data: signed, error: signedErr } = await supabase.storage.from(bucket).createSignedUrl(path, 60 * 60);
+            if (signedErr || !signed || !signed.signedUrl) {
+              logger.warn('Failed to create signed url for feri_delivery', { requestId, path, err: signedErr });
+            } else {
+              docsWithUrls.push({ id: d.id, type: 'FERI', category: d.category || 'FINAL', format: 'PDF', downloadUrl: signed.signedUrl, file_name: d.file_name });
+            }
+          } catch (e) {
+            logger.warn('Failed to create signed url for feri_delivery', { requestId, path, err: (e as any)?.message ?? String(e) });
+          }
+        } else if (d.id) {
+          const url = await DocumentsService.generateSignedUrlFromDocument(d.id, 60 * 60);
+          docsWithUrls.push({ id: d.id, type: (d as any).type || null, category: d.category || 'FINAL', format: d.format || 'PDF', downloadUrl: url });
+        }
       } catch (err) {
-        logger.warn('Failed to generate signed url', { docId: d.id, err });
+        logger.warn('Failed to generate signed url', { doc: d, err });
       }
     }
 
@@ -172,7 +266,7 @@ export class AdminService {
       const { NotificationsService } = await import('../notifications/notifications.service');
 
       await NotificationsService.send({
-        userId: request.client_id,
+        userId: request.user_id,
         type: 'REQUEST_COMPLETED',
         title: 'Vos documents officiels sont disponibles',
         message: 'Votre FERI / AD a été validée. Vous pouvez télécharger vos documents sur la plateforme. Ils sont également joints à cet email.',
@@ -271,7 +365,7 @@ export class AdminService {
         const url = await DocumentsService.generateSignedUrlFromDocument(doc.id, 60 * 60);
         const { NotificationsService } = await import('../notifications/notifications.service');
         await NotificationsService.send({
-          userId: request.client_id,
+          userId: request.user_id,
           type: 'REQUEST_COMPLETED',
           title: 'Documents officiels disponibles',
           message: 'Vos documents officiels sont disponibles. Merci de les télécharger depuis votre espace client.',

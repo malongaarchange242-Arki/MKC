@@ -81,7 +81,7 @@ class RequestsController {
                 return res.status(401).json({ message: 'Unauthorized' });
             const body = createRequestSchema.parse(req.body);
             const request = await requests_service_1.RequestsService.createRequest({
-                clientId: userId,
+                userId: userId,
                 type: body.type
             });
             return res.status(201).json(request);
@@ -194,7 +194,7 @@ class RequestsController {
             try {
                 const { NotificationsService } = await Promise.resolve().then(() => __importStar(require('../notifications/notifications.service')));
                 await NotificationsService.send({
-                    userId: request.client_id,
+                    userId: request.user_id,
                     type: 'PAYMENT_PROOF_UPLOADED',
                     title: 'Preuve de paiement reçue',
                     message: 'Votre preuve de paiement a été reçue et est en attente de validation par un administrateur.',

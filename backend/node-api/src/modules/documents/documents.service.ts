@@ -56,6 +56,33 @@ const ALLOWED_MIME_TYPES = [
 // DOCUMENTS SERVICE
 // ===============================
 export class DocumentsService {
+  // Helper to fetch a request row with a small retry/backoff to handle
+  // transient schema/cache/visibility issues observed in production.
+  private static async fetchRequestRow(requestId: string, fields = 'user_id, status'): Promise<{ data: any | null; error: any | null }> {
+    let lastErr: any = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const { data, error } = await supabase
+          .from('requests')
+          .select(fields)
+          .eq('id', requestId)
+          .single();
+
+        if (!error && data) {
+          return { data, error: null };
+        }
+
+        lastErr = error;
+      } catch (e) {
+        lastErr = e;
+      }
+
+      // backoff before retrying
+      await new Promise((r) => setTimeout(r, 150 * (attempt + 1)));
+    }
+
+    return { data: null, error: lastErr };
+  }
   // Centralized file path builder — single source of truth for all uploads
   private static buildDocumentFilePath(requestId: string, uniqueFileName: string, subfolder?: string): string {
     if (subfolder) return `${requestId}/${subfolder}/${uniqueFileName}`;
@@ -88,13 +115,10 @@ export class DocumentsService {
     userRole: 'CLIENT' | 'ADMIN' | 'SYSTEM'
   ): Promise<void> {
     // Récupérer la demande
-    const { data: request, error } = await supabase
-      .from('requests')
-      .select('client_id, status')
-      .eq('id', requestId)
-      .single();
+    const { data: request, error } = await this.fetchRequestRow(requestId, 'user_id, status');
 
     if (error || !request) {
+      logger.error('Request lookup failed in checkRequestAccess', { requestId, error });
       throw new Error(`Request not found: ${requestId}`);
     }
 
@@ -103,7 +127,7 @@ export class DocumentsService {
       return; // Admin et System ont accès à tout
     }
 
-    if (userRole === 'CLIENT' && request.client_id !== userId) {
+    if (userRole === 'CLIENT' && request.user_id !== userId) {
       throw new Error('Access denied: You can only access your own requests');
     }
   }
@@ -127,13 +151,10 @@ export class DocumentsService {
     await this.checkRequestAccess(requestId, uploadedBy, userRole);
 
     // Vérifier que la demande est dans un état qui permet l'upload
-    const { data: request } = await supabase
-      .from('requests')
-      .select('status')
-      .eq('id', requestId)
-      .single();
+    const { data: request, error: requestErr } = await this.fetchRequestRow(requestId, 'status');
 
-    if (!request) {
+    if (requestErr || !request) {
+      logger.error('Request lookup failed during uploadDocument', { requestId, error: requestErr });
       throw new Error(`Request not found: ${requestId}`);
     }
 
@@ -318,7 +339,7 @@ export class DocumentsService {
       const { data: userRequests } = await supabase
         .from('requests')
         .select('id')
-        .eq('client_id', userId);
+        .eq('user_id', userId);
 
       if (userRequests && userRequests.length > 0) {
         const requestIds = userRequests.map(r => r.id);

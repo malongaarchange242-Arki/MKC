@@ -12,14 +12,17 @@ const path_1 = __importDefault(require("path"));
 const envPath = path_1.default.resolve(__dirname, '../../../.env');
 dotenv_1.default.config({ path: envPath });
 // ===============================
-// ENV VALIDATION
+// ENV VALIDATION + NORMALIZATION
 // ===============================
-const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_URL_RAW = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+if (!SUPABASE_URL_RAW || !SUPABASE_SERVICE_ROLE_KEY) {
     logger_1.logger.error('Supabase environment variables are missing');
     throw new Error('Missing Supabase configuration');
 }
+// Ensure trailing slash on SUPABASE_URL for storage/paths compatibility
+const SUPABASE_URL = SUPABASE_URL_RAW.replace(/\/+$/, '') + '/';
+logger_1.logger.info('Normalized SUPABASE_URL', { original: SUPABASE_URL_RAW, normalized: SUPABASE_URL });
 // ===============================
 // SUPABASE CLIENT
 // ===============================

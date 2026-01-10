@@ -171,19 +171,18 @@ class UsersService {
         catch (e) {
             logger_1.logger.warn('Upsert with `id` raised unexpected error, will try fallback', { userId, error: e });
         }
-        // Second attempt: some schemas use `user_id` column. Try insert/upsert there.
+        // Second attempt: some schemas use `user_id` column as an alternate PK.
         try {
             const payloadUserId = { user_id: userId, ...basePayload };
             // Try upsert on user_id first
             const { data: created2, error: insertError2 } = await supabase_1.supabase
                 .from('profiles')
                 .upsert(payloadUserId, { onConflict: 'user_id' })
-                .select('user_id, email, nom, prenom, role, created_at')
+                .select('user_id as id, email, nom, prenom, role, created_at')
                 .maybeSingle();
             if (!insertError2 && created2) {
                 logger_1.logger.info('Profile ensured using `user_id` column', { userId });
-                // Normalize return shape to UserProfile (id field)
-                const normalized = { id: created2.user_id || userId, email: created2.email, nom: created2.nom, prenom: created2.prenom, role: created2.role, created_at: created2.created_at };
+                const normalized = { id: created2.id || userId, email: created2.email, nom: created2.nom, prenom: created2.prenom, role: created2.role, created_at: created2.created_at };
                 return normalized;
             }
             if (insertError2) {

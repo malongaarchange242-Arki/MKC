@@ -165,18 +165,23 @@ export class NotificationsService {
 					prenom = 'Administrateur';
 				} else {
 					try {
-						const { data, error } = await supabase
-							.from('profiles')
-							.select('email, prenom')
-							.eq('id', payload.userId)
-							.single();
+							const { data, error } = await supabase
+								.schema('public') 
+								.from('profiles')
+								.select('email, prenom')
+								.eq('id', payload.userId)
+								.maybeSingle();
 
-						if (error) {
-							logger.warn('Failed to load profile', { error, userId: payload.userId });
-						}
+							if (error) {
+								logger.warn('Failed to load profile', { error, userId: payload.userId });
+							}
 
-						userEmail = data?.email;
-						prenom = data?.prenom;
+							if (!data) {
+								logger.warn('Profile missing for user', { userId: payload.userId });
+							}
+
+							userEmail = data?.email;
+							prenom = data?.prenom;
 					} catch (e) {
 						logger.warn('Supabase profile fetch error', { e, userId: payload.userId });
 						// Do not throw or return: admin email must still be sent

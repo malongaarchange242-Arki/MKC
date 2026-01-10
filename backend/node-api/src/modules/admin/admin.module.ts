@@ -37,7 +37,7 @@ export const adminModule = (): Router => {
 	router.get('/requests/:id', AdminController.getRequestById);
 	router.post('/requests/:id/under-review', AdminController.markUnderReview);
 	router.patch('/requests/:id/status', AdminController.forceUpdateRequestStatus);
-	router.post('/requests/:id/publish', AdminController.publishFinalDocuments);
+	router.post('/requests/:id/publish', uploadMiddleware.single('file'), AdminController.publishFinalDocuments);
 	router.post('/requests/:id/confirm-payment', AdminController.confirmPayment);
 	router.post('/requests/:id/generate-feri', AdminController.generateFeri);
 	router.post('/requests/:id/generate-ad', AdminController.generateAd);

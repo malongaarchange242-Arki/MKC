@@ -51,7 +51,7 @@ class DocumentsService {
         // Récupérer la demande
         const { data: request, error } = await supabaseAdmin_1.supabaseAdmin
             .from('requests')
-            .select('client_id, status')
+            .select('user_id, status')
             .eq('id', requestId)
             .single();
         if (error || !request) {
@@ -61,7 +61,7 @@ class DocumentsService {
         if (userRole === 'ADMIN' || userRole === 'SYSTEM') {
             return; // Admin et System ont accès à tout
         }
-        if (userRole === 'CLIENT' && request.client_id !== userId) {
+        if (userRole === 'CLIENT' && request.user_id !== userId) {
             throw new Error('Access denied: You can only access your own requests');
         }
     }
@@ -226,9 +226,9 @@ class DocumentsService {
             // Les clients voient uniquement les documents de leurs demandes
             // Récupérer d'abord les IDs des demandes du client
             const { data: userRequests } = await supabaseAdmin_1.supabaseAdmin
-                .from('requests')
-                .select('id')
-                .eq('client_id', userId);
+                    .from('requests')
+                    .select('id')
+                    .eq('user_id', userId);
             if (userRequests && userRequests.length > 0) {
                 const requestIds = userRequests.map(r => r.id);
                 query = query.in('request_id', requestIds);

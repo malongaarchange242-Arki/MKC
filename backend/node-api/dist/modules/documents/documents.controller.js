@@ -210,7 +210,10 @@ class DocumentsController {
                     }
                 }
                 catch (err) {
-                    logger_1.logger.error('Python service error', { message: err.message, documentId: document.id });
+                        const respInfo = {};
+                        if (err.response)
+                            respInfo.response = { status: err.response.status, data: err.response.data };
+                        logger_1.logger.error('Python service error', Object.assign({ message: err.message, documentId: document.id }, respInfo));
                 }
                 return document;
             };

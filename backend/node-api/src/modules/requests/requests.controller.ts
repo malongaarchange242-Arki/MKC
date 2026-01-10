@@ -64,7 +64,7 @@ export class RequestsController {
       const body = createRequestSchema.parse(req.body);
 
       const request = await RequestsService.createRequest({
-        clientId: userId,
+        userId: userId,
         type: body.type
       });
 
@@ -188,7 +188,7 @@ export class RequestsController {
       try {
         const { NotificationsService } = await import('../notifications/notifications.service');
         await NotificationsService.send({
-          userId: request.client_id,
+          userId: request.user_id,
           type: 'PAYMENT_PROOF_UPLOADED',
           title: 'Preuve de paiement reçue',
           message:

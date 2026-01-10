@@ -207,7 +207,9 @@ export class DocumentsController {
             await DocumentsService.saveExtractionResult(document.id, extraction, 'python');
           }
         } catch (err: any) {
-          logger.error('Python service error', { message: err.message, documentId: document.id });
+          const respInfo: any = {};
+          if (err.response) respInfo.response = { status: err.response.status, data: err.response.data };
+          logger.error('Python service error', { message: err.message, documentId: document.id, ...respInfo });
         }
 
         return document;

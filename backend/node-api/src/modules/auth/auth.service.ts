@@ -27,25 +27,44 @@ export class AuthService {
 
     logger.info('Registering new CLIENT user', { email });
 
-    const { data, error } = await supabase.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true, // 🔥 pas de confirmation email
-      user_metadata: {
-        nom,
-        prenom,
-        role: 'CLIENT' // 🔒 FORCÉ
-      }
-    });
+    let data: any = null;
+    try {
+      const resp = await supabase.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true, // 🔥 pas de confirmation email
+        user_metadata: {
+          nom,
+          prenom,
+          role: 'CLIENT' // 🔒 FORCÉ
+        }
+      });
+      data = resp.data;
 
-    if (error || !data.user) {
-      logger.error('Register failed', { error });
-      const msg = error?.message || '';
-      if (msg.toLowerCase().includes('already') || msg.toLowerCase().includes('email')) {
-        // Do not treat as server error; inform client that email exists
+      // supabase-js may return an object with `.error`
+      if ((resp as any).error) {
+        throw (resp as any).error;
+      }
+      if (!data?.user) {
+        throw new Error('No user returned from supabase admin.createUser');
+      }
+    } catch (err: any) {
+      // Capture richer error details for diagnosis
+      const errMeta: any = {
+        message: err?.message || 'Unknown error',
+        name: err?.name,
+        code: err?.code,
+        status: err?.status || (err?.response?.status ?? null),
+        response: err?.response?.data ?? err?.response ?? null
+      };
+      logger.error('Register failed (detailed)', { error: errMeta });
+
+      const msg = (err?.message || '').toString();
+      if (msg.toLowerCase().includes('already') || msg.toLowerCase().includes('email') || (errMeta.code && String(errMeta.code).toLowerCase().includes('email'))) {
         throw new Error('Email already registered');
       }
-      throw new Error(error?.message || 'Registration failed');
+
+      throw new Error(err?.message || 'Registration failed');
     }
 
     // Ensure a profile row exists in `profiles` table. Use UsersService.ensureProfile

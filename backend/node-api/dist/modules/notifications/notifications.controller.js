@@ -112,9 +112,14 @@ class NotificationsController {
                 .select('id')
                 .single();
             if (error || !data) {
-                return res.status(404).json({
-                    success: false,
-                    message: 'Notification not found'
+                logger_1.logger.warn('[notifications] Mark as read - not found or supabase error', {
+                    notificationId,
+                    userId,
+                    error
+                });
+                return res.status(200).json({
+                    success: true,
+                    warning: 'Notification not found or temporarily unavailable'
                 });
             }
             return res.status(200).json({ success: true });

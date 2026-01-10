@@ -29,10 +29,10 @@ export class DraftsController {
         // verify that the requester is the client of the related request
         const { data: reqRow, error } = await (await import('../../config/supabase')).supabase
           .from('requests')
-          .select('client_id')
+          .select('user_id')
           .eq('id', draft.request_id)
           .single();
-        if (error || !reqRow || reqRow.client_id !== userId) {
+        if (error || !reqRow || reqRow.user_id !== userId) {
           return res.status(403).json({ message: 'Forbidden' });
         }
       }
