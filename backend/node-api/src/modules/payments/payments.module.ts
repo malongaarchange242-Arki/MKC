@@ -79,7 +79,14 @@ export const paymentsModule = () => {
 
       if (uploadError) {
         // rollback document record
-        await supabaseAdmin.from('documents').delete().eq('id', documentId).catch(() => null);
+        const { error: rollbackDocError } = await supabaseAdmin
+          .from('documents')
+          .delete()
+          .eq('id', documentId);
+
+        // on ignore volontairement l’erreur de rollback
+        void rollbackDocError;
+
         return res.status(500).json({ success: false, message: 'Storage upload failed', error: uploadError });
       }
 
@@ -104,8 +111,19 @@ export const paymentsModule = () => {
 
       if (dbError || !inserted) {
         // rollback storage and document record
-        await supabaseAdmin.storage.from('payment_proofs').remove([storagePath]).catch(() => null);
-        await supabaseAdmin.from('documents').delete().eq('id', documentId).catch(() => null);
+        const { error: rollbackStorageError } = await supabaseAdmin.storage
+          .from('payment_proofs')
+          .remove([storagePath]);
+
+        void rollbackStorageError;
+
+        const { error: rollbackDocError } = await supabaseAdmin
+          .from('documents')
+          .delete()
+          .eq('id', documentId);
+
+        void rollbackDocError;
+
         return res.status(500).json({ success: false, message: 'DB insert failed', error: dbError });
       }
 
@@ -119,9 +137,26 @@ export const paymentsModule = () => {
         });
       } catch (transitionErr: any) {
         // rollback payment_proofs, storage and document
-        await supabaseAdmin.from('payment_proofs').delete().eq('id', proofId).catch(() => null);
-        await supabaseAdmin.storage.from('payment_proofs').remove([storagePath]).catch(() => null);
-        await supabaseAdmin.from('documents').delete().eq('id', documentId).catch(() => null);
+        const { error: rollbackProofError } = await supabaseAdmin
+          .from('payment_proofs')
+          .delete()
+          .eq('id', proofId);
+
+        void rollbackProofError;
+
+        const { error: rollbackStorageError } = await supabaseAdmin.storage
+          .from('payment_proofs')
+          .remove([storagePath]);
+
+        void rollbackStorageError;
+
+        const { error: rollbackDocError } = await supabaseAdmin
+          .from('documents')
+          .delete()
+          .eq('id', documentId);
+
+        void rollbackDocError;
+
         return res.status(500).json({ success: false, message: 'Failed to transition request status', error: transitionErr?.message ?? String(transitionErr) });
       }
 

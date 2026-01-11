@@ -227,7 +227,7 @@ export class UsersService {
       const { data: created2, error: insertError2 } = await supabase
         .from('profiles')
         .upsert(payloadUserId, { onConflict: 'user_id' })
-        .select('user_id as id, email, nom, prenom, role, created_at')
+        .select('user_id, email, nom, prenom, role, created_at')
         .maybeSingle();
 
       if (!insertError2 && created2) {
