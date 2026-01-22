@@ -410,7 +410,7 @@
             if (params.invoice_id) {
                 (async () => {
                     try {
-                        const API_BASE = (window && window.__API_BASE__) || 'http://localhost:3000';
+                        const API_BASE = (window && window.__API_BASE__) || 'https://mkc-backend-kqov.onrender.com';
                         const token = localStorage.getItem('access_token') || localStorage.getItem('token') || null;
                         const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
                         const res = await fetch(`${API_BASE}/api/client/invoices/${encodeURIComponent(params.invoice_id)}`, { headers });

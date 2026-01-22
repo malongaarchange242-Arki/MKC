@@ -251,7 +251,7 @@ const i18n = {
 async function loadAdminRequests() {
   try {
     const metaApi = document.querySelector('meta[name="api-base"]')?.content || '';
-    const defaultLocal = 'http://localhost:3000';
+    const defaultLocal = 'https://mkc-backend-kqov.onrender.com';
     const API_BASE = metaApi || defaultLocal;
 
     const token = localStorage.getItem('token') || localStorage.getItem('access_token');
@@ -515,7 +515,7 @@ async function handleAdminSubmit() {
     const requestId = (matching && (matching.id || matching.request_id)) || selectedBL;
 
     const metaApi = document.querySelector('meta[name="api-base"]')?.content || '';
-    const defaultLocal = 'http://localhost:3000';
+    const defaultLocal = 'https://mkc-backend-kqov.onrender.com';
     const API_BASE = metaApi || defaultLocal;
     const token = localStorage.getItem('token') || localStorage.getItem('access_token');
     if (!token) throw new Error('Token administrateur introuvable. Veuillez vous reconnecter.');
@@ -622,7 +622,7 @@ async function fetchAndRenderUser() {
     const token = localStorage.getItem('token') || localStorage.getItem('access_token');
     if (!token) return;
 
-    const resp = await fetch('http://localhost:3000/users/me', {
+    const resp = await fetch('https://mkc-backend-kqov.onrender.com/users/me', {
       headers: { Authorization: `Bearer ${token}` }
     });
     let data = null;
@@ -788,7 +788,7 @@ window.confirmPaymentFor = async function (requestId) {
   const API_BASE = (() => {
     const meta = document.querySelector('meta[name="api-base"]')?.content || '';
     if (meta) return meta.replace(/\/$/, '');
-    return 'http://localhost:3000';
+    return 'https://mkc-backend-kqov.onrender.com';
   })();
   const token = localStorage.getItem('token') || localStorage.getItem('access_token');
   if (!token) return alert('Token administrateur introuvable. Veuillez vous reconnecter.');
@@ -921,7 +921,7 @@ function openSidePanel(req) {
       renderDocsArray([]);
     } else {
       try {
-        const API_BASE = (() => { const meta = document.querySelector('meta[name="api-base"]')?.content || ''; return meta ? meta.replace(/\/$/, '') : 'http://localhost:3000'; })();
+        const API_BASE = (() => { const meta = document.querySelector('meta[name="api-base"]')?.content || ''; return meta ? meta.replace(/\/$/, '') : 'https://mkc-backend-kqov.onrender.com'; })();
         const token = localStorage.getItem('token') || localStorage.getItem('access_token');
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
         const base = API_BASE.replace(/\/api\/?$/, '').replace(/\/$/, '');
@@ -960,7 +960,7 @@ function openSidePanel(req) {
       const type = msgForm?.dataset.type || 'MESSAGE';
       if (!text) { alert('Le message est requis'); sendBtn.disabled = false; return; }
 
-      const API_BASE = (() => { const m = document.querySelector('meta[name="api-base"]')?.content || ''; return m || 'http://localhost:3000'; })();
+      const API_BASE = (() => { const m = document.querySelector('meta[name="api-base"]')?.content || ''; return m || 'https://mkc-backend-kqov.onrender.com'; })();
       const token = localStorage.getItem('token') || localStorage.getItem('access_token');
       const fd = new FormData();
       fd.append('type', type);
@@ -1066,7 +1066,7 @@ async function fetchAndOpenDocsByRequestId(requestId) {
     const API_BASE = (() => {
       const meta = document.querySelector('meta[name="api-base"]')?.content || '';
       if (meta) return meta.replace(/\/$/, '');
-      return 'http://localhost:3000';
+      return 'https://mkc-backend-kqov.onrender.com';
     })();
     const token = localStorage.getItem('token') || localStorage.getItem('access_token');
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
@@ -1091,7 +1091,7 @@ async function downloadDocumentId(documentId, filename) {
     const API_BASE = (() => {
       const meta = document.querySelector('meta[name="api-base"]')?.content || '';
       if (meta) return meta.replace(/\/$/, '');
-      return 'http://localhost:3000';
+      return 'https://mkc-backend-kqov.onrender.com';
     })();
     const token = localStorage.getItem('token') || localStorage.getItem('access_token');
     const headers = token ? { Authorization: `Bearer ${token}` } : {};

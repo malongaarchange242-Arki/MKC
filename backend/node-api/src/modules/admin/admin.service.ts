@@ -531,7 +531,7 @@ export class AdminService {
         // Build a user-facing invoice preview URL on the frontend. Fall back to frontend base env var.
         // Allow controller to pass `frontend_base` (origin/referer) for local dev convenience.
         const providedFrontend = (opts as any)?.frontend_base || process.env.FRONTEND_URL || process.env.ADMIN_DASHBOARD_URL || '';
-        const frontendBase = (providedFrontend || 'https://app.example.com').replace(/\/$/, '');
+        const frontendBase = (providedFrontend || 'https://mkc-5slv.onrender.com').replace(/\/$/, '');
         // If the providedFrontend already includes the /frontend path, avoid duplicating it.
         const pathPrefix = frontendBase.endsWith('/frontend') ? frontendBase : `${frontendBase}/frontend`;
         const invoicePreviewUrl = `${pathPrefix}/Facture_.html?invoice_id=${encodeURIComponent(invoice.id)}`;

@@ -297,7 +297,7 @@
 
     // Attempt to POST to backend messages endpoint (best-effort). If fails, store locally.
     (async () => {
-      const API_BASE = (() => { const m = document.querySelector('meta[name="api-base"]')?.content || ''; return m || 'http://localhost:3000'; })();
+      const API_BASE = (() => { const m = document.querySelector('meta[name="api-base"]')?.content || ''; return m || 'https://mkc-backend-kqov.onrender.com'; })();
       const base = API_BASE.replace(/\/$/, '');
       const token = localStorage.getItem('token') || localStorage.getItem('access_token') || null;
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
@@ -338,7 +338,7 @@
   // Fetch disputes/messages for a given request id from backend
   async function fetchThreadMessages(threadId) {
     if (!threadId) return [];
-    const API_BASE = (() => { const m = document.querySelector('meta[name="api-base"]')?.content || ''; return m || 'http://localhost:3000'; })();
+    const API_BASE = (() => { const m = document.querySelector('meta[name="api-base"]')?.content || ''; return m || 'https://mkc-backend-kqov.onrender.com'; })();
     const base = API_BASE.replace(/\/$/, '');
     const token = localStorage.getItem('token') || localStorage.getItem('access_token') || null;
     if (token) {
@@ -425,7 +425,7 @@
 
   // Fetch all disputes from several possible admin endpoints
   async function fetchAllDisputes() {
-    const API_BASE = (() => { const m = document.querySelector('meta[name="api-base"]')?.content || ''; return m || 'http://localhost:3000'; })();
+    const API_BASE = (() => { const m = document.querySelector('meta[name="api-base"]')?.content || ''; return m || 'https://mkc-backend-kqov.onrender.com'; })();
     const base = API_BASE.replace(/\/$/, '');
     const token = localStorage.getItem('token') || localStorage.getItem('access_token') || null;
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
