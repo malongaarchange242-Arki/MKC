@@ -468,7 +468,7 @@ export class AdminService {
   // ===============================
   // INVOICES
   // ===============================
-  static async sendDraft(requestId: string, adminId: string, opts: { amount?: number | null; currency?: string; file?: Express.Multer.File; cargo_route?: string } = {}) {
+  static async sendDraft(requestId: string, adminId: string, opts: { amount?: number | null; currency?: string; file?: Express.Multer.File; cargo_route?: string; frontend_base?: string } = {}) {
     try {
       logger.info('Admin: send draft', { requestId, adminId, hasFile: !!opts.file });
 
