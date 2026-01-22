@@ -1,0 +1,54 @@
+# ENV
+.env
+.env.*
+<<<<<<< HEAD
+!.env.example
+=======
+>>>>>>> 087fd1415bb9e1059645b73d0e2f2955f3ff3d99
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-error.log*
+<<<<<<< HEAD
+pnpm-lock.yaml
+=======
+>>>>>>> 087fd1415bb9e1059645b73d0e2f2955f3ff3d99
+
+# Build
+dist/
+build/
+<<<<<<< HEAD
+.next/
+out/
+=======
+>>>>>>> 087fd1415bb9e1059645b73d0e2f2955f3ff3d99
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+<<<<<<< HEAD
+# Docker
+docker-data/
+docker-volumes/
+*.pid
+
+=======
+>>>>>>> 087fd1415bb9e1059645b73d0e2f2955f3ff3d99
+# Logs
+logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+<<<<<<< HEAD
+
+# IDE / Tools
+.vscode/
+.idea/
+=======
+>>>>>>> 087fd1415bb9e1059645b73d0e2f2955f3ff3d99

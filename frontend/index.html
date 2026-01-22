@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Connexion - Plateforme FERI AD</title>
+    <link rel="stylesheet" href="index.css" />
+    <link rel="icon" href="Logotype_mkc_bon-removebg-preview.png" />
+</head>
+
+<body>
+    <!-- couche effet curseur -->
+    <div class="cursor-effect"></div>
+
+    <div class="page">
+        <div class="scene">
+            <!-- Logo flottant -->
+            <div class="floating-logo" aria-hidden="true">
+                <img src="Logotype_mkc_bon-removebg-preview.png" alt="Logo" class="logo-svg" />
+            </div>
+
+            <!-- Carte principale -->
+            <main class="card" role="main" aria-labelledby="title">
+                <header class="card-header">
+                    <h1 id="title">Sign in</h1>
+                        <p class="subtitle">Access your FERI and AD requests</p>
+                </header>
+
+                <form id="authForm" class="form" novalidate>
+                    <div class="input-group">
+                        <label for="email">Email</label>
+                        <input id="email" name="email" type="email" inputmode="email" autocomplete="email" required />
+                        <span class="hint">ex: utilisateur@exemple.com</span>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="password">Password</label>
+                        <div class="password-wrap">
+                            <input id="password" name="password" type="password" autocomplete="current-password"
+                                required />
+                            <button type="button" class="toggle-pass" aria-label="Afficher le mot de passe">👁️</button>
+                        </div>
+                    </div>
+
+                    <div class="actions">
+                        <button id="submitBtn" class="btn primary" type="submit">Sign in</button>
+                        <button id="switchBtn" class="btn ghost" type="button">Create account</button>
+                    </div>
+
+                    <div class="meta">
+                        <label class="remember">
+                            <input type="checkbox" id="remember" /> Remember me
+                        </label>
+                        <a class="link" href="forgot.html" id="forgot">Forgot password</a>
+                    </div>
+
+                    <div id="message" class="message" role="status" aria-live="polite"></div>
+                </form>
+            </main>
+        </div>
+
+        <footer class="footer">
+            <small>&copy; 2026 FERI AD Platform</small>
+        </footer>
+    </div>
+
+    <!-- Script principal -->
+    <script src="i18n.js"></script>
+    <script src="index.js"></script>
+
+    <!-- Script effet curseur orange -->
+    <script>
+        const effectLayer = document.querySelector('.cursor-effect');
+        document.addEventListener('mousemove', e => {
+            const x = (e.clientX / window.innerWidth) * 100;
+            const y = (e.clientY / window.innerHeight) * 100;
+            effectLayer.style.setProperty('--x', x + '%');
+            effectLayer.style.setProperty('--y', y + '%');
+        });
+    </script>
+</body>
+
+</html>

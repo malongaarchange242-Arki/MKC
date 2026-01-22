@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=0" />
+  <title>Messages — Maritime Kargo</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <style>
+    /* Reset pour plein écran */
+    * { box-sizing: border-box; }
+    html, body { 
+      height: 100%; 
+      margin: 0; 
+      padding: 0; 
+      overflow: hidden; /* Empêche le scroll global du navigateur */
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background-color: #fff;
+    }
+
+    /* Container Principal */
+    .app-container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh; /* Toute la hauteur de l'écran */
+      width: 100vw;  /* Toute la largeur de l'écran */
+    }
+
+    /* En-tête fixe */
+    .header {
+      padding: 15px;
+      background: #ffffff;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    /* Liste des messages (Lignes) */
+    #list-view {
+      flex: 1;
+      overflow-y: auto; /* Scroll uniquement ici */
+      padding: 10px;
+    }
+
+    .conversation-row {
+      padding: 20px 15px;
+      margin-bottom: 8px;
+      border-radius: 10px;
+      cursor: pointer;
+      border: 1px solid rgba(0,0,0,0.03);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    /* Couleurs demandées */
+    .type-conteste { background-color: #FEE2E2; border-left: 6px solid #EF4444; } 
+    .type-normal { background-color: #FFEDD5; border-left: 6px solid #F97316; }
+
+    .row-header { display: flex; justify-content: space-between; align-items: center; }
+    .row-title { font-weight: 700; font-size: 16px; color: #1f2937; }
+    .row-preview { font-size: 14px; color: #4b5563; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
+
+    /* Vue Chat (Détails plein écran) */
+    #chat-view {
+      display: none; /* Masqué par défaut */
+      flex-direction: column;
+      height: 100%;
+      background: #fdfdfd;
+    }
+
+    .chat-header {
+      padding: 12px 15px;
+      background: white;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .messages-history {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* Bulles de chat */
+    .msg { display: flex; flex-direction: column; }
+    .msg.me { align-items: flex-end; }
+    .msg.other { align-items: flex-start; }
+    
+    .bubble {
+      padding: 12px 16px;
+      border-radius: 18px;
+      font-size: 15px;
+      line-height: 1.4;
+      max-width: 80%;
+    }
+    .msg.me .bubble { background: #3B82F6; color: white; border-bottom-right-radius: 4px; }
+    .msg.other .bubble { background: #E5E7EB; color: #111; border-bottom-left-radius: 4px; }
+
+    /* Zone de saisie fixe en bas */
+    .composer {
+      padding: 15px;
+      background: white;
+      border-top: 1px solid #eee;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .composer input {
+      flex: 1;
+      padding: 12px 15px;
+      border: 1px solid #d1d5db;
+      border-radius: 25px;
+      outline: none;
+      font-size: 15px;
+    }
+
+    .composer button {
+      background: #3B82F6;
+      color: white;
+      border: none;
+      width: 45px;
+      height: 45px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+<div class="app-container">
+  
+  <div id="main-list-container" style="display: flex; flex-direction: column; height: 100%;">
+    <div class="header">
+      <i class="fas fa-envelope-open-text" style="color:#3B82F6; font-size: 20px;"></i>
+      <h2 style="margin:0; font-size:20px;">Mes Messages</h2>
+      <div style="margin-left:auto; display:flex; gap:8px; align-items:center;">
+        <button id="btn-load-disputes" style="padding:8px 10px; background:#3B82F6; color:#fff; border:none; border-radius:6px; cursor:pointer;">Charger</button>
+      </div>
+    </div>
+
+    <div id="list-view">
+      <div id="no-conversations" style="text-align:center; color:#6b7280; padding:30px;">Aucune conversation pour le moment.</div>
+    </div>
+  </div>
+
+  <div id="chat-view">
+    <div class="chat-header">
+      <button onclick="closeChat()" style="background:none; border:none; font-size:18px; cursor:pointer;">
+        <i class="fas fa-arrow-left"></i>
+      </button>
+      <div style="font-weight: bold; font-size: 16px;" id="chat-title">Sujet</div>
+    </div>
+    
+    <div id="messages-history" class="messages-history">
+      </div>
+
+    <div class="composer">
+      <input id="msg-input" placeholder="Ecrire un message..." />
+      <button id="msg-send"><i class="fas fa-paper-plane"></i></button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let activeThreadId = null;
+
+  // Simple i18n helper: prefer local `window.i18n.t`, then parent `window.parent.i18n.t` (iframe case), fallback to provided defaults
+  function __(key, fallback) {
+    try {
+      if (window.i18n && typeof window.i18n.t === 'function') {
+        const val = window.i18n.t(key);
+        if (val && val !== key) return val;
+      }
+    } catch (e) { /* ignore */ }
+    try {
+      if (window.parent && window.parent.i18n && typeof window.parent.i18n.t === 'function') {
+        const val2 = window.parent.i18n.t(key);
+        if (val2 && val2 !== key) return val2;
+      }
+    } catch (e) { /* ignore cross-window access */ }
+    return fallback || key;
+  }
+
+  function localizeStaticTexts() {
+    try {
+      const titleEl = document.querySelector('.header h2');
+      if (titleEl) titleEl.innerText = __('messages.title', 'Mes Messages');
+      const loadBtn = document.getElementById('btn-load-disputes');
+      if (loadBtn) loadBtn.innerText = __('messages.load', 'Charger');
+      const noConv = document.getElementById('no-conversations');
+      if (noConv) noConv.innerText = __('messages.no_conversations', 'Aucune conversation pour le moment.');
+      const chatTitle = document.getElementById('chat-title');
+      if (chatTitle && !chatTitle.dataset.localized) { chatTitle.dataset.localized = '1'; chatTitle.innerText = __('messages.subject', 'Sujet'); }
+      const msgInput = document.getElementById('msg-input');
+      if (msgInput) msgInput.placeholder = __('messages.compose_placeholder', 'Ecrire un message...');
+      const msgSend = document.getElementById('msg-send');
+      if (msgSend) msgSend.title = __('messages.send', 'Envoyer');
+    } catch (e) { /* ignore */ }
+  }
+
+  // Listen for i18n change notifications from parent (if any) and re-localize
+  window.addEventListener('message', (ev) => {
+    try {
+      const p = ev.data || {};
+      if (p && (p.type === 'i18n:changed' || p.type === 'i18n:setLang')) {
+        localizeStaticTexts();
+      }
+    } catch (e) { /* ignore */ }
+  });
+
+  // Try re-localizing shortly after load to pick up parent i18n state
+  setTimeout(() => { try { localizeStaticTexts(); } catch (e) {} }, 200);
+
+  function openChat(title, type) {
+    activeThreadId = title;
+    document.getElementById('main-list-container').classList.add('hidden');
+    document.getElementById('chat-view').style.display = 'flex';
+    
+    // Display 'Contestation' if type is conteste, otherwise show the ID or title
+    const displayTitle = (type === 'conteste') ? __('messages.dispute','Contestation') : title;
+    document.getElementById('chat-title').innerText = displayTitle;
+    
+    renderMessages(title);
+  }
+
+  function closeChat() {
+    document.getElementById('main-list-container').classList.remove('hidden');
+    document.getElementById('chat-view').style.display = 'none';
+    activeThreadId = null;
+  }
+
+  function renderMessages(threadId) {
+    const history = document.getElementById('messages-history');
+    const storageKey = 'msgs_' + threadId;
+    // Try to fetch from backend first, fallback to localStorage
+    (async () => {
+      let combined = [];
+      try {
+        const remote = await fetchThreadMessages(threadId);
+        if (Array.isArray(remote) && remote.length) combined = combined.concat(remote.map(r => ({ from: r.from || (r.sender_role || 'Support'), text: r.content || r.reason || r.text || '', created_at: r.created_at || r.time || null })));
+      } catch (e) {
+        // ignore remote fetch errors
+      }
+
+      // include local unsent messages
+      try {
+        const local = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        if (Array.isArray(local) && local.length) {
+          // local messages may use `time` field; normalize to created_at for ordering
+          combined = combined.concat(local.map(m => ({ from: m.from || 'Me', text: m.text || '', created_at: m.created_at || new Date().toISOString(), time: m.time || m.created_at || null })));
+        }
+      } catch (e) {}
+
+      // sort by created_at
+      combined.sort((a,b) => {
+        const ta = a.created_at ? Date.parse(a.created_at) : 0;
+        const tb = b.created_at ? Date.parse(b.created_at) : 0;
+        return (ta || 0) - (tb || 0);
+      });
+
+      if (combined.length === 0) {
+        history.innerHTML = `<div style="text-align:center; color:#9ca3af; margin-top:20px;">${__('messages.no_messages_in_thread','Aucun message dans cette discussion.')}</div>`;
+      } else {
+        history.innerHTML = combined.map(m => `
+          <div class="msg ${m.from === 'Me' ? 'me' : 'other'}">
+            <div class="bubble">${escapeHtml(m.text)}</div>
+            <small style="font-size:10px; color:#9ca3af; margin: 4px 5px;">${escapeHtml(new Date(m.created_at || m.time || Date.now()).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }))}</small>
+          </div>
+        `).join('');
+      }
+      history.scrollTop = history.scrollHeight;
+    })();
+  }
+
+  function send() {
+    const inp = document.getElementById('msg-input');
+    const txt = inp.value.trim();
+    if (!txt || !activeThreadId) return;
+
+    const storageKey = 'msgs_' + activeThreadId;
+    const nowIso = new Date().toISOString();
+
+    // Attempt to POST to backend messages endpoint (best-effort). If fails, store locally.
+    (async () => {
+      const API_BASE = (() => { const m = document.querySelector('meta[name="api-base"]')?.content || ''; return m || 'https://mkc-backend-kqov.onrender.com'; })();
+      const base = API_BASE.replace(/\/$/, '');
+      const token = localStorage.getItem('token') || localStorage.getItem('access_token') || null;
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      let posted = false;
+      try {
+        const fd = new FormData();
+        fd.append('content', txt);
+        const resp = await fetch(`${base}/api/requests/${encodeURIComponent(activeThreadId)}/messages`, { method: 'POST', headers, body: fd });
+        if (resp.ok) {
+          // reflect in UI using server response if available
+          const j = await resp.json().catch(()=>null);
+          const storage = JSON.parse(localStorage.getItem(storageKey) || '[]');
+          const m = { from: (j && j.sender_role) ? j.sender_role : 'Me', text: txt, created_at: (j && j.created_at) ? j.created_at : nowIso };
+          storage.push(m);
+          localStorage.setItem(storageKey, JSON.stringify(storage));
+          posted = true;
+        }
+      } catch (e) {
+        posted = false;
+      }
+
+      if (!posted) {
+        // store locally as fallback
+        const msgs = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        msgs.push({ from: 'Me', text: txt, created_at: nowIso });
+        localStorage.setItem(storageKey, JSON.stringify(msgs));
+      }
+
+      inp.value = '';
+      renderMessages(activeThreadId);
+    })();
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // Fetch disputes/messages for a given request id from backend
+  async function fetchThreadMessages(threadId) {
+    if (!threadId) return [];
+    const API_BASE = (() => { const m = document.querySelector('meta[name="api-base"]')?.content || ''; return m || 'https://mkc-backend-kqov.onrender.com'; })();
+    const base = API_BASE.replace(/\/$/, '');
+    const token = localStorage.getItem('token') || localStorage.getItem('access_token') || null;
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        console.log('Current User ID from token:', payload.id || payload.sub || payload.user_id);
+      } catch (e) {
+        console.error('Failed to decode token', e);
+      }
+    }
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+    // Helper to fetch json safely
+    async function tryFetch(url) {
+      try {
+        const resp = await fetch(url, { headers });
+        if (!resp.ok) return null;
+        const j = await resp.json().catch(() => null);
+        return j || null;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    try {
+      const disputesUrl = `${base}/api/requests/${encodeURIComponent(threadId)}/disputes`;
+      const messagesUrl = `${base}/api/requests/${encodeURIComponent(threadId)}/messages`;
+
+      const [dResp, mResp] = await Promise.all([tryFetch(disputesUrl), tryFetch(messagesUrl)]);
+
+      const out = [];
+
+      // Normalize disputes: pick 'reason' and raised_by
+      if (dResp) {
+        let arr = [];
+        if (Array.isArray(dResp)) arr = dResp;
+        else if (dResp.data && Array.isArray(dResp.data)) arr = dResp.data;
+        else if (dResp.disputes && Array.isArray(dResp.disputes)) arr = dResp.disputes;
+        arr.forEach(d => {
+          out.push({
+            type: 'dispute',
+            id: d.id || d.dispute_id || null,
+            request_id: d.request_id || d.requestId || null,
+            from: d.raised_by || d.from || (d.sender_role || 'ADMIN'),
+            text: d.reason || d.content || d.description || '',
+            created_at: d.created_at || d.createdAt || d.created || null,
+            raw: d
+          });
+        });
+      }
+
+      // Normalize messages: pick 'content' and sender_role
+      if (mResp) {
+        let arr = [];
+        if (Array.isArray(mResp)) arr = mResp;
+        else if (mResp.data && Array.isArray(mResp.data)) arr = mResp.data;
+        else if (mResp.messages && Array.isArray(mResp.messages)) arr = mResp.messages;
+        arr.forEach(m => {
+          out.push({
+            type: 'message',
+            id: m.id || null,
+            request_id: m.request_id || m.requestId || null,
+            from: m.sender_role || m.from || (m.raised_by || 'USER'),
+            text: m.content || m.text || m.body || '',
+            created_at: m.created_at || m.createdAt || m.time || null,
+            raw: m
+          });
+        });
+      }
+
+      // Sort combined by created_at ascending
+      out.sort((a,b) => {
+        const ta = a.created_at ? Date.parse(a.created_at) : 0;
+        const tb = b.created_at ? Date.parse(b.created_at) : 0;
+        return (ta || 0) - (tb || 0);
+      });
+
+      return out;
+    } catch (e) {
+      console.warn('fetchThreadMessages error', e);
+      return [];
+    }
+  }
+
+  // Fetch all disputes from several possible admin endpoints
+  async function fetchAllDisputes() {
+    const API_BASE = (() => { const m = document.querySelector('meta[name="api-base"]')?.content || ''; return m || 'https://mkc-backend-kqov.onrender.com'; })();
+    const base = API_BASE.replace(/\/$/, '');
+    const token = localStorage.getItem('token') || localStorage.getItem('access_token') || null;
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    
+    console.log('Fetching disputes...');
+    // Prioritize the user-specific endpoint we just added
+    const candidates = [
+      `${base}/api/requests/disputes`,
+      `${base}/api/disputes`,
+      `${base}/api/admin/disputes`,
+      `${base}/api/requests/disputes/list`
+    ];
+    
+    for (const url of candidates) {
+      try {
+        console.log(`Trying ${url}...`);
+        const resp = await fetch(url, { headers });
+        if (!resp.ok) {
+            console.warn(`Failed ${url}: ${resp.status}`);
+            continue;
+        }
+        const j = await resp.json().catch(() => null);
+        if (!j) continue;
+        
+        console.log(`Success ${url}:`, j);
+        
+        if (Array.isArray(j)) return j;
+        if (j.data && Array.isArray(j.data)) return j.data;
+        if (j.disputes && Array.isArray(j.disputes)) return j.disputes;
+      } catch (e) {
+        console.error(`Error fetching ${url}`, e);
+      }
+    }
+    return [];
+  }
+
+  document.getElementById('msg-send').addEventListener('click', send);
+  document.getElementById('msg-input').addEventListener('keydown', (e) => { 
+    if (e.key === 'Enter') send(); 
+  });
+
+  // Listen for admin messages posted from parent window (e.g. backend notifier)
+  window.addEventListener('message', (ev) => {
+    try {
+      const payload = ev.data || {};
+      if (!payload || payload.type !== 'admin_message') return;
+      const threadId = payload.threadId;
+      const text = payload.text || '';
+      const from = payload.from || 'Admin';
+      const time = payload.time || new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+      if (!threadId || !text) return;
+      const storageKey = 'msgs_' + threadId;
+      const msgs = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      msgs.push({ from, text, time });
+      localStorage.setItem(storageKey, JSON.stringify(msgs));
+      // If the thread is currently open, re-render
+      if (activeThreadId === threadId) renderMessages(threadId);
+    } catch (e) {
+      console.warn('admin_message handler error', e);
+    }
+  });
+
+  // Wire the load disputes button — if no id provided, load all disputes
+  document.getElementById('btn-load-disputes').addEventListener('click', async () => {
+    const id = (document.getElementById('load-dispute-id')?.value || '').trim();
+    const list = document.getElementById('list-view');
+    const no = document.getElementById('no-conversations');
+    if (no) no.remove();
+    // remove existing rows
+    Array.from(list.querySelectorAll('.conversation-row')).forEach(e => e.remove());
+
+    if (!id) {
+      // load all disputes
+      const all = await fetchAllDisputes();
+      if (!all || all.length === 0) {
+        const el = document.createElement('div');
+        el.className = 'conversation-row type-normal';
+        el.innerHTML = `<div class="row-header"><span class="row-title">${__('messages.no_results','Aucun résultat')}</span><small>-</small></div><div class="row-preview">${__('messages.no_disputes_found','Aucune dispute trouvée.')}</div>`;
+        list.appendChild(el);
+        return;
+      }
+
+      // group by request_id
+      const byReq = {};
+      all.forEach(d => {
+        const key = d.request_id || d.requestId || d.request || 'unknown';
+        byReq[key] = byReq[key] || [];
+        byReq[key].push(d);
+      });
+
+      Object.keys(byReq).sort().forEach(k => {
+        const arr = byReq[k];
+        const latest = arr[arr.length - 1];
+        const preview = latest.reason || latest.content || latest.text || JSON.stringify(latest).slice(0,120);
+        const row = document.createElement('div');
+        row.className = 'conversation-row type-conteste';
+        row.innerHTML = `<div class="row-header"><span class="row-title">${__('messages.dispute','Contestation')}</span><small>${escapeHtml(latest.created_at || latest.createdAt || '')}</small></div><div class="row-preview">${escapeHtml(preview)}</div>`;
+        row.addEventListener('click', () => openChat(k, 'conteste'));
+        list.appendChild(row);
+      });
+      return;
+    }
+
+    // else load by id
+    const disputes = await fetchThreadMessages(id);
+    if (!disputes || disputes.length === 0) {
+      const el = document.createElement('div');
+      el.className = 'conversation-row type-normal';
+      el.innerHTML = `<div class="row-header"><span class="row-title">${escapeHtml(id)}</span><small>-</small></div><div class="row-preview">${__('messages.no_disputes_for_id','Aucune dispute trouvée pour cet identifiant.')}</div>`;
+      el.addEventListener('click', () => openChat(id, 'normal'));
+      list.appendChild(el);
+      return;
+    }
+
+    // show latest dispute as preview
+    const latest = disputes[disputes.length - 1];
+    const preview = latest.text || latest.reason || latest.content || JSON.stringify(latest).slice(0,120);
+    const row = document.createElement('div');
+    row.className = 'conversation-row type-conteste';
+    row.innerHTML = `<div class="row-header"><span class="row-title">${__('messages.request_label','Demande')}: ${escapeHtml(id)}</span><small>${escapeHtml(latest.created_at || '')}</small></div><div class="row-preview">${escapeHtml(preview)}</div>`;
+    row.addEventListener('click', () => openChat(id, 'conteste'));
+    list.appendChild(row);
+  });
+
+  // Auto-load disputes on page load
+  window.addEventListener('load', () => {
+    localizeStaticTexts();
+    document.getElementById('btn-load-disputes').click();
+  });
+</script>
+
+</body>
+</html>

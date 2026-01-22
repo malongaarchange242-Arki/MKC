@@ -1,0 +1,18 @@
+fastapi
+uvicorn[standard]
+pydantic
+pytest
+python-dotenv
+supabase
+
+# OCR / Images
+Pillow>=10.0.0
+pytesseract
+pdf2image
+
+# PDF
+PyPDF2
+reportlab
+
+# Utils
+dotenv

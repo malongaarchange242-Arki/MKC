@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LOGI-RDC | Payment Validation</title>
+    <link rel="stylesheet" href="dashboard_client.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <nav class="sidebar" id="sidebar">
+            <div class="logo desktop-logo">
+                <h2>MARITIME KARGO</h2>
+                <span class="subtitle">Consulting</span>
+            </div>
+            <ul role="menu">
+                <li onclick="window.location.href='dashboard_admin.html'"><i class="fas fa-tray-full"></i> Incoming
+                    Requests</li>
+                <li class="active"><i class="fas fa-file-invoice-dollar"></i> Pending Payments</li>
+            </ul>
+            <div class="logout"><i class="fas fa-sign-out-alt"></i> Logout</div>
+        </nav>
+
+        <main class="main-content">
+            <header class="top-header">
+                <div class="header-left">
+                    <button class="fas fa-bars menu-trigger icon-btn" id="menu-trigger"></button>
+                    <div class="search-wrap">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="adminSearch" placeholder="Search BL or Amount...">
+                    </div>
+                </div>
+                                <div class="header-right">
+                                        <label for="lang-select" style="font-size:12px; color:#6b7280; margin-right:6px; align-self:center;">EN/FR</label>
+                                        <select id="lang-select" aria-label="Language switch" style="padding:6px; border-radius:4px; margin-right:8px;">
+                                            <option value="en">EN</option>
+                                            <option value="fr">FR</option>
+                                        </select>
+                                        <button class="far fa-bell icon-btn"></button>
+                    <div class="user-profile">
+                        <div class="user-info">
+                            <span class="name">Admin Michael</span>
+                            <span class="role">Administrator</span>
+                        </div>
+                        <div class="avatar-placeholder"
+                            style="width:36px; height:36px; background:var(--primary-orange); border-radius:50%; display:flex; align-items:center; justify-content:center; color:white; font-weight:bold;">
+                            AM</div>
+                    </div>
+                </div>
+            </header>
+
+            <section class="action-bar">
+                <div class="actions-left">
+                    <h3 style="margin:0; color:var(--text-dark);">Review Pending Payments</h3>
+                </div>
+                <div class="actions-right">
+                    <button class="btn-white" onclick="location.reload()"><i class="fas fa-sync-alt"></i>
+                        Refresh</button>
+                </div>
+            </section>
+
+            <div class="table-responsive">
+                <table class="dashboard-table">
+                    <thead>
+                        <tr>
+                            <th data-i18n="bl_number">BL Number</th>
+                            <th data-i18n="amount_sent">Amount Sent</th>
+                            <th data-i18n="status">Status</th>
+                            <th data-i18n="proof_of_payment">Proof of Payment</th>
+                            <th data-i18n="action">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="payment-table-body">
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <div id="payment-modal" class="modal-overlay" style="display:none;">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>Validate Payment: <span id="target-bl-payment" class="text-blue"></span></h3>
+            </div>
+            <div class="modal-body">
+                <p>By confirming, the invoice will switch from <strong>Draft (X)</strong> to <strong>Final ($)</strong>
+                    and will appear green for the client.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-close" onclick="closePaymentModal()">Cancel</button>
+                <button id="confirm-pay-btn" class="btn-green" style="border:none;">CONFIRM RECEPTION</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="i18n.js"></script>
+    <script src="Payment_admin.js"></script>
+</body>
+
+</html>

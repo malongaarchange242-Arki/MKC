@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LOGI-RDC | Dashboard</title>
+  <link rel="stylesheet" href="dashboard_client.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+
+<body>
+  <div class="app-container">
+
+    <nav class="sidebar" id="sidebar" aria-label="Navigation principale">
+      <div class="sidebar-header-mobile">
+        <div class="logo">
+          <h2>C</h2>
+        </div>
+        <button class="icon-btn close-sidebar" id="close-sidebar-btn" aria-label="Fermer le menu" type="button">
+          <i class="fas fa-times" aria-hidden="true"></i>
+        </button>
+      </div>
+
+      <div class="logo desktop-logo">
+        <h2>MARITIME KARGO</h2>
+        <span class="subtitle">Consulting</span>
+      </div>
+
+      <ul role="menu">
+        <li class="active" role="menuitem" tabindex="0"><i class="fas fa-home" aria-hidden="true"></i> <span data-i18n="dashboard">Dashboard</span></li>
+        <li role="menuitem" tabindex="0" onclick="window.location.href='PaiementClient.html'"><i class="fas fa-file-invoice-dollar" aria-hidden="true"></i> <span data-i18n="payments">Paiements</span></li>
+      </ul>
+      <div class="logout" role="button" tabindex="0" id="logoutBtn">
+        <i class="fas fa-sign-out-alt" aria-hidden="true"></i> <span data-i18n="logout">Déconnexion</span>
+      </div>
+
+      <script>
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          window.location.href = 'index.html';
+        });
+      </script>
+
+      <!-- Side panel for request details -->
+      <aside id="side-panel" aria-hidden="true">
+        <button class="close-btn" id="side-close-btn" aria-label="Fermer le panneau">×</button>
+        <div class="side-content">
+          <h3 id="side-bl">BL: —</h3>
+          <p id="side-status">Status: —</p>
+          <p id="side-date">Updated: —</p>
+          <p id="side-client">Client: —</p>
+          <div id="side-docs"></div>
+        </div>
+      </aside>
+
+      <style>
+        /* Side panel styles */
+        #side-panel { position: fixed; right: -680px; top: 0; height: 100%; width: 640px; background: #fff; box-shadow: -6px 24px 24px rgba(0,0,0,0.12); transition: right .28s ease; z-index: 2000; overflow:auto; padding: 20px; }
+        #side-panel.show { right: 0; }
+        #side-panel .close-btn { position: absolute; left: 12px; top: 10px; font-size: 22px; line-height: 22px; background: none; border: none; cursor: pointer; }
+        #side-panel .side-content { margin-top: 36px; }
+        #side-panel h3 { margin: 0 0 8px 0; font-size: 18px; }
+        #side-panel p { margin: 6px 0; color: #374151; }
+
+        /* Clickable row highlight */
+        #table-body tr.clickable-row { cursor: pointer; }
+        #table-body tr.clickable-row:hover { background: rgba(255,165,0,0.08); }
+      </style>
+
+    </nav>
+
+    <main class="main-content" role="main">
+      <header class="top-header">
+        <div class="header-left">
+          <button class="fas fa-bars menu-trigger icon-btn" id="menu-trigger" aria-label="Ouvrir le menu"
+            type="button"></button>
+          <div class="search-wrap" role="search" aria-label="Recherche">
+            <i class="fas fa-search" aria-hidden="true"></i>
+            <input type="text" placeholder="Search..." aria-label="Recherche générale">
+          </div>
+        </div>
+
+        <div class="header-right">
+          <label for="lang-select" style="font-size:12px; color:#6b7280; margin-right:6px; align-self:center;">EN/FR</label>
+          <select id="lang-select" aria-label="Language switch" style="padding:6px; border-radius:4px; margin-right:8px;">
+            <option value="en">EN</option>
+            <option value="fr">FR</option>
+          </select>
+          <button class="far fa-bell icon-btn" id="notif-btn" aria-haspopup="dialog" aria-controls="popup-notif"
+            aria-expanded="false" type="button">
+            <span id="notif-badge" class="notif-badge" aria-hidden="true" style="display:none;"></span>
+          </button>
+          <button class="fas fa-envelope icon-btn" id="settings-btn" aria-haspopup="dialog" aria-controls="popup-settings"
+            aria-expanded="false" type="button" title="Messages"></button>
+          <div class="user-profile" aria-label="Profil utilisateur">
+            <div class="user-info">
+              <span class="name"></span>
+              <span class="role"></span>
+            </div>
+            <div class="avatar-placeholder" aria-hidden="true"
+              style="width:36px; height:36px; background:#ddd; border-radius:50%; display:flex; align-items:center; justify-content:center;">
+              
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <section class="action-bar" aria-label="Barre d'actions">
+          <div class="actions-left">
+          <button class="btn-green" id="open-modal-btn" aria-haspopup="dialog" aria-controls="modal" type="button" data-i18n="new_request">New
+            Request <i class="fas fa-chevron-down" aria-hidden="true"></i></button>
+        </div>
+        <div class="action-center">
+        </div>
+        <div class="actions-right">
+          <div class="filters" style="display:flex; gap:8px; align-items:center; margin-right:12px;">
+            <select id="filter-date" aria-label="Filtrer par date" style="padding:6px; border-radius:4px;">
+              <option value="all" data-i18n="filter_all_dates">All dates</option>
+              <option value="today" data-i18n="filter_today">Today</option>
+              <option value="7" data-i18n="filter_last7">Last 7 days</option>
+              <option value="30" data-i18n="filter_last30">Last 30 days</option>
+            </select>
+            <select id="filter-status" aria-label="Filtrer par statut" style="padding:6px; border-radius:4px; min-width:160px;">
+              <option value="all" data-i18n="filter_all_statuses">All statuses</option>
+            </select>
+            <select id="filter-type" aria-label="Filtrer par type de requête" style="padding:6px; border-radius:4px; min-width:160px;">
+              <option value="all" data-i18n="filter_all_types">All types</option>
+            </select>
+          </div>
+         
+        </div>
+      </section>
+
+      <div class="table-responsive" role="region" aria-label="Tableau des demandes">
+        <table class="dashboard-table" aria-describedby="entries-info">
+          <thead>
+            <tr>
+              <th scope="col"><span data-i18n="bl_number">BL Number</span> <i class="fas fa-filter text-muted" aria-hidden="true"></i></th>
+              <th scope="col"><span data-i18n="ref_number">Ref #</span></th>
+              <th scope="col"><span data-i18n="last_updated">Last Updated</span> <i class="fas fa-sort-amount-down text-blue" aria-hidden="true"></i></th>
+              <th scope="col"><span data-i18n="status">Status</span> <i class="fas fa-sort text-muted" aria-hidden="true"></i></th>
+              <th scope="col"><span data-i18n="country">Country</span> <i class="fas fa-sort text-muted" aria-hidden="true"></i></th>
+              <th scope="col"><span data-i18n="invoice_number">Invoice #</span> <i class="fas fa-sort text-muted" aria-hidden="true"></i></th>
+              <th scope="col"><span data-i18n="actions">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
+
+      <div class="pagination-footer" aria-live="polite">
+        <div class="page-numbers" role="navigation" aria-label="Pagination">
+          <button aria-label="Page précédente" type="button"><i class="fas fa-angle-left"
+              aria-hidden="true"></i></button>
+          <button class="active" aria-current="page" type="button">1</button>
+          <button aria-label="Page suivante" type="button"><i class="fas fa-angle-right"
+              aria-hidden="true"></i></button>
+        </div>
+        <span class="showing-text" id="entries-info"></span>
+      </div>
+    </main>
+  </div>
+
+  <div id="modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title"
+    aria-hidden="true">
+    <div class="modal-box" role="document">
+      <div class="modal-header">
+        <h3 id="modal-title" data-i18n="modal_select_request_type">Select Request Type</h3>
+      </div>
+      <div class="modal-body">
+        <div id="step-1">
+          <p class="label-text" data-i18n="modal_which_type">What type of document do you need?</p>
+          <div class="option-grid" role="list">
+            <button class="option-btn" data-type="FERI" type="button" data-i18n="option_feri">FERI</button>
+            <button class="option-btn" data-type="AD" type="button" data-i18n="option_ad">AD</button>
+            <button class="option-btn" data-type="FERI + AD" type="button" data-i18n="option_feri_ad">FERI + AD</button>
+          </div>
+        </div>
+
+          <div id="step-2" style="display: none;">
+          <input type="text" class="input-ref" id="refInput" data-i18n-placeholder="your_ref_optional" placeholder="Your Ref Number (optional)"
+            aria-label="Numéro de référence (optionnel)">
+          <div class="country-select" role="button" tabindex="0" aria-label="Sélectionner le pays">
+            <div class="flag-text">
+                <img
+                  src="https://upload.wikimedia.org/wikipedia/commons/6/6f/Flag_of_the_Democratic_Republic_of_the_Congo.svg"
+                  width="24" alt="Drapeau RDC" data-i18n-alt="flag_rdc">
+                <span data-i18n="country_demo">Democratic Republic of Congo</span>
+              </div>
+          </div>
+          <div class="requirements-section">
+            <h4 id="selected-type-display" data-i18n="requirements">Requirements</h4>
+            <p id="requirements-instruction" class="sub-text" data-i18n="requirements_subtext">Dem. Republic of Congo requires the following documents:</p>
+
+            <div class="upload-group" aria-label="Zone de téléchargement des documents">
+              <div class="feri-req">
+              <label class="doc-upload-btn" id="btn-bl" for="file-bl" role="button" tabindex="0">
+                <i class="fas fa-cloud-upload-alt" aria-hidden="true"></i> <span id="label-bl" data-i18n="bill_of_lading">Bill of Lading</span>
+                <input id="file-bl" type="file" hidden aria-label="Charger Bill of Lading" accept=".pdf,.jpg,.jpeg,.png">
+              </label>
+
+              <label class="doc-upload-btn" id="btn-fi" for="file-fi" role="button" tabindex="0">
+                <i class="fas fa-cloud-upload-alt" aria-hidden="true"></i> <span id="label-fi" data-i18n="freight_invoice">Freight Invoice</span>
+                <input id="file-fi" type="file" hidden aria-label="Charger Freight Invoice" accept=".pdf,.jpg,.jpeg,.png">
+              </label>
+
+              <label class="doc-upload-btn" id="btn-ci" for="file-ci" role="button" tabindex="0">
+                <i class="fas fa-cloud-upload-alt" aria-hidden="true"></i> <span id="label-ci" data-i18n="commercial_invoice">Commercial Invoice</span>
+                <input id="file-ci" type="file" hidden aria-label="Charger Commercial Invoice" accept=".pdf,.jpg,.jpeg,.png">
+              </label>
+
+              <div class="doc-upload-btn" id="btn-ed" role="group" tabindex="0" style="display:flex; flex-direction:column; gap:6px;">
+                <label for="input-fxi" style="font-weight:600;" data-i18n="fxi_number_label">Numero FXI</label>
+                <input id="input-fxi" type="text" data-i18n-placeholder="fxi_number_placeholder" aria-label="Numero FXI" style="padding:8px; border:1px solid #ddd; border-radius:6px;">
+              </div>
+              </div>
+              <!-- AD documents block (hidden by default; shown for AD and FERI + AD) -->
+              <div class="ad-req" style="display:none; width:100%; margin-top:12px;">
+                <div style="width:100%; display:flex; flex-direction:column; gap:8px;">
+                  <label for="input-feri" style="font-weight:600;" data-i18n="feri_number_label">Numéro FERI</label>
+                  <input id="input-feri" type="text" data-i18n-placeholder="feri_number_placeholder" placeholder="Saisir Numéro FERI requis pour AD" aria-label="Numéro FERI" style="padding:8px; border:1px solid #ddd; border-radius:6px; width:100%;">
+                </div>
+                <label class="doc-upload-btn" id="btn-im8" for="file-im8" role="button" tabindex="0">
+                  <i class="fas fa-cloud-upload-alt" aria-hidden="true"></i> <span id="label-im8" data-i18n="customs_declaration">Customs declaration (IM8)</span>
+                  <input id="file-im8" class="doc-file" type="file" hidden aria-label="Charger IM8" accept=".pdf,.jpg,.jpeg,.png">
+                </label>
+
+                <label class="doc-upload-btn" id="btn-road" for="file-road" role="button" tabindex="0">
+                  <i class="fas fa-cloud-upload-alt" aria-hidden="true"></i> <span id="label-road" data-i18n="road_carrier">Road carrier</span>
+                  <input id="file-road" class="doc-file" type="file" hidden aria-label="Charger Road carrier" accept=".pdf,.jpg,.jpeg,.png">
+                </label>
+
+                <label class="doc-upload-btn" id="btn-vehicle" for="file-vehicle" role="button" tabindex="0">
+                  <i class="fas fa-cloud-upload-alt" aria-hidden="true"></i> <span id="label-vehicle" data-i18n="vehicle_registration">Vehicle registration number</span>
+                  <input id="file-vehicle" class="doc-file" type="file" hidden aria-label="Charger Vehicle registration" accept=".pdf,.jpg,.jpeg,.png">
+                </label>
+
+                <label class="doc-upload-btn" id="btn-road-inv" for="file-road-inv" role="button" tabindex="0">
+                  <i class="fas fa-cloud-upload-alt" aria-hidden="true"></i> <span id="label-road-inv" data-i18n="road_freight_invoice">Road freight invoice</span>
+                  <input id="file-road-inv" class="doc-file" type="file" hidden aria-label="Charger Road freight invoice" accept=".pdf,.jpg,.jpeg,.png">
+                </label>
+
+                <label class="doc-upload-btn" id="btn-river-inv" for="file-river-inv" role="button" tabindex="0">
+                  <i class="fas fa-cloud-upload-alt" aria-hidden="true"></i> <span id="label-river-inv" data-i18n="river_freight_invoice">River freight invoice</span>
+                  <input id="file-river-inv" class="doc-file" type="file" hidden aria-label="Charger River freight invoice" accept=".pdf,.jpg,.jpeg,.png">
+                </label>
+              </div>
+            </div>
+          </div>
+
+          
+          
+          <p class="validation-note" data-i18n="validation_note">Validation is required before the vessel arrives.</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-close" id="modal-close-btn" type="button"><i class="fas fa-times" aria-hidden="true"></i>
+          <span data-i18n="close">Close</span></button>
+        <button id="submit-btn" class="btn-submit" type="button" style="display: none;"> <i class="fas fa-check"
+            aria-hidden="true"></i> <span data-i18n="submit">Submit</span></button>
+      </div>
+    </div>
+  </div>
+
+  <div id="popup-notif" class="dropdown-popup" aria-hidden="true" role="dialog" aria-label="Notifications"
+    style="display:none;">
+    <div class="popup-header" data-i18n="notifications">Notifications</div>
+    
+    <div class="popup-body" id="popup-notif-body">
+      <div class="notif-item">Aucune notification</div>
+    </div>
+  </div>
+
+  <style>
+    .notif-badge {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      min-width: 20px;
+      height: 20px;
+      padding: 0 6px;
+      background: #ff7a00;
+      color: white;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 20px;
+      text-align: center;
+      box-shadow: 0 0 0 2px white;
+      display: none;
+      white-space: nowrap;
+    }
+    .dropdown-popup .notif-item { padding: 12px; border-bottom: 1px solid #eee; }
+    .dropdown-popup .notif-item .title { font-weight: 600; margin-bottom: 6px; }
+    .dropdown-popup .notif-item .meta { font-size: 12px; color: #666; margin-top:8px }
+  </style>
+
+  <div id="popup-settings" class="dropdown-popup" aria-hidden="true" role="dialog" aria-label="Messages"
+    style="display:none; position:fixed; top:5vh; left:5vw; width:90vw; height:90vh; background:#fff; z-index:3000; box-shadow:0 24px 48px rgba(0,0,0,0.18); border-radius:8px; overflow:hidden;">
+    <div class="popup-header" style="padding:12px 16px; border-bottom:1px solid #eee; font-weight:600; position:relative;">
+      Messages
+      <button id="popup-settings-close" aria-label="Close messages" style="position:absolute; right:12px; top:8px; background:transparent; border:0; font-size:20px; cursor:pointer;">×</button>
+    </div>
+    <div class="popup-body" id="popup-settings-body" style="height:calc(100% - 52px); padding:0;">
+      <!-- content loaded dynamically (iframe fills this area) -->
+    </div>
+  </div>
+
+  <script src="i18n.js"></script>
+  <script type="module" src="dashboard_client.js"></script>
+</body>
+
+</html>

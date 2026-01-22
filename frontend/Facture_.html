@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <title>MKC Invoice - Original Design</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        /* Reset et Base */
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            background-color: #555;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        #invoice-page {
+            background: white;
+            width: 210mm;
+            /* A4 Largeur */
+            min-height: 297mm;
+            /* A4 Hauteur */
+            padding: 40px 50px;
+            box-sizing: border-box;
+            position: relative;
+            color: #000;
+        }
+
+        /* --- EN-TÊTE --- */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 40px;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .logo-section img {
+            max-width: 200px;
+            /* Ajusté pour correspondre à la taille du logo original */
+            height: auto;
+        }
+
+        .company-details {
+            font-size: 13px;
+            line-height: 1.3;
+            color: #333;
+        }
+
+        .company-name {
+            font-weight: bold;
+            font-size: 16px;
+            color: #000;
+            margin-bottom: 5px;
+        }
+
+        .invoice-title {
+            font-size: 36px;
+            font-weight: bold;
+            color: #222;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 10px;
+        }
+
+        /* --- SECTION CENTRALE (Bill To & Meta Table) --- */
+        .middle-section {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            align-items: flex-start;
+        }
+
+        .bill-to {
+            width: 45%;
+            font-size: 13px;
+            line-height: 1.4;
+            border: none;
+            padding: 5px;
+        }
+
+        .bill-to-label {
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: block;
+            font-size: 14px;
+        }
+
+        /* Tableau "Invoice Number" style gris comme l'original */
+        .meta-table {
+            width: 50%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .meta-table tr {
+            border-bottom: 1px solid white;
+            /* Séparateur blanc */
+        }
+
+        .meta-table td {
+            padding: 6px 10px;
+        }
+
+        .meta-label {
+            background-color: #E6E6E6;
+            /* Gris clair original */
+            font-weight: bold;
+            text-align: right;
+            width: 40%;
+        }
+
+        .meta-value {
+            background-color: #F2F2F2;
+            /* Gris très clair ou blanc */
+            text-align: left;
+        }
+
+        /* --- TABLEAU DES ARTICLES --- */
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+            font-size: 13px;
+        }
+
+        .items-table th {
+            background-color: #E6E6E6;
+            /* Gris clair en-tête */
+            padding: 8px 10px;
+            text-align: left;
+            font-weight: bold;
+        }
+
+        .items-table td {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .items-table .amount-col {
+            text-align: right;
+        }
+
+        .editable-cell {
+            border: 1px dashed #ccc;
+            min-height: 20px;
+        }
+
+        /* Ligne Total style gris */
+        .total-row td {
+            background-color: #E6E6E6;
+            font-weight: bold;
+            padding: 10px;
+            border: none;
+        }
+
+        /* --- PIED DE PAGE (Banque & Conditions) --- */
+        .footer-section {
+            margin-top: 40px;
+        }
+
+        .bank-title {
+            font-weight: bold;
+            font-size: 14px;
+            color: #2E3192;
+            /* Bleu MKC pour le titre */
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .payment-info {
+            font-size: 12px;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .payment-info strong {
+            font-weight: bold;
+        }
+
+        .terms-title {
+            font-weight: bold;
+            font-size: 13px;
+            margin-bottom: 5px;
+            margin-top: 20px;
+            display: block;
+        }
+
+        .terms-text {
+            font-size: 11px;
+            line-height: 1.4;
+            color: #333;
+            text-align: justify;
+        }
+
+        .terms-text p {
+            margin: 4px 0;
+        }
+
+        /* --- BOUTON --- */
+        .btn-download {
+            position: fixed;
+            top: 30px;
+            right: 30px;
+            background-color: #F58220;
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+        }
+
+        .btn-download:hover {
+            background-color: #d96e11;
+        }
+
+        /* Cacher les bordures pointillées lors de l'impression PDF */
+        @media print {
+
+            .bill-to,
+            .editable-cell {
+                border: none !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <button class="btn-download" onclick="downloadPDF()">Download PDF</button>
+
+    <div id="invoice-page">
+
+        <div class="header">
+            <div class="logo-section">
+                <img src="Logotype%20mkc_bon.png" alt="Logo MKC">
+                <div class="company-details">
+                    <div class="company-name">MARITIME KARGO CONSULTING</div>
+                        Tour Mayombe, 7th floor Entrance A.<br>
+                        P.O. Box: 4809 Pointe-Noire, Republic of Congo<br><br>
+                        Tel.: +242 06 877 01 56 / 05 520 6727.<br>
+                        info@kargo-consulting.com - www.kargo-consulting.com
+                </div>
+            </div>
+            <div class="invoice-title">INVOICE</div>
+        </div>
+
+        <div class="middle-section">
+            <div class="bill-to">
+                <span class="bill-to-label">Bill To</span>
+                <span id="bill-last-name"></span><br>
+                <span id="bill-first-name"></span><br>
+                <span id="bill-email"></span><br>
+            </div>
+
+            <table class="meta-table">
+                <tr>
+                    <td class="meta-label">Invoice Number:</td>
+                    <td class="meta-value" id="field-inv-num">...</td>
+                </tr>
+                <tr>
+                    <td class="meta-label">Bill of Lading:</td>
+                    <td class="meta-value" id="field-bl">—</td>
+                </tr>
+                <tr>
+                    <td class="meta-label">Customer Reference:</td>
+                    <td class="meta-value" id="field-ref">...</td>
+                </tr>
+                <tr>
+                    <td class="meta-label">Invoice Date:</td>
+                    <td class="meta-value" id="field-date">...</td>
+                </tr>
+            </table>
+        </div>
+
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th>Item (Description)</th>
+                    <th class="amount-col">Amount (XAF)</th>
+                </tr>
+            </thead>
+            <tbody id="items-body">
+                <tr>
+                    <td class="editable-cell" id="field-description">Enter service description here (e.g., FERI Container 20ft...)</td>
+                    <td class="amount-col" id="field-amount">XAF 143.00</td>
+                </tr>
+            </tbody>
+            <tfoot>
+                <tr class="total-row">
+                    <td style="text-align: right;">Total</td>
+                    <td class="amount-col" id="field-total">XAF 143.00</td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <div class="footer-section">
+
+            <span class="bank-title">Payment Options</span>
+            <div class="payment-info">
+                <strong>- MOMOPAY MTN CONGO :</strong> Merchant code: 310902 (*105# then 6)<br>
+                <strong>- AIRTEL CONGO :</strong> 04 415 99 45 (*128*3*3*044159945#)<br>
+                <strong>- ORANGE MONEY CAMEROON :</strong> 65 863 49 34<br>
+                <strong>- MPESA VODACOM RDC :</strong> 08 300 97 566<br><br>
+
+                <strong>- BANK ACCOUNT (LCB)</strong><br>
+                Account Name: MARITIME KARGO CONSULTING<br>
+                RIB Key: 30012 00125 26893701101 30<br><br>
+
+                <strong>- CHECK :</strong> Payable to MARITIME KARGO CONSULTING<br>
+                <strong>- CASH :</strong> Please visit our offices
+            </div>
+
+            <span class="terms-title">Terms and Conditions</span>
+            <div class="terms-text">
+                <p><strong>Payment Responsibility:</strong> All bank charges, including intermediary bank fees, are the responsibility of the billed account holder.</p>
+                <p>The total invoice amount, without deductions, must be paid to us.</p>
+                <p><strong>Final Sale Policy:</strong> All sales are final. No refunds or cancellations will be accepted after validation of FERI or AD.</p>
+                <p><strong>Payment Terms:</strong> Payment must be received in full in our account before we proceed with submission for validation.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Parse URL params and return object
+        function parseQuery() {
+            const qs = window.location.search.substring(1);
+            const parts = qs.split('&').filter(Boolean);
+            const out = {};
+            for (const p of parts) {
+                const [k, v] = p.split('=');
+                if (!k) continue;
+                try { out[decodeURIComponent(k)] = decodeURIComponent(v || ''); } catch (e) { out[k] = v || ''; }
+            }
+            return out;
+        }
+
+        function setNumericPrice(value) {
+            const priceEl = document.getElementById('field-amount');
+            const val = Number(value) || 0;
+            // Use XAF currency for invoices (CFA franc). Keep two decimals for consistency.
+            priceEl.innerText = 'XAF ' + val.toFixed(2);
+            document.getElementById('field-total').innerText = 'XAF ' + val.toFixed(2);
+        }
+
+        // Populate invoice fields from an object (keys: invoice, amount, bl, ref, date, billto)
+        function populateFromData(data) {
+            if (!data) return;
+
+            if (data.invoice) document.getElementById('field-inv-num').innerText = data.invoice;
+            const blValue = data.bill_of_lading || data.bl;
+            if (blValue) {
+              document.getElementById('field-bl').innerText = blValue;
+            }
+            if (data.ref) document.getElementById('field-ref').innerText = data.ref;
+            if (data.date) document.getElementById('field-date').innerText = data.date;
+            if (data.amount) setNumericPrice(data.amount);
+
+            // ✅ Bill To (client)
+            // Supporte lastName/firstName OU nom/prenom
+            const lastName = data.lastName || data.nom;
+            const firstName = data.firstName || data.prenom;
+
+            if (lastName) {
+                document.getElementById('bill-last-name').innerText = lastName;
+            }
+            if (firstName) {
+                document.getElementById('bill-first-name').innerText = firstName;
+            }
+            if (data.email) {
+                document.getElementById('bill-email').innerText = data.email;
+            }
+            // Cargo route -> show in item description
+            if (data.cargo_route) {
+                const desc = document.getElementById('field-description');
+                if (desc) desc.innerText = data.cargo_route;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // default auto invoice number/date when not provided
+            const currentInv = document.getElementById('field-inv-num').innerText.trim();
+            if (!currentInv || currentInv === '...') {
+                const autoInvNum = Math.floor(1000000 + Math.random() * 9000000);
+                document.getElementById('field-inv-num').innerText = autoInvNum;
+            }
+
+            const today = new Date();
+            const formattedDate = (today.getMonth() + 1).toString().padStart(2, '0') + '/' +
+                today.getDate().toString().padStart(2, '0') + '/' +
+                today.getFullYear();
+            const dateEl = document.getElementById('field-date');
+            if (!dateEl.innerText || dateEl.innerText.trim() === '...') dateEl.innerText = formattedDate;
+
+            const params = parseQuery();
+            // support both 'amount' and 'proforma'
+            if (params.proforma && !params.amount) params.amount = params.proforma;
+            // If an invoice_id is provided, fetch persisted invoice from backend and populate
+            if (params.invoice_id) {
+                (async () => {
+                    try {
+                        const API_BASE = (window && window.__API_BASE__) || 'https://mkc-backend-kqov.onrender.com';
+                        const token = localStorage.getItem('access_token') || localStorage.getItem('token') || null;
+                        const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+                        const res = await fetch(`${API_BASE}/api/client/invoices/${encodeURIComponent(params.invoice_id)}`, { headers });
+                        if (res.ok) {
+                            const j = await res.json();
+                            if (j && j.success && j.invoice) {
+                                const inv = j.invoice;
+                                const payload = {
+                                    invoice: inv.invoice_number || inv.invoice_number,
+                                    amount: inv.amount,
+                                    bl: inv.bill_of_lading || inv.bl || params.bl,
+                                    ref: inv.customer_reference || params.ref,
+                                    cargo_route: inv.cargo_route || params.cargo_route || params.cargoRoute || null,
+                                    date: inv.created_at || params.date,
+                                    // prefer profile fields from server
+                                    lastName: (inv.profile && inv.profile.nom) || inv.client_last_name || params.nom || params.lastName,
+                                    firstName: (inv.profile && inv.profile.prenom) || inv.client_first_name || params.prenom || params.firstName,
+                                    email: (inv.profile && inv.profile.email) || params.email
+                                };
+                                populateFromData(payload);
+                            } else {
+                                // fallback to query params
+                                populateFromData(params);
+                            }
+                        } else {
+                            populateFromData(params);
+                        }
+                    } catch (e) {
+                        populateFromData(params);
+                    }
+                })();
+            } else {
+                populateFromData(params);
+            }
+
+            // Automatic download removed: user must click the Download button.
+
+            // Price is not editable in the invoice popup; no input listeners.
+        });
+
+        // --- FONCTION PDF ---
+        function downloadPDF() {
+            const element = document.getElementById('invoice-page');
+            const inv = document.getElementById('field-inv-num').innerText || 'no-inv';
+            const opt = {
+                margin: 0,
+                filename: 'Facture_MKC_' + inv + '.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+            html2pdf().set(opt).from(element).save();
+        }
+    </script>
+
+</body>
+
+</html>

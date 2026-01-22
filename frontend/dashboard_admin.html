@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LOGI-RDC | Administration</title>
+    <link rel="stylesheet" href="dashboard_client.css">
+    <link rel="stylesheet" href="components/slide_pro.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+      /* Small compatibility CSS to position the slide as a right-side panel
+         Keeps JS unchanged (toggling .show on #side-panel) while using PRO styles */
+            #side-panel.slide { position: fixed; right: -100%; top: 0; height: 100%; width: 980px; max-width: 92vw; transition: right 240ms ease-in-out; z-index: 10000; display: flex; flex-direction: column; }
+            /* Allow internal scrolling while keeping header/footer visible */
+            #side-panel.slide #side-content { display: flex; flex-direction: column; height: 100%; }
+            #side-panel.slide .slide-body { overflow: auto; flex: 1 1 auto; padding: 18px 24px; }
+            #side-panel.slide .slide-footer { flex-shrink: 0; }
+      #side-panel.slide.show { right: 0; }
+      tr.clickable-row { cursor: pointer; }
+      tr.clickable-row:hover { background: #FFF4E6; transition: background 120ms ease-in-out; }
+    </style>
+</head>
+
+<body>
+    <div class="app-container">
+        <nav class="sidebar" id="sidebar">
+            <div class="logo desktop-logo">
+                <h2>MARITIME KARGO</h2>
+                <span class="subtitle">Consulting</span>
+            </div>
+            <ul role="menu">
+                <li class="active" role="menuitem"><i class="fas fa-tray-full"></i> <span data-i18n="incoming_requests">Incoming Requests</span></li>
+                <li role="menuitem"><i class="fas fa-file-invoice-dollar"></i> <span data-i18n="pending_payments">Pending Payments</span></li>
+            </ul>
+            <div class="logout" onclick="window.location.href='index.html'">
+                <i class="fas fa-sign-out-alt"></i> <span data-i18n="logout">Logout</span>
+            </div>
+
+        </nav>
+
+        <main class="main-content">
+            <header class="top-header">
+                <div class="header-left">
+                    <button class="fas fa-bars menu-trigger icon-btn" id="menu-trigger"></button>
+                    <div class="search-wrap">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="adminSearch" placeholder="Search BL or Client...">
+                    </div>
+                </div>
+                                <div class="header-right">
+                                        <label for="lang-select" style="font-size:12px; color:#6b7280; margin-right:6px; align-self:center;">EN/FR</label>
+                                        <select id="lang-select" aria-label="Language switch" style="padding:6px; border-radius:4px; margin-right:8px;">
+                                            <option value="en">EN</option>
+                                            <option value="fr">FR</option>
+                                        </select>
+                                        <button class="far fa-bell icon-btn"></button>
+                    <div class="user-profile">
+                        <div class="user-info">
+                            <span class="name">Admin Michael</span>
+                            <span class="role">Administrator</span>
+                        </div>
+                        <div class="avatar-placeholder"
+                            style="width:36px; height:36px; background:var(--primary-orange); border-radius:50%; display:flex; align-items:center; justify-content:center; color:white; font-weight:bold;">
+                            AM</div>
+                    </div>
+                </div>
+            </header>
+
+            <section class="action-bar">
+                <div class="actions-left">
+                    <h3 style="margin:0; color:var(--text-dark);" data-i18n="feri_ad_queue">FERI / AD Queue</h3>
+                </div>
+                <div class="actions-right">
+                    <button class="btn-white" onclick="location.reload()"><i class="fas fa-sync-alt"></i>
+                        Refresh</button>
+                </div>
+            </section>
+
+            <section class="filter-bar" style="display: flex; gap: 16px; align-items: center; margin-bottom: 16px;">
+                <label for="filter-date" style="font-size: 14px; font-weight: bold;" data-i18n="filter_date">Date:</label>
+                <input type="date" id="filter-date" class="filter-input" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+
+                <label for="filter-status" style="font-size: 14px; font-weight: bold;" data-i18n="filter_status">Status:</label>
+                <select id="filter-status" class="filter-input" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                    <option value="" data-i18n="filter_all">All</option>
+                    <option value="INITIATED" data-i18n="filter_initiated">Initiated</option>
+                    <option value="CREATED" data-i18n="filter_created">Created</option>
+                    <option value="AWAITING_DOCUMENTS" data-i18n="filter_awaiting_documents">Awaiting Documents</option>
+                    <option value="PROCESSING" data-i18n="filter_processing">Processing</option>
+                    <option value="COMPLETED" data-i18n="filter_completed">Completed</option>
+                </select>
+
+                <label for="filter-type" style="font-size: 14px; font-weight: bold;" data-i18n="filter_type">Type:</label>
+                <select id="filter-type" class="filter-input" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                    <option value="" data-i18n="filter_all">All</option>
+                    <option value="DRAFT" data-i18n="filter_draft">Draft</option>
+                    <option value="FINAL" data-i18n="filter_final">Final</option>
+                </select>
+            </section>
+
+            <div class="table-responsive">
+                <table class="dashboard-table">
+                    <thead>
+                        <tr>
+                            <th data-i18n="bl_number">BL Number</th>
+                            <th data-i18n="date">Date</th>
+                            <th data-i18n="status">Status</th>
+                            <th data-i18n="client_name">Client Name</th>
+                            <th data-i18n="client_docs">Client Docs</th>
+                            <th data-i18n="admin_action">Admin Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-table-body">
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <div id="admin-modal" class="modal-overlay" style="display:none;">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>Process File: <span id="target-bl-display" class="text-blue"></span></h3>
+            </div>
+            <div class="modal-body">
+                <label id="cargo-label">Cargo Route (From → To)</label>
+                <input type="text" id="admin-cargo-route" class="input-ref" placeholder="e.g. Shanghai → Pointe-Noire">
+
+                <label id="main-label">Proforma Amount ($)</label>
+                <input type="text" id="admin-amount" class="input-ref" placeholder="e.g. 450.00">
+
+                <div class="upload-group">
+                    <p class="sub-text">Attach PDF document for client:</p>
+                    <label class="doc-upload-btn" for="admin-file-draft" id="upload-btn-label">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <span id="label-draft">Click to attach PDF</span>
+                        <input type="file" id="admin-file-draft" hidden accept=".pdf">
+                    </label>
+                </div>
+                <div class="upload-group" id="upload-ad-group" style="display:none; margin-top:12px;">
+                    <p class="sub-text">Attach PDF document for AD (if applicable):</p>
+                    <label class="doc-upload-btn" for="admin-file-ad" id="upload-ad-label">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <span id="label-ad">Click to attach AD PDF</span>
+                        <input type="file" id="admin-file-ad" hidden accept=".pdf">
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-close" onclick="closeAdminModal()">Cancel</button>
+                <button id="admin-submit-btn" class="btn-green" style="border:none;">SUBMIT TO CLIENT</button>
+            </div>
+        </div>
+    </div>
+
+        <!-- Side panel: request details (PRO design integrated) -->
+        <aside id="side-panel" class="slide" role="dialog" aria-modal="true" aria-hidden="true">
+            <button class="close" aria-label="Fermer" onclick="closeSidePanel()"><i class="fas fa-times"></i></button>
+            <div id="side-content">
+                <header class="slide-header">
+                    <div class="title-wrap">
+                        <h3 id="side-bl">--</h3>
+                    </div>
+                    <div class="status-wrap">
+                        <span id="side-status" class="status badge">--</span>
+                    </div>
+                </header>
+
+                <div class="slide-body">
+                    <section class="info-grid" aria-label="Informations">
+                        <div class="info-row">
+                            <div class="label">DATE</div>
+                            <div class="value" id="side-date">--</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="label">CLIENT</div>
+                            <div class="value" id="side-client">--</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="label">FXI</div>
+                            <div class="value" id="side-fxi">--</div>
+                        </div>
+                    </section>
+
+                    <hr class="divider" />
+
+                    <section class="documents" id="side-docs">
+                        <div class="docs-empty">
+                            <svg class="doc-illus" width="96" height="96" viewBox="0 0 24 24" fill="none" aria-hidden>
+                              <path d="M7 3h7l4 4v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                              <path d="M13 3v4h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                              <path d="M9 13h6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                            </svg>
+                            <div class="empty-title">Aucun document attaché</div>
+                            <div class="empty-sub">Aucun fichier PDF n'a été uploadé pour ce dossier. Vous pouvez demander au client de télécharger le document via la page client.</div>
+                        </div>
+                    </section>
+                </div>
+
+                <footer class="slide-footer">
+                    <div class="actions">
+                        <button id="btn-dispute" class="btn btn-outline-danger" title="Contester">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+                              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+                              <path d="M12 9v4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+                              <path d="M12 17h.01" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <span>Contester</span>
+                        </button>
+
+                        <button id="btn-message" class="btn btn-outline-secondary" title="Message">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+                              <path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <span>Message</span>
+                        </button>
+                    </div>
+                </footer>
+
+                <!-- Message / Dispute form (hidden by default) - kept for compatibility -->
+                <div id="side-message-form" style="display:none; margin-top:12px; padding:18px 0">
+                    <label for="side-message-text">Votre message</label>
+                    <textarea id="side-message-text" rows="4" style="width:100%; padding:8px; margin-top:6px;"></textarea>
+                    <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
+                        <label class="doc-upload-btn" style="padding:6px; border:1px dashed #ccc; cursor:pointer;">
+                            <input id="side-message-file" type="file" style="display:none;" />
+                             Joindre (optionnel)
+                        </label>
+                        <button id="side-send-message" class="btn-green">Envoyer</button>
+                        <button id="side-cancel-message" class="btn-close">Annuler</button>
+                    </div>
+                    <div id="side-message-status" style="margin-top:8px; color:green; display:none;">Votre message a été envoyé.</div>
+                </div>
+            </div>
+        </aside>
+
+    <script src="i18n.js"></script>
+    <script src="dashboard_admin.js"></script>
+</body>
+
+</html>

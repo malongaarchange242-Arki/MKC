@@ -1,0 +1,65 @@
+/* PRO Slide — clean enterprise layout
+   Fonts: Inter
+   Rounded corners: 12px
+   Use: open slide_pro.html to preview
+*/
+:root{
+  --bg:#F9FAFB;
+  --surface:#FFFFFF;
+  --muted:#6B7280;
+  --text:#1F2937;
+  --divider:#E5E7EB;
+  --success:#16A34A;
+  --warning:#F59E0B;
+  --danger:#DC2626;
+  --radius:12px;
+  --shadow: 0 10px 30px rgba(31,41,55,0.06);
+}
+
+*{box-sizing:border-box;font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--text)}
+
+.overlay{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px}
+.slide{width:980px;background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column}
+
+.slide-header{display:flex;align-items:center;gap:16px;padding:20px 28px;border-bottom:1px solid var(--divider);position:relative}
+.slide-header .close{position:absolute;right:18px;top:18px;background:transparent;border:0;font-size:18px;color:var(--muted);cursor:pointer}
+
+.ref{font-size:22px;font-weight:700;letter-spacing:0.2px}
+.title-wrap{flex:1}
+.status-wrap{display:flex;align-items:center}
+.status.badge{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;font-weight:600;font-size:13px;color:white}
+.status.badge svg{opacity:0.95}
+.status.badge.success{background:linear-gradient(180deg,var(--success),#15803d)}
+.status.badge.pending{background:linear-gradient(180deg,var(--warning),#d97706)}
+.status.badge.rejected{background:linear-gradient(180deg,var(--danger),#b91c1c)}
+
+.slide-body{padding:24px 28px;display:flex;flex-direction:column;gap:18px}
+.info-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.info-row{display:flex;flex-direction:column;padding:12px;border-radius:8px;background:transparent}
+.label{font-size:11px;color:var(--muted);font-weight:600;letter-spacing:0.8px;margin-bottom:6px}
+.value{font-size:15px;font-weight:600;color:var(--text)}
+
+.divider{border:0;height:1px;background:var(--divider);margin:0}
+
+.documents{padding:6px}
+.docs-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:36px;border-radius:10px;border:1px dashed var(--divider);background:transparent;text-align:center}
+.doc-illus{color:var(--divider);margin-bottom:12px}
+.empty-title{font-size:18px;font-weight:700;margin-bottom:6px}
+.empty-sub{font-size:13px;color:var(--muted);max-width:66%}
+
+.slide-footer{padding:18px 28px;border-top:1px solid var(--divider);display:flex;justify-content:flex-end;gap:12px}
+.btn{display:inline-flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;font-weight:700;cursor:pointer;border:1px solid transparent;background:transparent}
+.btn svg{opacity:0.95}
+
+.btn-outline-danger{color:var(--danger);border-color:rgba(220,38,38,0.12);background:linear-gradient(180deg,rgba(220,38,38,0.02),transparent)}
+.btn-outline-secondary{color:var(--text);border-color:rgba(31,41,55,0.06);background:transparent}
+
+/* Accessibility focus */
+.close:focus,.btn:focus{outline:3px solid rgba(59,130,246,0.12);outline-offset:2px}
+
+/* Responsive */
+@media (max-width:980px){.slide{width:92vw}.info-grid{grid-template-columns:1fr}}
+
+/* 4k scaling */
+@media (min-width:3000px){.slide{width:1600px}.ref{font-size:36px}.empty-title{font-size:28px}}

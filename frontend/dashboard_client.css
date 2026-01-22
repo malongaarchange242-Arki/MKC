@@ -1,0 +1,794 @@
+:root {
+  --primary-orange: #FF9800;
+  --primary-orange-hover: #e68900;
+  /* Vert exact de l'image */
+  --bg-gray: #F5F7FA;
+  --border-color: #E2E8F0;
+  --text-dark: #334155;
+  --sidebar-bg: #2C3E50;
+  /* Couleur sombre classique sidebar */
+  --blue-link: #3B82F6;
+
+  /* Couleurs Statuts */
+  --status-init-bg: #FFF7D1;
+  --status-init-text: #B45309;
+  --status-comp-bg: #DCFCE7;
+  --status-comp-text: #166534;
+  --status-miss-bg: #FEE2E2;
+  --status-miss-text: #991B1B;
+  --status-canc-bg: #F3E8FF;
+  --status-canc-text: #6B21A8;
+  --primary-green: #16A34A;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: var(--bg-gray);
+  color: var(--text-dark);
+}
+
+.app-container {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* --- SIDEBAR (Votre code adapté) --- */
+.sidebar {
+  width: 260px;
+  background: var(--sidebar-bg);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  transition: transform 0.3s ease;
+  z-index: 1000;
+}
+
+.sidebar .logo h2 {
+  margin: 0 0 30px 0;
+  font-size: 1.5rem;
+  text-align: center;
+  color: #fff;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 20px;
+}
+
+.sidebar ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  flex: 1;
+}
+
+.sidebar li {
+  padding: 12px 15px;
+  margin-bottom: 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.95rem;
+  color: #cbd5e1;
+  transition: 0.2s;
+}
+
+.sidebar li:hover,
+.sidebar li.active {
+  background: var(--primary-orange);
+  color: white;
+}
+
+.sidebar .logout {
+  margin-top: auto;
+  padding: 15px;
+  cursor: pointer;
+  color: #fda4af;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+}
+
+.sidebar-header-mobile {
+  display: none;
+}
+
+/* --- MAIN CONTENT --- */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  background: white;
+}
+
+.fa-file-pdf {
+  color: #991B1B !important;
+}
+
+/* Header */
+.top-header {
+  height: 70px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 25px;
+  background: #fff;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.menu-trigger {
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: none;
+}
+
+.search-wrap {
+  background: #F1F5F9;
+  padding: 8px 15px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  width: 300px;
+}
+
+.search-wrap input {
+  border: none;
+  background: transparent;
+  outline: none;
+  margin-left: 10px;
+  width: 100%;
+}
+
+.pay-link {
+  color: #3B82F6;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.icon-btn {
+  font-size: 1.1rem;
+  color: #64748b;
+  cursor: pointer;
+  background: none !important;
+  border: none !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Ensure notification badge positions relative to the bell button */
+#notif-btn { position: relative; }
+
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-left: 1px solid var(--border-color);
+  padding-left: 20px;
+}
+
+.user-info {
+  text-align: right;
+  font-size: 0.85rem;
+}
+
+.user-info .name {
+  display: block;
+  font-weight: bold;
+}
+
+.user-info .role {
+  color: #94a3b8;
+}
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+}
+
+/* Action Bar */
+.action-bar {
+  padding: 20px 25px;
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: nowrap;
+  gap: 15px;
+}
+
+.btn-green,
+.btn-white {
+  width: auto;
+  justify-content: center;
+  margin: 0 0 0 0;
+}
+
+.btn-green {
+  background: var(--primary-orange);
+  color: white;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 4px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.btn-white {
+  background: white;
+  border: 1px solid #cbd5e1;
+  color: #64748b;
+  padding: 10px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-left: 10px;
+}
+
+.keyword-input {
+  display: flex;
+  align-items: center;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  padding: 0 10px;
+  background: white;
+  width: auto;
+}
+
+.keyword-input input {
+  border: none;
+  padding: 10px;
+  outline: none;
+}
+
+.refresh-icon {
+  color: #64748b;
+  margin-right: 5px;
+  cursor: pointer;
+}
+
+/* Table */
+.table-responsive {
+  overflow-x: auto;
+  flex: 1;
+  padding: 0 25px;
+}
+
+.dashboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 900px;
+  font-size: 0.85rem;
+}
+
+.dashboard-table th {
+  text-align: left;
+  padding: 12px;
+  color: #64748b;
+  border-bottom: 2px solid var(--border-color);
+  white-space: nowrap;
+}
+
+.dashboard-table td {
+  padding: 14px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+
+.text-blue {
+  color: #3B82F6;
+}
+
+.text-muted {
+  color: #cbd5e1;
+}
+
+/* Status Badges & Invoices */
+.status {
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  display: inline-block;
+  width: 100px;
+  text-align: center;
+}
+
+.INITIATED {
+  background: var(--status-init-bg);
+  color: var(--status-init-text);
+}
+
+.COMPLETED {
+  background: var(--status-comp-bg);
+  color: var(--status-comp-text);
+}
+
+.MISSINGDOCS {
+  background: var(--status-miss-bg);
+  color: var(--status-miss-text);
+}
+
+.CANCELLED {
+  background: var(--status-canc-bg);
+  color: var(--status-canc-text);
+}
+
+.invoice-box {
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: fit-content;
+}
+
+.inv-green {
+  background: #DCFCE7;
+  color: #166534;
+}
+
+.inv-red {
+  background: #FEE2E2;
+  color: #991B1B;
+}
+
+/* Confirmed payment styling to match design (green badge, bold, non-clickable look) */
+.invoice-box.inv-confirmed {
+  background: #d4edda; /* requested soft green */
+  color: #155724; /* requested dark green text */
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-weight: 800;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.04);
+  cursor: default;
+}
+.invoice-box.inv-confirmed i {
+  color: #155724;
+}
+.invoice-box.inv-confirmed strong {
+  font-weight: 800;
+}
+
+/* Footer */
+.pagination-footer {
+  padding: 20px 25px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid var(--border-color);
+}
+
+.page-numbers button {
+  border: 1px solid #cbd5e1;
+  background: white;
+  padding: 5px 10px;
+  cursor: pointer;
+  margin: 0 2px;
+  border-radius: 3px;
+}
+
+.page-numbers button.active {
+  background: #3B82F6;
+  color: white;
+  border-color: #3B82F6;
+}
+
+.showing-text {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+/* --- MODAL --- */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 2000;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.modal-box {
+  background: white;
+  width: 500px;
+  max-width: 90%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: 6px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+  padding: 15px 20px;
+  border-bottom: 1px solid var(--border-color);
+  color: #334155;
+  flex-shrink: 0;
+}
+
+.modal-body {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.modal-footer {
+  padding: 15px 20px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: flex-end;
+  gap: 15px;
+  flex-shrink: 0;
+}
+
+.input-ref {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  margin-bottom: 15px;
+}
+
+.country-select {
+  border: 2px solid #3B82F6;
+  border-radius: 4px;
+  padding: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  cursor: pointer;
+}
+
+.flag-text {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 500;
+}
+
+.requirements-section h4 {
+  color: #3B82F6;
+  margin-bottom: 5px;
+}
+
+.doc-upload-btn {
+  background: #f1f5f9;
+  padding: 15px;
+  margin-bottom: 10px;
+  text-align: center;
+  border-radius: 4px;
+  color: #475569;
+  font-weight: 500;
+  cursor: pointer;
+  transition: 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 56px;
+  box-sizing: border-box;
+}
+
+.doc-upload-btn:hover {
+  background: #e2e8f0;
+}
+
+.validation-note {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-top: 15px;
+}
+
+.btn-submit {
+  color: #3B82F6;
+  background: none;
+  border: none;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.btn-close {
+  color: #64748b;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+/* --- RESPONSIVE --- */
+@media (max-width: 900px) {
+  .sidebar {
+    position: fixed;
+    left: -260px;
+    height: 100%;
+  }
+
+  .sidebar.show {
+    left: 0;
+    transform: none;
+  }
+
+  .menu-trigger {
+    display: block;
+  }
+
+  .sidebar-header-mobile {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+
+  .desktop-logo {
+    display: none;
+  }
+
+  .search-wrap {
+    display: none;
+  }
+
+  .action-bar {
+    flex-direction: column;
+  }
+
+  .btn-green,
+  .btn-white {
+    width: 100%;
+    justify-content: center;
+    margin: 0 0 10px 0;
+  }
+
+  .keyword-input {
+    width: 100%;
+  }
+}
+
+.sidebar .logo.desktop-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 30px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 20px;
+}
+
+.sidebar .logo.desktop-logo h2 {
+  margin: 0;
+  border-bottom: none;
+  padding-bottom: 0;
+  font-size: 1.3rem;
+  letter-spacing: 1px;
+}
+
+.sidebar .logo.desktop-logo .subtitle {
+  font-size: 0.85rem;
+  color: var(--primary-orange);
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  font-weight: 300;
+  margin-top: 4px;
+}
+
+.option-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.option-btn {
+  padding: 15px;
+  border: 1px solid var(--border-color);
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text-dark);
+  transition: all 0.2s ease;
+  font-size: 1rem;
+}
+
+.option-btn:hover {
+  border-color: var(--primary-green);
+  color: var(--primary-green);
+  background: #f0fdf4;
+}
+
+.doc-upload-btn.file-selected {
+  background: #f0fdf4;
+  border: 1px solid var(--primary-green);
+  color: var(--primary-green);
+}
+
+.upload-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Layout the requirement blocks (AD) as responsive grids */
+.upload-group .ad-req {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  width: 100%;
+  align-items: flex-start;
+}
+
+.upload-group .ad-req > .doc-upload-btn {
+  flex: 1 1 calc(50% - 12px);
+  min-width: 180px;
+}
+
+/* Make the FXI input occupy full width when visible */
+#btn-ed,
+#btn-ed .doc-upload-btn {
+  flex: 1 1 100%;
+}
+
+/* Ensure FXI label/input inside btn-ed stacks nicely */
+#btn-ed { display: flex; flex-direction: column; align-items: stretch; justify-content: center; }
+#btn-ed label { margin-bottom: 6px; }
+
+.doc-upload-btn.scanning {
+  background: #e0f2fe;
+  border: 1px dashed #3B82F6;
+  color: #3B82F6;
+  cursor: wait;
+}
+
+.doc-upload-btn small {
+  display: block;
+  font-size: 0.75rem;
+  margin-top: 4px;
+  color: var(--primary-green);
+  font-weight: bold;
+}
+
+.dropdown-popup {
+  display: none;
+  position: absolute;
+  top: 60px;
+  right: 25px;
+  width: 380px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--border-color);
+  z-index: 3000;
+}
+
+.popup-header {
+  padding: 12px 15px;
+  background: #f8fafc;
+  font-weight: bold;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.9rem;
+}
+
+.popup-body {
+  padding: 10px;
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+.notif-item,
+.setting-link {
+  padding: 10px;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: 0.2s;
+}
+
+.notif-item:hover,
+.setting-link:hover {
+  background: #f1f5f9;
+}
+
+.text-red {
+  color: #ef4444;
+}
+
+.show-popup {
+  display: block;
+  animation: fadeInDown 0.2s ease-out;
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.invoice-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  width: fit-content;
+  cursor: pointer;
+}
+
+/* MODIFICATION ICI : Suppression du soulignement sur le lien invoice */
+.invoice-link {
+  text-decoration: none !important;
+}
+
+.invoice-link:hover .invoice-box {
+  filter: brightness(0.95);
+  transform: translateY(-1px);
+  transition: all 0.2s ease;
+}
+
+/* --- NETTOYAGE ICONES --- */
+.doc-upload-btn i,
+.option-btn i,
+.invoice-box i,
+.sidebar li i,
+.logout i,
+.icon-btn i {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  box-shadow: none;
+  display: inline-block;
+  vertical-align: middle;
+  font-size: 1rem;
+  color: inherit;
+}
+
+.doc-upload-btn i,
+.option-btn i,
+.invoice-box i,
+.sidebar li i,
+.logout i {
+  margin-right: 8px;
+  flex-shrink: 0;
+}

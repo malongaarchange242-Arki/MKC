@@ -1,0 +1,28 @@
+*{box-sizing:border-box;font-family:Inter, system-ui, Arial, sans-serif}
+body{background:#f6f8fa;color:#111;margin:0;padding:20px}
+.container{max-width:800px;margin:0 auto;background:#fff;padding:20px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.06)}
+h1,h2{margin:0 0 12px}
+label{display:block;margin-bottom:8px}
+input[type=text],input[type=email],input[type=password]{width:100%;padding:8px;margin-top:6px;border:1px solid #ddd;border-radius:4px}
+button{background:#1366d6;color:#fff;border:none;padding:8px 12px;border-radius:6px;cursor:pointer}
+pre{background:#f1f5f9;padding:12px;border-radius:6px;overflow:auto}
+
+/* Dashboard table */
+.toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.btn.small{padding:6px 8px;font-size:13px}
+.search input{padding:6px;border:1px solid #ddd;border-radius:4px}
+.req-table{width:100%;border-collapse:collapse;margin-top:10px}
+.req-table th,.req-table td{border-bottom:1px solid #eef2f6;padding:10px;text-align:left;font-size:14px}
+.badge{display:inline-block;padding:6px 10px;border-radius:14px;font-size:12px}
+.badge.success{background:#e6f4ea;color:#166534}
+.badge.warn{background:#fff4e5;color:#92400e}
+.badge.danger{background:#fdecea;color:#991b1b}
+
+/* Modal */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;padding:20px}
+.modal.hidden{display:none}
+.modal-content{background:#fff;padding:20px;border-radius:8px;max-width:720px;width:100%;box-shadow:0 8px 24px rgba(2,6,23,0.2)}
+.requirements{margin:12px 0}
+.req-item{background:#f7fafc;padding:10px;border-radius:6px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px}
+.btn.ghost{background:transparent;color:#111;border:1px solid #e6e6e6}

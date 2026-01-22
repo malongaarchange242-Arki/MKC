@@ -1,0 +1,66 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "FERI-AD Microservices Endpoints",
+    "version": "1.0.0"
+  },
+  "servers": [
+    { "url": "https://mkc-backend-kqov.onrender.com", "description": "Node API (production)" },
+    { "url": "https://mkc-5slv.onrender.com/api/v1", "description": "Python service (production)" }
+  ],
+  "paths": {
+    "/health": { "get": { "summary": "Node health" } },
+
+    "/auth/register": { "post": { "summary": "Register" } },
+    "/auth/login": { "post": { "summary": "Login" } },
+    "/auth/logout": { "post": { "summary": "Logout", "security": [{ "BearerAuth": [] }] } },
+    "/auth/me": { "get": { "summary": "Current user", "security": [{ "BearerAuth": [] }] } },
+
+    "/users/me": { "get": { "summary": "Get my profile", "security": [{ "BearerAuth": [] }] }, "patch": { "summary": "Update my profile", "security": [{ "BearerAuth": [] }] } },
+    "/users": { "get": { "summary": "List users (admin)", "security": [{ "BearerAuth": [] }] } },
+    "/users/{id}": { "get": { "summary": "Get user by id (admin)", "security": [{ "BearerAuth": [] }] } , "patch": { "summary": "Update user role (admin)", "security": [{ "BearerAuth": [] }] } },
+
+    "/requests": { "post": { "summary": "Create request (client)", "security": [{ "BearerAuth": [] }] } },
+    "/requests/{requestId}/payment-proof": { "post": { "summary": "Upload payment proof (client) - multipart", "security": [{ "BearerAuth": [] }] } },
+    "/requests/transition": { "post": { "summary": "Transition request status", "security": [{ "BearerAuth": [] }] } },
+    "/requests/{requestId}/submit": { "post": { "summary": "Client submit request", "security": [{ "BearerAuth": [] }] } },
+
+    "/documents/{requestId}/upload": { "post": { "summary": "Upload document (auth) - multipart", "security": [{ "BearerAuth": [] }] } },
+    "/documents/me": { "get": { "summary": "List my documents", "security": [{ "BearerAuth": [] }] } },
+    "/documents/{id}": { "get": { "summary": "Get document metadata", "security": [{ "BearerAuth": [] }] }, "delete": { "summary": "Delete document", "security": [{ "BearerAuth": [] }] } },
+    "/documents/{id}/download": { "get": { "summary": "Download document", "security": [{ "BearerAuth": [] }] } },
+    "/documents": { "get": { "summary": "List all documents (admin)", "security": [{ "BearerAuth": [] }] } },
+
+    "/admin/users": { "get": { "summary": "List users (admin)", "security": [{ "BearerAuth": [] }] } },
+    "/admin/users/{id}": { "get": { "summary": "Get user (admin)", "security": [{ "BearerAuth": [] }] }, "patch": { "summary": "Update user role/status (admin)", "security": [{ "BearerAuth": [] }] } },
+
+    "/admin/requests": { "get": { "summary": "List requests (admin)", "security": [{ "BearerAuth": [] }] } },
+    "/admin/requests/{id}": { "get": { "summary": "Get request (admin)", "security": [{ "BearerAuth": [] }] },
+      "post": { "summary": "(multiple admin actions exist on /admin/requests/:id)", "security": [{ "BearerAuth": [] }] }
+    },
+    "/admin/requests/{id}/under-review": { "post": { "summary": "Mark under review", "security": [{ "BearerAuth": [] }] } },
+    "/admin/requests/{id}/status": { "patch": { "summary": "Force update status", "security": [{ "BearerAuth": [] }] } },
+    "/admin/requests/{id}/publish": { "post": { "summary": "Publish final documents", "security": [{ "BearerAuth": [] }] } },
+    "/admin/requests/{id}/confirm-payment": { "post": { "summary": "Confirm payment", "security": [{ "BearerAuth": [] }] } },
+    "/admin/requests/{id}/generate-feri": { "post": { "summary": "Generate FERI via Python service", "security": [{ "BearerAuth": [] }] } },
+    "/admin/requests/{id}/generate-ad": { "post": { "summary": "Generate AD via Python service", "security": [{ "BearerAuth": [] }] } },
+    "/admin/requests/{id}/upload-draft": { "post": { "summary": "Upload draft/proforma (multipart)", "security": [{ "BearerAuth": [] }] } },
+
+    "/admin/documents": { "get": { "summary": "List documents (admin)", "security": [{ "BearerAuth": [] }] } },
+    "/admin/documents/{id}": { "get": { "summary": "Get document (admin)", "security": [{ "BearerAuth": [] }] }, "delete": { "summary": "Delete document (admin)", "security": [{ "BearerAuth": [] }] } },
+
+    "/notifications": { "get": { "summary": "List notifications (auth)", "security": [{ "BearerAuth": [] }] } },
+    "/notifications/{id}/read": { "patch": { "summary": "Mark notification read", "security": [{ "BearerAuth": [] }] } },
+
+    "/api/v1/health": { "get": { "summary": "Python service health" } },
+    "/api/v1/parse/document": { "post": { "summary": "Parse document (API key required)", "security": [{ "ApiKeyAuth": [] }] } },
+    "/api/v1/generate/feri": { "post": { "summary": "Generate FERI PDF (API key required)", "security": [{ "ApiKeyAuth": [] }] } },
+    "/api/v1/generate/ad": { "post": { "summary": "Generate AD PDF (API key required)", "security": [{ "ApiKeyAuth": [] }] } }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": { "type": "http", "scheme": "bearer" },
+      "ApiKeyAuth": { "type": "apiKey", "in": "header", "name": "x-api-key" }
+    }
+  }
+}
