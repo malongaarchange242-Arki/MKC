@@ -153,7 +153,7 @@ async function fetchRequests() {
     try {
         const token = localStorage.getItem('access_token') || localStorage.getItem('token') || null;
         const metaApi = document.querySelector('meta[name="api-base"]')?.content || '';
-        const defaultLocal = 'https://mkc-backend-kqov.onrender.com';
+        const defaultLocal = 'http://localhost:3000';
         const API_BASE = metaApi || defaultLocal;
 
         // The requests listing endpoint is mounted at `/requests/me` on the backend
@@ -207,7 +207,7 @@ async function fetchInvoices() {
     try {
         const token = localStorage.getItem('access_token') || localStorage.getItem('token') || null;
         const metaApi = document.querySelector('meta[name="api-base"]')?.content || '';
-            const defaultLocal = 'https://mkc-backend-kqov.onrender.com';
+            const defaultLocal = 'http://localhost:3000';
             const API_BASE = metaApi || defaultLocal;
 
         const resp = await fetch(`${API_BASE.replace(/\/$/, '')}/api/client/invoices`, {
@@ -313,7 +313,7 @@ function handleSubmitProof() {
         try {
             const token = localStorage.getItem('access_token') || localStorage.getItem('token') || null;
             const metaApi = document.querySelector('meta[name="api-base"]')?.content || '';
-            const defaultLocal = 'https://mkc-backend-kqov.onrender.com';
+            const defaultLocal = 'http://localhost:3000';
             const API_BASE = metaApi || defaultLocal;
 
             // resolve request id for this BL
@@ -447,7 +447,7 @@ function populateHeaderFromSession() {
                 const hasName = Boolean(profile && (profile.prenom || profile.nom));
                 if (!hasName) {
                     const metaApi = document.querySelector('meta[name="api-base"]')?.content || '';
-                    const defaultLocal = 'https://mkc-backend-kqov.onrender.com';
+                    const defaultLocal = 'http://localhost:3000';
                     const API_BASE = metaApi || defaultLocal;
                     const token = localStorage.getItem('access_token') || localStorage.getItem('token') || null;
                     if (token) {

@@ -48,7 +48,7 @@
 
     // Soumission — envoi vers le backend (login / register)
     // Backend API base (Node backend handles auth)
-    const API_BASE = 'https://mkc-backend-kqov.onrender.com/auth';
+    const API_BASE = 'http://localhost:3000/auth';
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
