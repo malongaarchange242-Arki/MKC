@@ -106,10 +106,10 @@ export class DocumentsController {
 
           // 2. Trigger parsing (Async)
           // Hoist variables so they are visible in the catch block for richer logging
-          const pythonCfg = process.env.PYTHON_SERVICE_URL || 'http://localhost:8000';
+          const pythonCfg = process.env.PYTHON_SERVICE_URL || 'https://mkc-5slv.onrender.com';
           let pythonEndpoint = pythonCfg.includes('/api/') ? pythonCfg : `${pythonCfg.replace(/\/$/, '')}/api/v1/parse/document`;
           // Normalize endpoint: prefer configured Python service (Render) in production
-          const pythonEndpointNormalized = pythonEndpoint.replace(/^https?:\/\/[^/]+/, 'http://localhost:8000');
+          const pythonEndpointNormalized = pythonEndpoint.replace(/^https?:\/\/[^/]+/, 'https://mkc-5slv.onrender.com');
           const apiKey = process.env.PYTHON_SERVICE_API_KEY || '';
           const timeoutMs = parseInt(process.env.PYTHON_SERVICE_TIMEOUT_MS || '30000', 10);
           let lastPythonErr: any = null;
