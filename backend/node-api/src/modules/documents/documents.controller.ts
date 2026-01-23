@@ -119,6 +119,27 @@ export class DocumentsController {
           try {
             const fileUrl = await DocumentsService.generateSignedUrlFromDocument(document.id, 60 * 60);
 
+            // Prevent duplicate OCR/extraction for the same document: if an extraction
+            // already exists for this document (written to `document_extractions`),
+            // skip calling the Python service and return the uploaded document.
+            try {
+              const { data: existing, error: existErr } = await supabase
+                .from('document_extractions')
+                .select('id')
+                .eq('document_id', document.id)
+                .limit(1)
+                .maybeSingle();
+
+              if (existErr) {
+                logger.warn('Could not check existing extraction for document before OCR', { documentId: document.id, err: existErr });
+              } else if (existing && (existing as any).id) {
+                logger.info('Skipping Python OCR: extraction already exists for document', { documentId: document.id });
+                return document;
+              }
+            } catch (e) {
+              logger.warn('Error while checking existing extraction before OCR', { documentId: document.id, err: (e as any)?.message ?? e });
+            }
+
             // If the request is AD_ONLY, skip calling the Python OCR service entirely
             try {
               const { data: reqRow, error: reqErr } = await supabase.from('requests').select('type').eq('id', requestId).single();

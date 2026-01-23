@@ -89,7 +89,10 @@ window.addEventListener('DOMContentLoaded', async () => {
       if (idx !== -1) { requests[idx].manual_bl = val; saveRequests(); }
       if (tr) {
         const firstTd = tr.querySelector('td');
-        if (firstTd) firstTd.innerHTML = `${escapeHtml(val)} <small style="color:#6b7280; margin-left:6px;">(manuel)</small>`;
+        if (firstTd) {
+          const label = (window.i18n && typeof window.i18n.t === 'function') ? window.i18n.t('bl_generator') : 'BL generator';
+          firstTd.innerHTML = `${escapeHtml(val)} <small style="color:#6b7280; margin-left:6px;">(${escapeHtml(label)})</small>`;
+        }
         // update status cell if present
         try {
           const statusCell = tr.querySelector('td:nth-child(4) .status');
@@ -429,8 +432,8 @@ function loadTable(data = null) {
       availabilityLabel = 'Draft Sent';
     } else {
       if (reqType === 'AD_ONLY') availabilityLabel = 'AD Available';
-      else if (reqType === 'FERI_ONLY') availabilityLabel = 'FERI Available';
-      else if (reqType === 'FERI_AND_AD') availabilityLabel = 'FERI_AND_AD Available';
+      else if (reqType === 'FERI_ONLY' && isFeri) availabilityLabel = 'FERI Available';
+      else if (reqType === 'FERI_AND_AD' && isFeri) availabilityLabel = 'FERI_AND_AD Available';
     }
     
     const docAction = draftAvailable
@@ -444,7 +447,8 @@ function loadTable(data = null) {
     if (blValCell) {
       blCellHtml = escapeHtml(blValCell);
     } else if (manualBlCell) {
-      blCellHtml = `${escapeHtml(manualBlCell)} <small style="color:#6b7280; margin-left:6px;">(manuel)</small>`;
+      const blGenLabel = (window.i18n && typeof window.i18n.t === 'function') ? window.i18n.t('bl_generator') : 'BL generator';
+      blCellHtml = `${escapeHtml(manualBlCell)} <small style="color:#6b7280; margin-left:6px;">(${escapeHtml(blGenLabel)})</small>`;
     } else {
       const rid = escapeHtml(String(row.request_id || row.id || ''));
       blCellHtml = `<span class="badge warn">BL généré automatiquement</span>`;
@@ -642,9 +646,9 @@ function renderRow(r) {
   if (statusRow === 'DRAFT_SENT' || statusRow === 'PAYMENT_PROOF_UPLOADED' || statusRow === 'AWAITING_PAYMENT') {
     availabilityLabelRow = 'Draft Sent';
   } else {
-    if (reqTypeRow === 'AD_ONLY') availabilityLabelRow = 'AD Available';
-    else if (reqTypeRow === 'FERI_ONLY') availabilityLabelRow = 'FERI Available';
-    else if (reqTypeRow === 'FERI_AND_AD') availabilityLabelRow = 'FERI_AND_AD Available';
+      if (reqTypeRow === 'AD_ONLY') availabilityLabelRow = 'AD Available';
+      else if (reqTypeRow === 'FERI_ONLY' && feriUrlRow) availabilityLabelRow = 'FERI Available';
+      else if (reqTypeRow === 'FERI_AND_AD' && feriUrlRow) availabilityLabelRow = 'FERI_AND_AD Available';
   }
   let docsList = [];
   if (Array.isArray(r.feri_deliveries) && r.feri_deliveries.length) docsList = docsList.concat(r.feri_deliveries);
@@ -672,7 +676,7 @@ function renderRow(r) {
   const manualBl = r.manual_bl || r.manualBl || '';
   const blDisplay = blVal
     ? escapeHtml(blVal)
-    : (manualBl ? `${escapeHtml(manualBl)} <small style="color:#6b7280; margin-left:6px;">(généré)</small>` : `<span class="badge warn">BL généré automatiquement</span>`);
+    : (manualBl ? `${escapeHtml(manualBl)} <small style="color:#6b7280; margin-left:6px;">(${escapeHtml((window.i18n && typeof window.i18n.t === 'function') ? window.i18n.t('bl_generator') : 'BL generator')})</small>` : `<span class="badge warn">BL généré automatiquement</span>`);
 
   const statusLabel = translateStatus(status);
   return `
@@ -901,14 +905,18 @@ function bindUIEvents() {
             let availabilityText = 'Draft Available';
             if (statusLabel === 'DRAFT_SENT' || statusLabel === 'PAYMENT_PROOF_UPLOADED' || statusLabel === 'AWAITING_PAYMENT') {
               availabilityText = 'Draft Sent';
-            } else if (dtype === 'FERI') {
-              availabilityText = 'FERI Available';
-            } else if (reqTypeLabel === 'AD_ONLY') {
-              availabilityText = 'AD Available';
-            } else if (reqTypeLabel === 'FERI_ONLY') {
-              availabilityText = 'FERI Available';
-            } else if (reqTypeLabel === 'FERI_AND_AD') {
-              availabilityText = 'FERI_AND_AD Available';
+            } else {
+              // only mark as FERI available if a FERI URL/reference exists on the request
+              const hasFeri = Boolean(reqObj && (reqObj.feri_ref || reqObj.feri_signed_url || reqObj.feriSignedUrl || reqObj.feriRef));
+              if (dtype === 'FERI' && hasFeri) {
+                availabilityText = 'FERI Available';
+              } else if (reqTypeLabel === 'AD_ONLY') {
+                availabilityText = 'AD Available';
+              } else if (reqTypeLabel === 'FERI_ONLY' && hasFeri) {
+                availabilityText = 'FERI Available';
+              } else if (reqTypeLabel === 'FERI_AND_AD' && hasFeri) {
+                availabilityText = 'FERI_AND_AD Available';
+              }
             }
             draftLink.innerHTML = `<span class="draft-available">${escapeHtml(availabilityText)}</span>`;
           }

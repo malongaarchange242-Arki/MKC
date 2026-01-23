@@ -144,6 +144,49 @@ export const paymentsModule = () => {
     }
   });
 
+  // POST /api/client/invoices/:requestId/mode
+  // Body: { payment_mode }
+  router.post('/invoices/:requestId/mode', async (req: Request, res: Response) => {
+    try {
+      const authUserId = (req as any).authUserId ?? null;
+      const { requestId } = req.params;
+      const { payment_mode } = req.body || {};
+
+      if (!requestId) return res.status(400).json({ success: false, message: 'requestId required' });
+      if (!payment_mode) return res.status(400).json({ success: false, message: 'payment_mode required' });
+
+      // Find invoice by request_id
+      const { data: invoiceRows, error: invoiceError } = await supabaseAdmin
+        .from('invoices')
+        .select('id')
+        .eq('request_id', requestId)
+        .limit(1);
+
+      if (invoiceError || !invoiceRows || invoiceRows.length === 0) {
+        return res.status(404).json({ success: false, message: 'Invoice not found for this request' });
+      }
+
+      const invoiceId = invoiceRows[0].id;
+
+      const { data: updated, error: updateError } = await supabaseAdmin
+        .from('invoices')
+        .update({ payment_mode })
+        .eq('id', invoiceId)
+        .select()
+        .single();
+
+      if (updateError || !updated) {
+        console.error('Failed to update invoice payment_mode', { invoiceId, updateError });
+        return res.status(500).json({ success: false, message: 'Failed to update invoice payment_mode', error: updateError });
+      }
+
+      return res.json({ success: true, invoice: updated });
+    } catch (err: any) {
+      console.error('POST /api/client/invoices/:requestId/mode exception', err);
+      return res.status(500).json({ success: false, message: err.message || String(err) });
+    }
+  });
+
   // POST /api/client/invoices/:requestId/proofs
   // multipart/form-data -> field 'file'
   router.post('/invoices/:requestId/proofs', uploadMiddleware.single('file'), async (req: Request, res: Response) => {

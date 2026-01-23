@@ -2,6 +2,19 @@
 
 const STORAGE_KEY = 'logirdc_requests_v1';
 
+// i18n helper: use window.i18n.t(key) when available, otherwise fallback
+function t(key, fallback) {
+    try {
+        if (window.i18n && typeof window.i18n.t === 'function') {
+            const val = window.i18n.t(key);
+            if (val !== undefined && val !== null && String(val).trim() !== '') return val;
+        }
+    } catch (e) {
+        // ignore
+    }
+    return fallback || key;
+}
+
 // Statuts centraux (utiliser ces valeurs partout)
 const STATUS = {
     CREATED: 'CREATED',
@@ -127,7 +140,7 @@ function renderClientPayments() {
     const unpaid = requests.filter(req => req.status === STATUS.DRAFT_SENT);
 
     if (unpaid.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:40px;">No pending payments. All set!</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:40px;">${escapeHtml(t('no_pending_payments','No pending payments. All set!'))}</td></tr>`;
         return;
     }
 
@@ -147,25 +160,51 @@ function renderClientPayments() {
                     ? escapeHtml(`${invoiceFromApi.amount_due} ${invoiceFromApi.currency || ''}`.trim())
                     : (req.amount ? escapeHtml(String(req.amount)) : (req.inv ? escapeHtml(req.inv) : '$ 1500'));
 
-                // If proof already uploaded, show different action text
-                const actionBtn = req.status === STATUS.PAYMENT_PROOF_UPLOADED
-                        ? `<button class="btn-white" onclick="openPaymentModal('${escapeHtml(blValue)}')" style="font-size:11px; padding:6px 12px;">VIEW / CHANGE PROOF</button>`
-                        : `<button class="btn-green" onclick="openPaymentModal('${escapeHtml(blValue)}')" style="font-size:11px; padding:6px 12px;">UPLOAD PROOF</button>`;
+                // Determine action button label/class based on status (all labels use i18n)
+                let actionLabelKey = 'upload_proof';
+                let actionFallback = 'UPLOAD PROOF';
+                let actionClass = 'btn-green';
 
-                const blDisplay = blValue ? escapeHtml(blValue) : '<span class="badge warn">BL en cours...</span>';
+                switch (req.status) {
+                    case STATUS.PAYMENT_PROOF_UPLOADED:
+                        actionLabelKey = 'view_change_proof';
+                        actionFallback = 'VIEW / CHANGE PROOF';
+                        actionClass = 'btn-white';
+                        break;
+                    case STATUS.PAYMENT_SUBMITTED:
+                        actionLabelKey = 'proof_submitted';
+                        actionFallback = 'PROOF SUBMITTED';
+                        actionClass = 'btn-white';
+                        break;
+                    case STATUS.PAYMENT_CONFIRMED:
+                        actionLabelKey = 'payment_confirmed';
+                        actionFallback = 'PAYMENT CONFIRMED';
+                        actionClass = 'btn-white';
+                        break;
+                    case STATUS.DRAFT_SENT:
+                    default:
+                        actionLabelKey = 'upload_proof';
+                        actionFallback = 'UPLOAD PROOF';
+                        actionClass = 'btn-green';
+                        break;
+                }
+
+                const actionBtn = `<button class="${actionClass}" onclick="openPaymentModal('${escapeHtml(blValue)}')" style="font-size:11px; padding:6px 12px;">${escapeHtml(t(actionLabelKey, actionFallback))}</button>`;
+
+                const blDisplay = blValue ? escapeHtml(blValue) : `<span class="badge warn">${escapeHtml(t('bl_pending','BL en cours...'))}</span>`;
 
                 // Create payment mode select
                 const currentMode = req.payment_mode || '';
                 const paymentModeSelect = `
                     <select class="payment-mode-select" onchange="handlePaymentModeChange('${escapeHtml(blValue)}', this.value)" style="padding:6px; border:1px solid #ccc; border-radius:4px; font-size:12px;">
-                        <option value="">-- Select Mode --</option>
-                        <option value="${PAYMENT_MODES.MOMOPAY_MTN_CONGO}" ${currentMode === PAYMENT_MODES.MOMOPAY_MTN_CONGO ? 'selected' : ''}>${PAYMENT_MODES.MOMOPAY_MTN_CONGO}</option>
-                        <option value="${PAYMENT_MODES.AIRTEL_CONGO}" ${currentMode === PAYMENT_MODES.AIRTEL_CONGO ? 'selected' : ''}>${PAYMENT_MODES.AIRTEL_CONGO}</option>
-                        <option value="${PAYMENT_MODES.ORANGE_MONEY_CAMEROON}" ${currentMode === PAYMENT_MODES.ORANGE_MONEY_CAMEROON ? 'selected' : ''}>${PAYMENT_MODES.ORANGE_MONEY_CAMEROON}</option>
-                        <option value="${PAYMENT_MODES.MPESA_VODACOM_RDC}" ${currentMode === PAYMENT_MODES.MPESA_VODACOM_RDC ? 'selected' : ''}>${PAYMENT_MODES.MPESA_VODACOM_RDC}</option>
-                        <option value="${PAYMENT_MODES.BANK_ACCOUNT}" ${currentMode === PAYMENT_MODES.BANK_ACCOUNT ? 'selected' : ''}>${PAYMENT_MODES.BANK_ACCOUNT}</option>
-                        <option value="${PAYMENT_MODES.CHECK}" ${currentMode === PAYMENT_MODES.CHECK ? 'selected' : ''}>${PAYMENT_MODES.CHECK}</option>
-                        <option value="${PAYMENT_MODES.CASH}" ${currentMode === PAYMENT_MODES.CASH ? 'selected' : ''}>${PAYMENT_MODES.CASH}</option>
+                        <option value="">${escapeHtml(t('select_mode','-- Select Mode --'))}</option>
+                        <option value="${PAYMENT_MODES.MOMOPAY_MTN_CONGO}" ${currentMode === PAYMENT_MODES.MOMOPAY_MTN_CONGO ? 'selected' : ''}>${escapeHtml(t('momopay_mtn_congo', PAYMENT_MODES.MOMOPAY_MTN_CONGO))}</option>
+                        <option value="${PAYMENT_MODES.AIRTEL_CONGO}" ${currentMode === PAYMENT_MODES.AIRTEL_CONGO ? 'selected' : ''}>${escapeHtml(t('airtel_congo', PAYMENT_MODES.AIRTEL_CONGO))}</option>
+                        <option value="${PAYMENT_MODES.ORANGE_MONEY_CAMEROON}" ${currentMode === PAYMENT_MODES.ORANGE_MONEY_CAMEROON ? 'selected' : ''}>${escapeHtml(t('orange_money_cameroon', PAYMENT_MODES.ORANGE_MONEY_CAMEROON))}</option>
+                        <option value="${PAYMENT_MODES.MPESA_VODACOM_RDC}" ${currentMode === PAYMENT_MODES.MPESA_VODACOM_RDC ? 'selected' : ''}>${escapeHtml(t('mpesa_vodacom_rdc', PAYMENT_MODES.MPESA_VODACOM_RDC))}</option>
+                        <option value="${PAYMENT_MODES.BANK_ACCOUNT}" ${currentMode === PAYMENT_MODES.BANK_ACCOUNT ? 'selected' : ''}>${escapeHtml(t('bank_account_lcb', PAYMENT_MODES.BANK_ACCOUNT))}</option>
+                        <option value="${PAYMENT_MODES.CHECK}" ${currentMode === PAYMENT_MODES.CHECK ? 'selected' : ''}>${escapeHtml(t('check', PAYMENT_MODES.CHECK))}</option>
+                        <option value="${PAYMENT_MODES.CASH}" ${currentMode === PAYMENT_MODES.CASH ? 'selected' : ''}>${escapeHtml(t('cash', PAYMENT_MODES.CASH))}</option>
                     </select>
                 `;
 
@@ -280,7 +319,7 @@ function openPaymentModal(bl) {
     const submitBtn = document.getElementById('submit-proof-btn');
 
     if (proofInput) proofInput.value = '';
-    if (label) label.innerText = "Upload Receipt (PDF/JPG)";
+    if (label) label.innerText = t('upload_receipt','Upload Receipt (PDF/JPG)');
     if (label && label.parentElement) label.parentElement.classList.remove('file-selected');
     if (submitBtn) submitBtn.style.display = 'none';
 
@@ -308,7 +347,7 @@ function closePaymentModal() {
     if (submitBtn) {
         submitBtn.disabled = false;
         submitBtn.style.opacity = '';
-        submitBtn.innerText = 'Send Proof';
+        submitBtn.innerText = t('send_proof','Send Proof');
     }
     if (label) label.innerText = "Upload Receipt (PDF/JPG)";
     if (label && label.parentElement) label.parentElement.classList.remove('file-selected');
@@ -317,20 +356,20 @@ function closePaymentModal() {
 // --- SOUMISSION DE LA PREUVE (simulation locale) ---
 function handleSubmitProof() {
     if (!selectedBL) {
-        alert('No BL selected.');
+            alert(t('no_bl_selected','No BL selected.'));
         return;
     }
 
     const proofInput = document.getElementById('proof-file');
-    if (!proofInput || proofInput.files.length === 0) {
-        alert('Please choose a file to upload as proof.');
+        if (!proofInput || proofInput.files.length === 0) {
+        alert(t('choose_file','Please choose a file to upload as proof.'));
         return;
     }
 
     const file = proofInput.files[0];
     const MAX_BYTES = 8 * 1024 * 1024;
     if (file.size > MAX_BYTES) {
-        alert('File too large. Max 8MB.');
+        alert(t('file_too_large','File too large. Max 8MB.'));
         proofInput.value = '';
         return;
     }
@@ -396,7 +435,7 @@ function handleSubmitProof() {
             saveRequests();
             renderClientPayments();
             closePaymentModal();
-            alert('Proof uploaded and recorded. Thank you.');
+            alert(t('proof_uploaded','Proof uploaded and recorded. Thank you.'));
             selectedBL = null;
             selectedRequestId = null;
         } catch (err) {
@@ -445,14 +484,41 @@ async function handlePaymentModeChange(blValue, selectedMode) {
             requests[reqIndex].payment_mode = selectedMode;
         }
 
-        // Si c'est un mode qui déclenche la transition automatique
-        if (AUTO_TRANSITION_MODES.includes(selectedMode)) {
-            // Changer le statut à PAYMENT_PROOF_UPLOADED
-            if (reqIndex >= 0) {
-                requests[reqIndex].status = STATUS.PAYMENT_PROOF_UPLOADED;
+        // Si le mode nécessite que le client téléverse une preuve (Bank account / Check),
+        // informer l'utilisateur et ne pas déclencher la transition automatique.
+        if (selectedMode === PAYMENT_MODES.BANK_ACCOUNT || selectedMode === PAYMENT_MODES.CHECK) {
+            try {
+                // Persist to backend the selected payment_mode (no status change)
+                const resp = await fetch(`${API_BASE.replace(/\/$/, '')}/api/client/invoices/${encodeURIComponent(requestId)}/mode`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { Authorization: `Bearer ${token}` } : {})
+                    },
+                    body: JSON.stringify({ payment_mode: selectedMode })
+                });
+
+                if (!resp.ok) {
+                    const txt = await resp.text().catch(() => null);
+                    console.error('Failed to persist payment_mode:', resp.status, txt);
+                    alert(t('transition_failed','Failed to persist payment mode or change status.'));
+                } else {
+                    // Persist locally so selection remains visible
+                    saveRequests();
+                    renderClientPayments();
+                }
+            } catch (e) {
+                console.error('Error persisting payment_mode:', e);
+                alert(t('transition_failed','Failed to persist payment mode or change status.'));
             }
 
-            // Appeler l'API de transition
+            alert(t('bank_check_alert',"D'après votre mode de paiement, veuillez téléverser une preuve de paiement en cliquant sur UPLOAD PROOF."));
+            return;
+        }
+
+        // Si c'est un mode mobile-money qui doit déclencher la transition côté serveur,
+        // appeler d'abord l'API de transition puis mettre à jour l'UI uniquement en cas de succès.
+        if (AUTO_TRANSITION_MODES.includes(selectedMode)) {
             try {
                 const resp = await fetch(
                     `${API_BASE.replace(/\/$/, '')}/api/client/invoices/${encodeURIComponent(requestId)}/transition`,
@@ -472,15 +538,51 @@ async function handlePaymentModeChange(blValue, selectedMode) {
                 if (!resp.ok) {
                     const txt = await resp.text().catch(() => null);
                     console.error(`Transition failed: ${resp.status} ${txt || ''}`);
+                    alert(t('transition_failed','Failed to persist payment mode or change status.')); 
+                } else {
+                    // Update local cache only after successful backend transition
+                    if (reqIndex >= 0) {
+                        requests[reqIndex].status = STATUS.PAYMENT_PROOF_UPLOADED;
+                        requests[reqIndex].payment_mode = selectedMode;
+                    }
                 }
             } catch (err) {
                 console.error('Error calling transition API:', err);
+                alert(t('transition_failed','Failed to persist payment mode or change status.'));
             }
         }
 
-        // Sauvegarder les modifications
-        saveRequests();
-        renderClientPayments();
+        // For non-auto modes (e.g., CASH), persist the selection to backend
+        if (!AUTO_TRANSITION_MODES.includes(selectedMode)) {
+            try {
+                const respMode = await fetch(`${API_BASE.replace(/\/$/, '')}/api/client/invoices/${encodeURIComponent(requestId)}/mode`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { Authorization: `Bearer ${token}` } : {})
+                    },
+                    body: JSON.stringify({ payment_mode: selectedMode })
+                });
+
+                if (!respMode.ok) {
+                    const txt = await respMode.text().catch(() => null);
+                    console.error('Failed to persist payment_mode:', respMode.status, txt);
+                    alert(t('transition_failed','Failed to persist payment mode or change status.'));
+                } else {
+                    // Update local cache after success
+                    if (reqIndex >= 0) requests[reqIndex].payment_mode = selectedMode;
+                    saveRequests();
+                    renderClientPayments();
+                }
+            } catch (e) {
+                console.error('Error persisting payment_mode:', e);
+                alert(t('transition_failed','Failed to persist payment mode or change status.'));
+            }
+        } else {
+            // For auto-transition modes the local update was done above on success
+            saveRequests();
+            renderClientPayments();
+        }
     } catch (err) {
         console.error('Error handling payment mode change:', err);
     }

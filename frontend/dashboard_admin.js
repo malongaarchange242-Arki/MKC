@@ -317,7 +317,8 @@ function renderAdminTable() {
       }
     }
 
-        const displayBl = (row.manual_bl || row.manualBl) ? (blValue + ' (Bl saisi manuel)') : blValue;
+        const blGenLabel = (window.i18n && typeof window.i18n.t === 'function') ? window.i18n.t('bl_generator') : 'BL generator';
+        const displayBl = (row.manual_bl || row.manualBl) ? (blValue + ' (' + blGenLabel + ')') : blValue;
 
         return `
       <tr data-req="${escapeHtml(rowId)}" class="clickable-row">
@@ -491,7 +492,7 @@ async function handleAdminSubmit() {
   try {
     // Be lenient when matching BL: some rows may store BL in different fields
     // Also selectedBL may include a display suffix like "(Bl saisi manuel)" – strip it
-    const cleanedSelectedBL = (selectedBL || '').replace(/\s*\(Bl saisi manuel\)\s*$/i, '').trim();
+    const cleanedSelectedBL = (selectedBL || '').replace(/\s*\([^)]+\)\s*$/,'').trim();
 
     const matching = requests.find(r => {
       const bls = [r.extracted_bl, r.manual_bl, r.manualBl, r.bl_number, r.bl, r.bill_of_lading];
@@ -733,7 +734,10 @@ function formatBLDisplayFromRow(row) {
   if (!row) return '';
   const bl = row.extracted_bl || row.manual_bl || row.manualBl || row.bl || row.bl_number || row.bill_of_lading || '';
   if (!bl) return '';
-  if (row.manual_bl || row.manualBl) return `${bl} (Bl saisi manuel)`;
+  if (row.manual_bl || row.manualBl) {
+    const blGenLabel = (window.i18n && typeof window.i18n.t === 'function') ? window.i18n.t('bl_generator') : 'BL generator';
+    return `${bl} (${blGenLabel})`;
+  }
   return bl;
 }
 
