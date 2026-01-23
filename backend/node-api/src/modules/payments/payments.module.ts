@@ -209,6 +209,7 @@ export const paymentsModule = () => {
         request_id: requestId,
         file_name: origName,
         file_path: storagePath,
+        bucket: 'payment_proofs',
         file_size: req.file.size || (req.file.buffer ? req.file.buffer.length : null),
         mime_type: req.file.mimetype || 'application/octet-stream',
         version: 1,

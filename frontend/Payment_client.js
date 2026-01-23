@@ -463,15 +463,23 @@ async function handlePaymentModeChange(blValue, selectedMode) {
         const defaultLocal = 'https://mkc-backend-kqov.onrender.com';
         const API_BASE = metaApi || defaultLocal;
 
-        // Trouver la demande correspondante
+        // Refresh server state to avoid stale local cache, then find the request
+        try {
+            await fetchRequests();
+        } catch (e) {
+            console.warn('fetchRequests failed before payment mode change', e);
+        }
+
         let requestId = null;
         let reqIndex = -1;
-        requests.forEach((r, idx) => {
+        for (let idx = 0; idx < requests.length; idx++) {
+            const r = requests[idx];
             if ([r.bl, r.bl_number, r.extracted_bl, r.bill_of_lading].some(x => x && String(x) === String(blValue))) {
                 requestId = r.request_id || r.id || null;
                 reqIndex = idx;
+                break;
             }
-        });
+        }
 
         if (!requestId) {
             console.error('Request ID not found for BL:', blValue);
@@ -518,9 +526,10 @@ async function handlePaymentModeChange(blValue, selectedMode) {
         // Si c'est un mode mobile-money qui doit déclencher la transition côté serveur,
         // appeler d'abord l'API de transition puis mettre à jour l'UI uniquement en cas de succès.
         if (AUTO_TRANSITION_MODES.includes(selectedMode)) {
-            // Only attempt server-side transition when the request is in DRAFT_SENT.
+            // Only attempt server-side transition when the request is in an allowed from-state.
             const currentStatus = (reqIndex >= 0 && requests[reqIndex]) ? requests[reqIndex].status : null;
-            if (currentStatus !== STATUS.DRAFT_SENT) {
+            const ALLOWED_AUTO_FROM = [STATUS.DRAFT_SENT, STATUS.PAYMENT_CONFIRMED];
+            if (!ALLOWED_AUTO_FROM.includes(currentStatus)) {
                 // Persist payment_mode only and inform the user that auto-transition
                 // could not be performed due to current workflow state.
                 try {
