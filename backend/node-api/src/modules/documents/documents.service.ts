@@ -329,17 +329,13 @@ export class DocumentsService {
     // Récupérer les métadonnées du document
     const document = await this.getDocumentById(documentId, userId, userRole);
 
-    // Determine bucket from document record (some flows upload to other buckets)
-    const bucket = (document as any).bucket || STORAGE_BUCKET;
-
-    // Télécharger le fichier depuis Storage (use bucket from DB when present)
-    logger.info('Attempting storage download', { documentId, file_path: document.file_path, bucket });
+    // Télécharger le fichier depuis Storage
     const { data: fileData, error: downloadError } = await supabase.storage
-      .from(bucket)
+      .from(STORAGE_BUCKET)
       .download(document.file_path);
 
     if (downloadError || !fileData) {
-      logger.error('Failed to download file from storage', { downloadError, documentId, file_path: document.file_path, bucket });
+      logger.error('Failed to download file from storage', { downloadError });
       throw new Error('Failed to download file');
     }
 

@@ -106,39 +106,16 @@ export class DocumentsController {
 
           // 2. Trigger parsing (Async)
           // Hoist variables so they are visible in the catch block for richer logging
-          const pythonCfg = process.env.PYTHON_SERVICE_URL || 'https://mkc-5slv.onrender.com/api/v1';
-          // Normalize the endpoint: ensure it ends with /api/v1 and append /parse/document
-          const pythonBase = pythonCfg.replace(/\/$/, '').replace(/\/api\/v1\/$/, '').replace(/\/api\/v1$/, '');
-          const pythonEndpoint = `${pythonBase}/api/v1/parse/document`;
-          // For normalized calls, use the configured Python service in production
-          const pythonEndpointNormalized = pythonEndpoint;
+          const pythonCfg = process.env.PYTHON_SERVICE_URL || 'http://localhost:8000';
+          let pythonEndpoint = pythonCfg.includes('/api/') ? pythonCfg : `${pythonCfg.replace(/\/$/, '')}/api/v1/parse/document`;
+          // Normalize endpoint: prefer configured Python service (Render) in production
+          const pythonEndpointNormalized = pythonEndpoint.replace(/^https?:\/\/[^/]+/, 'http://localhost:8000');
           const apiKey = process.env.PYTHON_SERVICE_API_KEY || '';
           const timeoutMs = parseInt(process.env.PYTHON_SERVICE_TIMEOUT_MS || '30000', 10);
           let lastPythonErr: any = null;
 
           try {
             const fileUrl = await DocumentsService.generateSignedUrlFromDocument(document.id, 60 * 60);
-
-            // Prevent duplicate OCR/extraction for the same document: if an extraction
-            // already exists for this document (written to `document_extractions`),
-            // skip calling the Python service and return the uploaded document.
-            try {
-              const { data: existing, error: existErr } = await supabase
-                .from('document_extractions')
-                .select('id')
-                .eq('document_id', document.id)
-                .limit(1)
-                .maybeSingle();
-
-              if (existErr) {
-                logger.warn('Could not check existing extraction for document before OCR', { documentId: document.id, err: existErr });
-              } else if (existing && (existing as any).id) {
-                logger.info('Skipping Python OCR: extraction already exists for document', { documentId: document.id });
-                return document;
-              }
-            } catch (e) {
-              logger.warn('Error while checking existing extraction before OCR', { documentId: document.id, err: (e as any)?.message ?? e });
-            }
 
             // If the request is AD_ONLY, skip calling the Python OCR service entirely
             try {
@@ -252,37 +229,24 @@ export class DocumentsController {
                   error: e instanceof Error ? { message: e.message, stack: e.stack } : e
                 });
               }
-
             } else {
-              // No BL found: generate a unique BL reference and store in manual_bl and bl_number
+              // No BL found: ensure request moves to AWAITING_DOCUMENTS (no notification)
               try {
-                // Générer une référence BL unique de la forme MKC{année}{numéro séquentiel}
-                const year = new Date().getFullYear();
-                // Compter le nombre de BL générés cette année pour incrémenter
-                const { data: countRows, error: countErr } = await supabase
+                const { data: reqRow, error: reqErr } = await supabase
                   .from('requests')
-                  .select('manual_bl')
-                  .ilike('manual_bl', `MKC${year}%`);
-                let seq = 1;
-                if (Array.isArray(countRows) && countRows.length > 0) {
-                  // Extraire le max du suffixe numérique
-                  const max = countRows
-                    .map(r => {
-                      const m = String(r.manual_bl || '').match(/^MKC(\d{4})(\d{3,})$/);
-                      return m ? parseInt(m[2], 10) : 0;
-                    })
-                    .reduce((a, b) => Math.max(a, b), 0);
-                  seq = max + 1;
+                  .select('status')
+                  .eq('id', requestId)
+                  .single();
+
+                if (!reqErr && reqRow && reqRow.status === 'CREATED') {
+                  const { error: updErr } = await supabase
+                    .from('requests')
+                    .update({ status: 'AWAITING_DOCUMENTS' })
+                    .eq('id', requestId);
+                  if (updErr) logger.error('Failed to set AWAITING_DOCUMENTS', updErr);
                 }
-                const ref = `MKC${year}${String(seq).padStart(3, '0')}`;
-                // Stocker la ref dans manual_bl et bl_number
-                const { error: updErr } = await supabase
-                  .from('requests')
-                  .update({ status: 'AWAITING_DOCUMENTS', manual_bl: ref, bl_number: ref, bl_confidence: null })
-                  .eq('id', requestId);
-                if (updErr) logger.error('Failed to set AWAITING_DOCUMENTS and manual_bl', updErr);
               } catch (e) {
-                logger.warn('Failed to set AWAITING_DOCUMENTS/manual_bl after OCR failure', { e });
+                logger.warn('Failed to set AWAITING_DOCUMENTS after OCR failure', { e });
               }
             }
 
