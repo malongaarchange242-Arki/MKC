@@ -95,6 +95,9 @@ const STATE_TRANSITIONS: Record<RequestStatus, TransitionRule[]> = {
   ],
 
   PAYMENT_CONFIRMED: [
+    // Allow reverting to PAYMENT_PROOF_UPLOADED in exceptional cases (client
+    // selected a payment mode after confirmation and workflow requires proof).
+    { to: 'PAYMENT_PROOF_UPLOADED', allowedRoles: ['CLIENT', 'ADMIN'] },
     { to: 'VALIDATED', allowedRoles: ['ADMIN'] }
   ],
 

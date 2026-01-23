@@ -71,7 +71,6 @@ function escapeHtml(str) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
 }
-
 function formatStatusLabel(status) {
     const map = {
         [STATUS.CREATED]: "Created",
@@ -519,6 +518,39 @@ async function handlePaymentModeChange(blValue, selectedMode) {
         // Si c'est un mode mobile-money qui doit déclencher la transition côté serveur,
         // appeler d'abord l'API de transition puis mettre à jour l'UI uniquement en cas de succès.
         if (AUTO_TRANSITION_MODES.includes(selectedMode)) {
+            // Only attempt server-side transition when the request is in DRAFT_SENT.
+            const currentStatus = (reqIndex >= 0 && requests[reqIndex]) ? requests[reqIndex].status : null;
+            if (currentStatus !== STATUS.DRAFT_SENT) {
+                // Persist payment_mode only and inform the user that auto-transition
+                // could not be performed due to current workflow state.
+                try {
+                    const respMode = await fetch(`${API_BASE.replace(/\/$/, '')}/api/client/invoices/${encodeURIComponent(requestId)}/mode`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...(token ? { Authorization: `Bearer ${token}` } : {})
+                        },
+                        body: JSON.stringify({ payment_mode: selectedMode })
+                    });
+
+                    if (!respMode.ok) {
+                        const txt = await respMode.text().catch(() => null);
+                        console.error('Failed to persist payment_mode (no auto transition):', respMode.status, txt);
+                        alert(t('transition_failed','Failed to persist payment mode or change status.'));
+                    } else {
+                        if (reqIndex >= 0) requests[reqIndex].payment_mode = selectedMode;
+                        saveRequests();
+                        renderClientPayments();
+                    }
+                } catch (e) {
+                    console.error('Error persisting payment_mode (no auto transition):', e);
+                    alert(t('transition_failed','Failed to persist payment mode or change status.'));
+                }
+
+                alert(t('auto_transition_not_allowed','Auto transition not allowed for this request state. Your payment mode was saved.'));
+                return;
+            }
+
             try {
                 const resp = await fetch(
                     `${API_BASE.replace(/\/$/, '')}/api/client/invoices/${encodeURIComponent(requestId)}/transition`,
