@@ -420,10 +420,19 @@ function loadTable(data = null) {
     const draftAvailable = row.draft_url || row.draftUrl || row.request_draft_url || null;
     const isFeri = Boolean(row.feri_ref || row.feri_signed_url || row.feriSignedUrl);
     const reqType = (row.type || row.request_type || row.requestType || row.service_type || '').toString();
+    const status = row.status || '';
+    
+    // Determine availability label based on status and request type
+    // If in draft/payment stage, show 'Draft Sent', otherwise show type-based label
     let availabilityLabel = 'Available';
-    if (reqType === 'AD_ONLY') availabilityLabel = 'AD Available';
-    else if (reqType === 'FERI_ONLY') availabilityLabel = 'FERI Available';
-    else if (reqType === 'FERI_AND_AD') availabilityLabel = 'FERI_AND_AD Available';
+    if (status === 'DRAFT_SENT' || status === 'PAYMENT_PROOF_UPLOADED' || status === 'AWAITING_PAYMENT') {
+      availabilityLabel = 'Draft Sent';
+    } else {
+      if (reqType === 'AD_ONLY') availabilityLabel = 'AD Available';
+      else if (reqType === 'FERI_ONLY') availabilityLabel = 'FERI Available';
+      else if (reqType === 'FERI_AND_AD') availabilityLabel = 'FERI_AND_AD Available';
+    }
+    
     const docAction = draftAvailable
       ? `<a href="#" class="draft-download" data-request="${escapeHtml(String(row.request_id || row.id || ''))}" data-draft="${escapeHtml(draftAvailable)}" data-type="${isFeri ? 'FERI' : 'DRAFT'}" title="Afficher/Télécharger le draft"><i class="far fa-file-pdf" style="color: #78B13F; cursor: pointer;"></i> ${escapeHtml(availabilityLabel)}</a>`
       : `<a href="#" class="draft-download" data-request="${escapeHtml(String(row.request_id || row.id || ''))}" data-type="${isFeri ? 'FERI' : 'DRAFT'}" title=""><i class="far fa-file-pdf text-muted" title=""></i></a>`;
@@ -438,7 +447,7 @@ function loadTable(data = null) {
       blCellHtml = `${escapeHtml(manualBlCell)} <small style="color:#6b7280; margin-left:6px;">(manuel)</small>`;
     } else {
       const rid = escapeHtml(String(row.request_id || row.id || ''));
-      blCellHtml = `<input class="manual-bl-input" data-request="${rid}" placeholder="Saisir BL" style="padding:6px;border:1px solid #ddd;border-radius:4px;width:160px;"> <button class="save-manual-bl" data-request="${rid}" style="margin-left:6px;padding:6px 8px;border-radius:4px;border:1px solid #ccc;background:#f3f4f6;cursor:pointer;">Enregistrer</button>`;
+      blCellHtml = `<span class="badge warn">BL généré automatiquement</span>`;
     }
 
     const statusLabel = translateStatus(row.status || '');
@@ -626,10 +635,17 @@ function renderRow(r) {
 
   const feriUrlRow = feriRef || r.feri_signed_url || r.feriSignedUrl || null;
   const reqTypeRow = (r.type || r.request_type || r.requestType || r.service_type || '').toString();
+  const statusRow = r.status || '';
+  
+  // Determine availability label based on status and request type
   let availabilityLabelRow = 'Available';
-  if (reqTypeRow === 'AD_ONLY') availabilityLabelRow = 'AD Available';
-  else if (reqTypeRow === 'FERI_ONLY') availabilityLabelRow = 'FERI Available';
-  else if (reqTypeRow === 'FERI_AND_AD') availabilityLabelRow = 'FERI_AND_AD Available';
+  if (statusRow === 'DRAFT_SENT' || statusRow === 'PAYMENT_PROOF_UPLOADED' || statusRow === 'AWAITING_PAYMENT') {
+    availabilityLabelRow = 'Draft Sent';
+  } else {
+    if (reqTypeRow === 'AD_ONLY') availabilityLabelRow = 'AD Available';
+    else if (reqTypeRow === 'FERI_ONLY') availabilityLabelRow = 'FERI Available';
+    else if (reqTypeRow === 'FERI_AND_AD') availabilityLabelRow = 'FERI_AND_AD Available';
+  }
   let docsList = [];
   if (Array.isArray(r.feri_deliveries) && r.feri_deliveries.length) docsList = docsList.concat(r.feri_deliveries);
   if (Array.isArray(r.deliveries) && r.deliveries.length) docsList = docsList.concat(r.deliveries);
@@ -656,7 +672,7 @@ function renderRow(r) {
   const manualBl = r.manual_bl || r.manualBl || '';
   const blDisplay = blVal
     ? escapeHtml(blVal)
-    : (manualBl ? `${escapeHtml(manualBl)} <small style="color:#6b7280; margin-left:6px;">(manuel)</small>` : `<button class="start-manual-bl" data-request="${escapeHtml(String(r.request_id || r.id || ''))}" style="padding:6px 8px;border-radius:4px;border:1px solid #ccc;background:#f3f4f6;cursor:pointer;">${escapeHtml(window.i18n ? window.i18n.t('manual_bl_enter_button') : 'Enter BL')}</button>`);
+    : (manualBl ? `${escapeHtml(manualBl)} <small style="color:#6b7280; margin-left:6px;">(généré)</small>` : `<span class="badge warn">BL généré automatiquement</span>`);
 
   const statusLabel = translateStatus(status);
   return `
@@ -872,11 +888,28 @@ function bindUIEvents() {
           } else {
             // fallback to previous availability label behavior
             let reqTypeLabel = '';
-            try { reqTypeLabel = (reqObj && (reqObj.type || reqObj.request_type || reqObj.requestType || reqObj.service_type)) || ''; } catch (e) { reqTypeLabel = ''; }
-            let availabilityText = dtype === 'FERI' ? 'FERI Available' : 'Draft Available';
-            if (reqTypeLabel === 'AD_ONLY') availabilityText = 'AD Available';
-            else if (reqTypeLabel === 'FERI_ONLY') availabilityText = 'FERI Available';
-            else if (reqTypeLabel === 'FERI_AND_AD') availabilityText = 'FERI_AND_AD Available';
+            let statusLabel = '';
+            try { 
+              reqTypeLabel = (reqObj && (reqObj.type || reqObj.request_type || reqObj.requestType || reqObj.service_type)) || ''; 
+              statusLabel = (reqObj && reqObj.status) || '';
+            } catch (e) { 
+              reqTypeLabel = ''; 
+              statusLabel = '';
+            }
+            
+            // Determine availability label based on status
+            let availabilityText = 'Draft Available';
+            if (statusLabel === 'DRAFT_SENT' || statusLabel === 'PAYMENT_PROOF_UPLOADED' || statusLabel === 'AWAITING_PAYMENT') {
+              availabilityText = 'Draft Sent';
+            } else if (dtype === 'FERI') {
+              availabilityText = 'FERI Available';
+            } else if (reqTypeLabel === 'AD_ONLY') {
+              availabilityText = 'AD Available';
+            } else if (reqTypeLabel === 'FERI_ONLY') {
+              availabilityText = 'FERI Available';
+            } else if (reqTypeLabel === 'FERI_AND_AD') {
+              availabilityText = 'FERI_AND_AD Available';
+            }
             draftLink.innerHTML = `<span class="draft-available">${escapeHtml(availabilityText)}</span>`;
           }
 

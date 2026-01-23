@@ -19,6 +19,25 @@ const STATUS = {
     CANCELLED: 'CANCELLED'
 };
 
+// Payment modes
+const PAYMENT_MODES = {
+    MOMOPAY_MTN_CONGO: 'MOMOPAY MTN CONGO',
+    AIRTEL_CONGO: 'AIRTEL CONGO',
+    ORANGE_MONEY_CAMEROON: 'ORANGE MONEY CAMEROON',
+    MPESA_VODACOM_RDC: 'MPESA VODACOM RDC',
+    BANK_ACCOUNT: 'BANK ACCOUNT (LCB)',
+    CHECK: 'CHECK',
+    CASH: 'CASH'
+};
+
+// Payment modes that trigger auto transition to PAYMENT_PROOF_UPLOADED
+const AUTO_TRANSITION_MODES = [
+    PAYMENT_MODES.MOMOPAY_MTN_CONGO,
+    PAYMENT_MODES.AIRTEL_CONGO,
+    PAYMENT_MODES.ORANGE_MONEY_CAMEROON,
+    PAYMENT_MODES.MPESA_VODACOM_RDC
+];
+
 let selectedBL = null;
 let selectedRequestId = null;
 let requests = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
@@ -108,7 +127,7 @@ function renderClientPayments() {
     const unpaid = requests.filter(req => req.status === STATUS.DRAFT_SENT);
 
     if (unpaid.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:40px;">No pending payments. All set!</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:40px;">No pending payments. All set!</td></tr>`;
         return;
     }
 
@@ -135,6 +154,21 @@ function renderClientPayments() {
 
                 const blDisplay = blValue ? escapeHtml(blValue) : '<span class="badge warn">BL en cours...</span>';
 
+                // Create payment mode select
+                const currentMode = req.payment_mode || '';
+                const paymentModeSelect = `
+                    <select class="payment-mode-select" onchange="handlePaymentModeChange('${escapeHtml(blValue)}', this.value)" style="padding:6px; border:1px solid #ccc; border-radius:4px; font-size:12px;">
+                        <option value="">-- Select Mode --</option>
+                        <option value="${PAYMENT_MODES.MOMOPAY_MTN_CONGO}" ${currentMode === PAYMENT_MODES.MOMOPAY_MTN_CONGO ? 'selected' : ''}>${PAYMENT_MODES.MOMOPAY_MTN_CONGO}</option>
+                        <option value="${PAYMENT_MODES.AIRTEL_CONGO}" ${currentMode === PAYMENT_MODES.AIRTEL_CONGO ? 'selected' : ''}>${PAYMENT_MODES.AIRTEL_CONGO}</option>
+                        <option value="${PAYMENT_MODES.ORANGE_MONEY_CAMEROON}" ${currentMode === PAYMENT_MODES.ORANGE_MONEY_CAMEROON ? 'selected' : ''}>${PAYMENT_MODES.ORANGE_MONEY_CAMEROON}</option>
+                        <option value="${PAYMENT_MODES.MPESA_VODACOM_RDC}" ${currentMode === PAYMENT_MODES.MPESA_VODACOM_RDC ? 'selected' : ''}>${PAYMENT_MODES.MPESA_VODACOM_RDC}</option>
+                        <option value="${PAYMENT_MODES.BANK_ACCOUNT}" ${currentMode === PAYMENT_MODES.BANK_ACCOUNT ? 'selected' : ''}>${PAYMENT_MODES.BANK_ACCOUNT}</option>
+                        <option value="${PAYMENT_MODES.CHECK}" ${currentMode === PAYMENT_MODES.CHECK ? 'selected' : ''}>${PAYMENT_MODES.CHECK}</option>
+                        <option value="${PAYMENT_MODES.CASH}" ${currentMode === PAYMENT_MODES.CASH ? 'selected' : ''}>${PAYMENT_MODES.CASH}</option>
+                    </select>
+                `;
+
                 return `
             <tr>
                 <td class="text-blue" style="font-weight:600;">${blDisplay}</td>
@@ -142,6 +176,7 @@ function renderClientPayments() {
                 <td>${amountValue}</td>
                 <td><span class="status ${escapeHtml(req.status)}">${escapeHtml(statusLabel)}</span></td>
                 <td>${actionBtn}</td>
+                <td>${paymentModeSelect}</td>
             </tr>
         `;
         }).join('');
@@ -376,9 +411,83 @@ function handleSubmitProof() {
     })();
 }
 
-// --- Expose close function to HTML buttons if needed ---
+// Expose close function to HTML buttons if needed ---
 window.openPaymentModal = openPaymentModal;
 window.closePaymentModal = closePaymentModal;
+
+// --- Fonction pour gérer le changement de mode de paiement ---
+async function handlePaymentModeChange(blValue, selectedMode) {
+    if (!blValue || !selectedMode) return;
+
+    try {
+        const token = localStorage.getItem('access_token') || localStorage.getItem('token') || null;
+        const metaApi = document.querySelector('meta[name="api-base"]')?.content || '';
+        const defaultLocal = 'https://mkc-backend-kqov.onrender.com';
+        const API_BASE = metaApi || defaultLocal;
+
+        // Trouver la demande correspondante
+        let requestId = null;
+        let reqIndex = -1;
+        requests.forEach((r, idx) => {
+            if ([r.bl, r.bl_number, r.extracted_bl, r.bill_of_lading].some(x => x && String(x) === String(blValue))) {
+                requestId = r.request_id || r.id || null;
+                reqIndex = idx;
+            }
+        });
+
+        if (!requestId) {
+            console.error('Request ID not found for BL:', blValue);
+            return;
+        }
+
+        // Sauvegarder le mode de paiement sélectionné
+        if (reqIndex >= 0) {
+            requests[reqIndex].payment_mode = selectedMode;
+        }
+
+        // Si c'est un mode qui déclenche la transition automatique
+        if (AUTO_TRANSITION_MODES.includes(selectedMode)) {
+            // Changer le statut à PAYMENT_PROOF_UPLOADED
+            if (reqIndex >= 0) {
+                requests[reqIndex].status = STATUS.PAYMENT_PROOF_UPLOADED;
+            }
+
+            // Appeler l'API de transition
+            try {
+                const resp = await fetch(
+                    `${API_BASE.replace(/\/$/, '')}/api/client/invoices/${encodeURIComponent(requestId)}/transition`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...(token ? { Authorization: `Bearer ${token}` } : {})
+                        },
+                        body: JSON.stringify({
+                            new_status: STATUS.PAYMENT_PROOF_UPLOADED,
+                            payment_mode: selectedMode
+                        })
+                    }
+                );
+
+                if (!resp.ok) {
+                    const txt = await resp.text().catch(() => null);
+                    console.error(`Transition failed: ${resp.status} ${txt || ''}`);
+                }
+            } catch (err) {
+                console.error('Error calling transition API:', err);
+            }
+        }
+
+        // Sauvegarder les modifications
+        saveRequests();
+        renderClientPayments();
+    } catch (err) {
+        console.error('Error handling payment mode change:', err);
+    }
+}
+
+// Expose la fonction au scope global
+window.handlePaymentModeChange = handlePaymentModeChange;
 
 // --- Small safety: ensure submit button listener exists if added dynamically elsewhere ---
 (function ensureSubmitListener() {

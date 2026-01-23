@@ -82,6 +82,68 @@ export const paymentsModule = () => {
     }
   });
 
+  // POST /api/client/invoices/:requestId/transition
+  // Body: { new_status, payment_mode }
+  router.post('/invoices/:requestId/transition', async (req: Request, res: Response) => {
+    try {
+      const authUserId = (req as any).authUserId ?? null;
+      const { requestId } = req.params;
+      const { new_status, payment_mode } = req.body || {};
+
+      if (!requestId) return res.status(400).json({ success: false, message: 'requestId required' });
+      if (!new_status) return res.status(400).json({ success: false, message: 'new_status required' });
+
+      // Find invoice by request_id
+      const { data: invoiceRows, error: invoiceError } = await supabaseAdmin
+        .from('invoices')
+        .select('id')
+        .eq('request_id', requestId)
+        .limit(1);
+
+      if (invoiceError || !invoiceRows || invoiceRows.length === 0) {
+        return res.status(404).json({ success: false, message: 'Invoice not found for this request' });
+      }
+
+      const invoiceId = invoiceRows[0].id;
+
+      // Update invoice with payment_mode if provided and status to new_status
+      const updatePayload: any = { status: new_status };
+      if (payment_mode) {
+        updatePayload.payment_mode = payment_mode;
+      }
+
+      const { data: updated, error: updateError } = await supabaseAdmin
+        .from('invoices')
+        .update(updatePayload)
+        .eq('id', invoiceId)
+        .select()
+        .single();
+
+      if (updateError || !updated) {
+        console.error('Failed to update invoice with payment_mode and status', { invoiceId, updateError });
+        return res.status(500).json({ success: false, message: 'Failed to update invoice', error: updateError });
+      }
+
+      // Transition request status
+      try {
+        await RequestsService.transitionStatus({
+          requestId,
+          to: new_status,
+          actorRole: 'CLIENT',
+          actorId: authUserId
+        });
+      } catch (transitionErr: any) {
+        console.error('Failed to transition request status', { requestId, new_status, transitionErr });
+        return res.status(500).json({ success: false, message: 'Failed to transition request status', error: transitionErr?.message ?? String(transitionErr) });
+      }
+
+      return res.json({ success: true, invoice: updated });
+    } catch (err: any) {
+      console.error('POST /api/client/invoices/:requestId/transition exception', err);
+      return res.status(500).json({ success: false, message: err.message || String(err) });
+    }
+  });
+
   // POST /api/client/invoices/:requestId/proofs
   // multipart/form-data -> field 'file'
   router.post('/invoices/:requestId/proofs', uploadMiddleware.single('file'), async (req: Request, res: Response) => {
