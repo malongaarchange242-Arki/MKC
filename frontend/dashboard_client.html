@@ -133,6 +133,9 @@
         </div>
       </section>
 
+      <!-- Alerts Container for BL Auto-Generated and other notifications -->
+      <div id="alerts-container" role="region" aria-live="polite" aria-label="Messages d'alerte" style="margin-bottom: 16px;"></div>
+
       <div class="table-responsive" role="region" aria-label="Tableau des demandes">
         <table class="dashboard-table" aria-describedby="entries-info">
           <thead>
@@ -309,6 +312,26 @@
   </div>
 
   <script src="i18n.js"></script>
+  <!-- Floating FAQ button -->
+  <a id="faq-btn" class="floating-faq" href="faq.html" target="_blank" aria-label="FAQ - Ouvrir la FAQ">
+    <i class="fas fa-question"></i>
+    <span class="sr-only">FAQ</span>
+  </a>
+
+  <style>
+    /* Keep the FAQ button above the pagination footer to avoid overlap */
+    .floating-faq { position: fixed; right: 20px; bottom: 96px; width:56px; height:56px; background:#0b75f5; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 6px 18px rgba(11,117,245,0.28); z-index:4000; text-decoration:none; }
+    .floating-faq i { font-size:18px; }
+    .floating-faq:focus, .floating-faq:hover { transform:translateY(-2px); box-shadow:0 10px 26px rgba(11,117,245,0.32); }
+
+    /* On very small screens keep distance but slightly smaller button */
+    @media (max-width: 520px) {
+      .floating-faq { bottom: 88px; right: 12px; width:48px; height:48px; }
+      .floating-faq i { font-size:16px; }
+    }
+    .sr-only { position:absolute; left:-10000px; top:auto; width:1px; height:1px; overflow:hidden; }
+  </style>
+
   <script type="module" src="dashboard_client.js"></script>
 </body>
 

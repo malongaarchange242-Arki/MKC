@@ -53,7 +53,8 @@ export class RequestsService {
       id: uuidv4(),
       user_id: input.userId,
       type: input.type,
-      status: 'CREATED'
+      // For AD-only requests we start in PROCESSING to reflect immediate AD work
+      status: input.type === 'AD_ONLY' ? 'PROCESSING' : 'CREATED'
     };
 
     if (input.ref) insertObj.ref = input.ref;
@@ -81,7 +82,34 @@ export class RequestsService {
     }
 
     logger.info('Request created', { requestId: data.id });
-    return data;
+      // If this request was created in PROCESSING (AD_ONLY), notify the client about the status
+      try {
+        if (insertObj.status === 'PROCESSING') {
+          (async () => {
+            try {
+              const { NotificationsService } = await import('../notifications/notifications.service');
+              await NotificationsService.send({
+                userId: data.user_id,
+                type: 'REQUEST_STATUS_CHANGED',
+                title: 'Votre demande est en cours de traitement',
+                message: `Votre demande ${data.id} est en cours de traitement (PROCESSING).`,
+                entityType: 'request',
+                entityId: data.id,
+                channels: ['in_app', 'email'],
+                status: 'PROCESSING',
+                date: new Date().toISOString(),
+                admin_dashboard_url: process.env.ADMIN_DASHBOARD_URL || undefined
+              });
+            } catch (e) {
+              logger.warn('Failed to send initial PROCESSING notification', { requestId: data.id, e });
+            }
+          })();
+        }
+      } catch (e) {
+        logger.warn('Error while scheduling initial notification', { requestId: data.id, e });
+      }
+
+      return data;
   }
 
   // ===============================
@@ -308,10 +336,19 @@ export class RequestsService {
   // ===============================
   // FORCE UPDATE STATUS (ADMIN)
   // ===============================
-  static async forceUpdateStatus(requestId: string, status: string) {
-    logger.warn('Force updating request status (admin)', { requestId, status });
+  static async forceUpdateStatus(requestId: string, status: string, opts: { notifyClient?: boolean } = { notifyClient: true }) {
+    logger.warn('Force updating request status (admin)', { requestId, status, notifyClient: opts.notifyClient });
 
-        const { data, error } = await supabase
+    // Read current status first to avoid sending duplicate notifications when status is unchanged
+    let currentStatus: string | null = null;
+    try {
+      const { data: cur, error: curErr } = await supabase.from('requests').select('status').eq('id', requestId).single();
+      if (!curErr && cur) currentStatus = cur.status;
+    } catch (e) {
+      logger.warn('Failed to read current status before forceUpdateStatus', { requestId, e });
+    }
+
+    const { data, error } = await supabase
       .from('requests')
       .update({ status })
       .eq('id', requestId)
@@ -340,21 +377,30 @@ export class RequestsService {
           logger.warn('Failed to load client profile for forced update notification', { e, clientId });
         }
 
-        await NotificationsService.send({
-          userId: clientId,
-          type: 'REQUEST_STATUS_CHANGED',
-          title: `Request status updated to ${status}`,
-          message: `Your request ${requestId} status was set to ${status}`,
-          entityType: 'request',
-          entityId: requestId,
-          channels: ['in_app', 'email'],
-          // Admin template fields
-          client_name,
-          client_email,
-          status,
-          date: new Date().toISOString(),
-          admin_dashboard_url: process.env.ADMIN_DASHBOARD_URL
-        });
+        // Only send notification if the status actually changed and caller allows it
+        if (currentStatus !== status) {
+          if (opts.notifyClient === false) {
+            logger.info('Skipping forced REQUEST_STATUS_CHANGED because notifyClient=false', { requestId, status });
+          } else {
+            await NotificationsService.send({
+              userId: clientId,
+              type: 'REQUEST_STATUS_CHANGED',
+              title: `Request status updated to ${status}`,
+              message: `Your request ${requestId} status was set to ${status}`,
+              entityType: 'request',
+              entityId: requestId,
+              channels: ['in_app', 'email'],
+              // Admin template fields
+              client_name,
+              client_email,
+              status,
+              date: new Date().toISOString(),
+              admin_dashboard_url: process.env.ADMIN_DASHBOARD_URL
+            });
+          }
+        } else {
+          logger.info('Skipping notification in forceUpdateStatus because status did not change', { requestId, status });
+        }
       } catch (e) {
         logger.warn('Failed to send notification for forced status update', { requestId, status, err: e });
       }
@@ -388,9 +434,14 @@ export class RequestsService {
     }
 
     const from = request.status as RequestStatus;
-
     if (isFinalState(from)) {
       throw new Error('Request is in a final state');
+    }
+
+    // If the request already has the desired status, nothing to do (avoid duplicate notifications)
+    if (from === to) {
+      logger.info('Status transition no-op (already at target)', { requestId, status: to });
+      return request as any; // return current record
     }
 
     // 🔒 Rule enforcement
@@ -462,22 +513,41 @@ export class RequestsService {
           }
         }
 
-        await NotificationsService.send({
-          userId: clientId ?? '',
-          type: 'REQUEST_STATUS_CHANGED',
-          title: `Request status updated to ${to}`,
-          message: `Your request ${requestId} status changed from ${from} to ${to}`,
-          entityType: 'request',
-          entityId: requestId,
-          channels: ['in_app', 'email'],
-          client_name,
-          client_email,
-          status: to,
-          date: new Date().toISOString(),
-          admin_dashboard_url: process.env.ADMIN_DASHBOARD_URL
-        });
+        // Only notify clients about generic status changes when the status becomes
+        // PROCESSING or when the actor is the client. Admin/internal flows that
+        // change status to other values (e.g. UNDER_REVIEW, DRAFT_SENT) should
+        // use specialized events (e.g. CLIENT_DRAFT_AVAILABLE) to avoid duplicate
+        // generic "status changed" emails to the client.
+        const shouldNotifyClientStatusChange = (to === 'PROCESSING') || actorRole === 'CLIENT';
+
+        if (shouldNotifyClientStatusChange) {
+          // Prefer specific event types for some statuses so clients receive
+          // dedicated templates (e.g. PAYMENT_PROOF_UPLOADED) instead of the
+          // generic REQUEST_STATUS_CHANGED template that prints the raw status.
+          const eventType = (to === 'PAYMENT_PROOF_UPLOADED') ? 'PAYMENT_PROOF_UPLOADED' : 'REQUEST_STATUS_CHANGED';
+          await NotificationsService.send({
+            userId: clientId ?? '',
+            type: eventType,
+            title: `Request status updated to ${to}`,
+            message: `Your request ${requestId} status changed from ${from} to ${to}`,
+            entityType: 'request',
+            entityId: requestId,
+            channels: ['in_app', 'email'],
+            client_name,
+            client_email,
+            status: to,
+            date: new Date().toISOString(),
+            admin_dashboard_url: process.env.ADMIN_DASHBOARD_URL
+          });
+        } else {
+          logger.info('Skipping generic REQUEST_STATUS_CHANGED client email for admin/internal non-PROCESSING transition', { requestId, from, to, actorRole });
+        }
       } catch (e) {
-        logger.warn('Failed to send notification for status transition', { e });
+        logger.error('Failed to send notification for status transition', { 
+          e: e instanceof Error ? e.message : JSON.stringify(e),
+          requestId,
+          stack: e instanceof Error ? e.stack : undefined
+        });
       }
     })();
 
@@ -538,7 +608,12 @@ export class RequestsService {
           channels: ['in_app', 'email']
         });
       } catch (e) {
-        logger.warn('Failed to send client targeted notification', { e, requestId, to });
+        logger.error('Failed to send client targeted notification', { 
+          e: e instanceof Error ? e.message : JSON.stringify(e),
+          requestId, 
+          to,
+          stack: e instanceof Error ? e.stack : undefined
+        });
       }
     })();
 

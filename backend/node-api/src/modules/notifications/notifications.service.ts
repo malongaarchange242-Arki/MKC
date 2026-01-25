@@ -137,14 +137,26 @@ export class NotificationsService {
 					try {
 						const { EmailTemplates } = await import('./email.templates');
 
-						// If the request status is PROCESSING, always prefer the
-						// REQUEST_STATUS_CHANGED template (Processing wording).
+						// Use the template based on the event type
+						// Always use the appropriate template for the event type
 						let tplKey = payload.type as keyof typeof EmailTemplates;
-						if ((payload as any).status === 'PROCESSING') {
-							tplKey = 'REQUEST_STATUS_CHANGED' as keyof typeof EmailTemplates;
-						}
 
-						const tpl = EmailTemplates[tplKey];
+						// If this email is prepared for the admin (prenom passed as 'Admin' or 'Administrateur'),
+						// prefer an ADMIN-specific template variant if available (e.g. REQUEST_CREATED_ADMIN).
+						let tpl: any = EmailTemplates[tplKey];
+						try {
+							const isAdminRecipient = (prenom || '').toString().toLowerCase().includes('admin');
+							const adminKey = (tplKey as string) + '_ADMIN';
+							if (isAdminRecipient && (EmailTemplates as any)[adminKey]) {
+								tpl = (EmailTemplates as any)[adminKey];
+							}
+
+							// Log which template key will be used to render the email (helps debug wrong template selection)
+							const chosenKey = (isAdminRecipient && (EmailTemplates as any)[adminKey]) ? adminKey : tplKey;
+							logger.info('Resolved email template key', { tplKey: String(tplKey), adminKey: String(adminKey), chosenKey: String(chosenKey) });
+						} catch (e) {
+							// ignore and use base tpl
+						}
 						if (tpl) {
 							const tplInput: any = {
 								prenom,
@@ -215,40 +227,82 @@ export class NotificationsService {
 				/* Prepare send tasks */
 				const tasks: Promise<any>[] = [];
 
-				/* Client email task (if available)
-				   Do not block admin send if client resolution fails */
-				if (userEmail) {
-					tasks.push((async () => {
-						try {
-							const { html, subjectOverride, textOverride } = await getHtmlFor(prenom);
-							const mailSubject = subjectOverride || payload.title;
-							const mailText = textOverride || payload.message;
-							logger.info('Sending client email', { to: userEmail, type: payload.type });
-							await smtpTransporter.sendMail({
-								from: process.env.EMAIL_FROM || 'no-reply@example.com',
-								to: userEmail,
-								subject: mailSubject,
-								text: mailText,
-								html,
-								attachments
-							});
-							logger.info('Client email sent', { to: userEmail, type: payload.type });
-						} catch (sendErr) {
-							logger.error('SMTP sendMail failed (client)', { error: sendErr, to: userEmail });
-						}
-					})());
+				/* ------------------ CLIENT / ADMIN FILTERS ------------------ */
+			// ✅ CLIENT: 6 NOTIFICATIONS UNIQUEMENT (reduce noise)
+			// REQUEST_CREATED, PAYMENT_CONFIRMED, DRAFT_AVAILABLE, REQUEST_COMPLETED, REQUEST_REJECTED, BL_AUTO_GENERATED
+			const CLIENT_ALLOWED = new Set([
+				'REQUEST_CREATED',
+				'REQUEST_STATUS_CHANGED',
+				'PAYMENT_CONFIRMED',
+				// Allow client notification when they upload payment proof
+				'PAYMENT_PROOF_UPLOADED',
+				'DRAFT_AVAILABLE',
+				'REQUEST_COMPLETED',
+				'REQUEST_REJECTED',
+				'BL_AUTO_GENERATED',
+				// Also allow client-targeted event names emitted by RequestsService
+				'CLIENT_PAYMENT_CONFIRMED',
+				'CLIENT_DRAFT_AVAILABLE',
+				'CLIENT_FERI_ISSUED'
+			]);
+
+			// ✅ ADMIN: VISIBILITÉ COMPLÈTE (10 événements)
+			// REQUEST_CREATED, REQUEST_SUBMITTED, PAYMENT_PROOF_UPLOADED, PAYMENT_CONFIRMED,
+			// DRAFT_AVAILABLE, REQUEST_STATUS_CHANGED, REQUEST_MESSAGE_ADMIN, REQUEST_DISPUTE_ADMIN,
+			// REQUEST_COMPLETED, REQUEST_REJECTED
+			const ADMIN_EVENTS = new Set([
+				'REQUEST_CREATED',
+				'REQUEST_SUBMITTED',
+				'PAYMENT_PROOF_UPLOADED',
+				'PAYMENT_CONFIRMED',
+				'DRAFT_AVAILABLE',
+				'REQUEST_STATUS_CHANGED',
+				'REQUEST_MESSAGE_ADMIN',
+				'REQUEST_DISPUTE_ADMIN',
+				'REQUEST_COMPLETED',
+				'REQUEST_REJECTED',
+				// include BL auto-generation so admins receive an email when a BL ref is auto-created
+				'BL_AUTO_GENERATED'
+			]);
+
+			/* Client email task (if available)
+			   Only send for allowed client events. Attachments are sent to client
+			   only for final document (REQUEST_COMPLETED). Drafts are provided as links. */
+			if (userEmail) {
+					if (!CLIENT_ALLOWED.has(payload.type)) {
+						logger.info('Skipping client email (event not in client whitelist)', { type: payload.type, userId: payload.userId });
+					} else {
+						tasks.push((async () => {
+							try {
+								const { html, subjectOverride, textOverride } = await getHtmlFor(prenom);
+								const mailSubject = subjectOverride || payload.title;
+								const mailText = textOverride || payload.message;
+								logger.info('Sending client email', { to: userEmail, type: payload.type });
+								// Only attach final PDF for REQUEST_COMPLETED; drafts should be links
+								const clientAttachments = payload.type === 'REQUEST_COMPLETED' ? attachments : [];
+								await smtpTransporter.sendMail({
+									from: process.env.EMAIL_FROM || 'no-reply@example.com',
+									to: userEmail,
+									subject: mailSubject,
+									text: mailText,
+									html,
+									attachments: clientAttachments
+								});
+								logger.info('Client email sent', { to: userEmail, type: payload.type });
+							} catch (sendErr) {
+								logger.error('SMTP sendMail failed (client)', { 
+									error: sendErr instanceof Error ? sendErr.message : JSON.stringify(sendErr), 
+									to: userEmail,
+									stack: sendErr instanceof Error ? sendErr.stack : undefined
+								});
+							}
+						})());
+					}
 				} else {
 					logger.warn('No client email found, skipping client email', { userId: payload.userId });
 				}
 
-				/* Admin email: always attempt for critical event types, without querying Supabase */
-				const ADMIN_EVENTS = new Set([
-					'REQUEST_STATUS_CHANGED',
-					'DRAFT_SENT',
-					'PAYMENT_PROOF_UPLOADED',
-					'PAYMENT_CONFIRMED'
-				]);
-
+				/* Admin email: check configured admin events (defined above) */
 				const shouldNotifyAdmin = ADMIN_EVENTS.has(payload.type);
 
 				if (shouldNotifyAdmin) {
@@ -265,6 +319,7 @@ export class NotificationsService {
 
 					if (adminRecipients.length === 0) {
 						logger.info('Admin email skipped (no ADMIN_EMAIL or ADMIN_EMAILS configured)');
+						// Keep sending in-app notifications even when admin email recipients are not configured
 					} else {
 						tasks.push((async () => {
 							try {
@@ -281,11 +336,15 @@ export class NotificationsService {
 									subject: mailSubject,
 									text: mailText,
 									html,
-									attachments
+									attachments: [] // do not include attachments for admin
 								});
 								logger.info('Admin email sent', { to: adminRecipients });
 							} catch (adminErr) {
-								logger.error('Admin email send failed', { error: adminErr, to: adminRecipients });
+								logger.error('Admin email send failed', { 
+									error: adminErr instanceof Error ? adminErr.message : JSON.stringify(adminErr), 
+									to: adminRecipients,
+									stack: adminErr instanceof Error ? adminErr.stack : undefined
+								});
 							}
 						})());
 					}

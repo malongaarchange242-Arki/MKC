@@ -130,6 +130,43 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+// --- Auto-refresh (polling) to keep the UI in sync when other users act ---
+const POLL_INTERVAL_MS = 8000; // 8 seconds
+let _clientAutoRefreshTimer = null;
+async function refreshClientDataOnce() {
+    try {
+        await fetchRequests();
+        await fetchInvoices();
+        renderClientPayments();
+    } catch (e) {
+        // ignore transient errors
+    }
+}
+function startClientAutoRefresh() {
+    if (_clientAutoRefreshTimer) return;
+    _clientAutoRefreshTimer = setInterval(() => {
+        refreshClientDataOnce();
+    }, POLL_INTERVAL_MS);
+    // do an immediate fetch too
+    refreshClientDataOnce();
+}
+function stopClientAutoRefresh() {
+    if (_clientAutoRefreshTimer) {
+        clearInterval(_clientAutoRefreshTimer);
+        _clientAutoRefreshTimer = null;
+    }
+}
+
+// Pause polling when page is hidden to reduce server load
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) stopClientAutoRefresh(); else startClientAutoRefresh();
+});
+
+// Start auto-refresh after initial load
+window.addEventListener('load', () => {
+    try { startClientAutoRefresh(); } catch (e) {}
+});
+
 // --- RENDER TABLEAU DES PAIEMENTS CLIENT ---
 function renderClientPayments() {
     const tbody = document.getElementById('client-payment-body');
@@ -158,7 +195,7 @@ function renderClientPayments() {
                     null;
                 const amountValue = (invoiceFromApi && invoiceFromApi.amount_due !== null && invoiceFromApi.amount_due !== undefined)
                     ? escapeHtml(`${invoiceFromApi.amount_due} ${invoiceFromApi.currency || ''}`.trim())
-                    : (req.amount ? escapeHtml(String(req.amount)) : (req.inv ? escapeHtml(req.inv) : '$ 1500'));
+                    : (req.amount ? escapeHtml(String(req.amount)) : (req.inv ? escapeHtml(req.inv) : '1500 XAF'));
 
                 // Determine action button label/class based on status (all labels use i18n)
                 let actionLabelKey = 'upload_proof';
@@ -434,6 +471,8 @@ function handleSubmitProof() {
             // best-effort local update.
             saveRequests();
             renderClientPayments();
+            // ensure we re-sync with server state (in case server-side rules modified status)
+            try { await refreshClientDataOnce(); } catch (e) {}
             closePaymentModal();
             alert(t('proof_uploaded','Proof uploaded and recorded. Thank you.'));
             selectedBL = null;
@@ -624,6 +663,8 @@ async function handlePaymentModeChange(blValue, selectedMode) {
             // For auto-transition modes the local update was done above on success
             saveRequests();
             renderClientPayments();
+            // trigger a background sync to reflect server-side state quickly
+            try { await refreshClientDataOnce(); } catch (e) {}
         }
     } catch (err) {
         console.error('Error handling payment mode change:', err);

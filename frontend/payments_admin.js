@@ -34,7 +34,7 @@
       const actTd = document.createElement('td'); actTd.className='actions';
       const viewBtn = document.createElement('button'); viewBtn.textContent = (window.i18n && typeof window.i18n.t === 'function') ? window.i18n.t('view_proof') : 'View Proof';
       viewBtn.addEventListener('click', ()=>openProof(p.storage_path));
-      const okBtn = document.createElement('button'); okBtn.textContent = (window.i18n && typeof window.i18n.t === 'function') ? window.i18n.t('validate') : 'Validate'; okBtn.addEventListener('click', ()=>updateStatus(p.id,'validated'));
+      const okBtn = document.createElement('button'); okBtn.textContent = (window.i18n && typeof window.i18n.t === 'function') ? window.i18n.t('validate') : 'Validate'; okBtn.addEventListener('click', ()=>updateStatus(p.id,'validated', p.request_id));
       const rejBtn = document.createElement('button'); rejBtn.textContent = (window.i18n && typeof window.i18n.t === 'function') ? window.i18n.t('reject') : 'Reject'; rejBtn.addEventListener('click', ()=>updateStatus(p.id,'rejected'));
       actTd.appendChild(viewBtn); actTd.appendChild(okBtn); actTd.appendChild(rejBtn);
       tr.appendChild(actTd); tbody.appendChild(tr);
@@ -50,11 +50,43 @@
     }catch(err){ console.error(err); alert('Erreur lors de la récupération du fichier.'); }
   }
 
-  async function updateStatus(id, newStatus){
+  async function updateStatus(id, newStatus, requestId){
     try{
       const { error } = await supabase.from('paiements').update({status:newStatus}).eq('id', id);
       if(error){ console.error(error); alert('Échec de la mise à jour.'); return; }
       const el = document.getElementById(`status-${id}`); if(el) el.textContent = (window.i18n && typeof window.i18n.t === 'function') ? window.i18n.t(newStatus) : newStatus;
+      // If admin validated the payment, attempt to notify via backend by transitioning the related request
+      if (newStatus === 'validated' && requestId) {
+        try {
+          const API_BASE = (() => {
+            const meta = document.querySelector('meta[name="api-base"]')?.content || '';
+            if (meta) return meta.replace(/\/$/, '');
+            return 'https://mkc-backend-kqov.onrender.com';
+          })();
+          const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+          if (!token) {
+            console.warn('No admin token found; skipping server-side transition to PAYMENT_CONFIRMED');
+            return;
+          }
+
+          const resp = await fetch(`${API_BASE}/requests/transition`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ requestId, to: 'PAYMENT_CONFIRMED' })
+          });
+
+          if (!resp.ok) {
+            const txt = await resp.text().catch(() => null);
+            console.error('Failed to transition request to PAYMENT_CONFIRMED', resp.status, txt);
+            alert('Mise à jour du paiement effectuée, mais la notification serveur a échoué. Vérifiez les logs.');
+          } else {
+            console.info('Server-side transition to PAYMENT_CONFIRMED succeeded for', requestId);
+          }
+        } catch (e) {
+          console.error('Error while calling server transition API', e);
+          alert('Mise à jour du paiement effectuée, mais la notification serveur a échoué.');
+        }
+      }
     }catch(err){ console.error(err); alert('Erreur inattendue.'); }
   }
 

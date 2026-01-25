@@ -37,7 +37,8 @@
     "option_feri": "FERI",
     "option_feri_ad": "FERI + AD",
     "manual_bl_not_found_alert": "We couldn't find the Bill of Lading in your document. Please enter your Bill of Lading.",
-    "manual_bl_enter_button": "Enter BL"
+    "manual_bl_enter_button": "Enter BL",
+    "bl_auto_generated_alert": "We couldn't detect your BL reference. A BL reference has been automatically generated."
     ,
     "bl_generator": "BL generator",
     "feri_number_label": "FERI Number",
@@ -173,7 +174,8 @@
     "option_feri": "FERI",
     "option_feri_ad": "FERI + AD",
     "manual_bl_not_found_alert": "Nous n'avons pas trouvé le Bill of Lading dans votre document. Veuillez saisir votre Bill of Lading.",
-    "manual_bl_enter_button": "Saisir BL"
+    "manual_bl_enter_button": "Saisir BL",
+    "bl_auto_generated_alert": "Nous n'avons pas détecté votre référence BL. Une référence BL a donc été générée automatiquement."
     ,
     "bl_generator": "Générateur BL",
     "feri_number_label": "Numéro FERI",

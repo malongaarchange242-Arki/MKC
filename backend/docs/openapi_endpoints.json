@@ -5,8 +5,8 @@
     "version": "1.0.0"
   },
   "servers": [
-    { "url": "https://mkc-backend-kqov.onrender.com", "description": "Node API (production)" },
-    { "url": "https://mkc-5slv.onrender.com/api/v1", "description": "Python service (production)" }
+    { "url": "https://mkc-backend-kqov.onrender.com", "description": "Node API (prod)" },
+    { "url": "https://mkc-5slv.onrender.com/api/v1", "description": "Python service (prod)" }
   ],
   "paths": {
     "/health": { "get": { "summary": "Node health" } },

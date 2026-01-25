@@ -85,7 +85,8 @@ export class AdminService {
 
     const result = await RequestsService.forceUpdateStatus(
       requestId,
-      status
+      status,
+      { notifyClient: false }
     );
 
     await AuditService.log({
@@ -97,6 +98,95 @@ export class AdminService {
     });
 
     return result;
+  }
+
+  // ===============================
+  // GENERATE BL REFERENCE (REUSABLE)
+  // ===============================
+  /**
+   * Generates a BL reference in format MKC{year}{seq}
+   * e.g., MKC20260001 for year 2026, sequence 1
+   * Used for automatic BL generation when OCR fails or when manually regenerated
+   */
+  static async generateBlReference(): Promise<string> {
+    const year = new Date().getFullYear();
+    const likePattern = `MKC${year}%`;
+
+    const { data: rows, error: countErr } = await supabaseAdmin
+      .from('requests')
+      .select('manual_bl')
+      .ilike('manual_bl', likePattern);
+
+    if (countErr) {
+      logger.warn('Failed to query existing manual_bl rows for sequencing', { err: countErr });
+    }
+
+    let seq = 1;
+    try {
+      if (Array.isArray(rows) && rows.length > 0) {
+        const max = rows
+          .map((r: any) => {
+            const m = String(r.manual_bl || '').match(/^MKC(\d{4})(\d{4,})$/);
+            return m ? parseInt(m[2], 10) : 0;
+          })
+          .reduce((a: number, b: number) => Math.max(a, b), 0);
+        seq = max + 1;
+      }
+    } catch (e) {
+      logger.warn('Error computing manual_bl sequence', { err: e });
+      seq = 1;
+    }
+
+    const ref = `MKC${year}${String(seq).padStart(4, '0')}`;
+    return ref;
+  }
+
+  // ===============================
+  // REGENERATE MANUAL BL
+  // ===============================
+  static async regenerateManualBl(requestId: string, adminId: string) {
+    logger.info('Admin: regenerate manual BL', { requestId, adminId });
+
+    // Fetch current request row using admin client (bypass RLS)
+    const { data: reqRow, error: reqErr } = await supabaseAdmin
+      .from('requests')
+      .select('id, manual_bl')
+      .eq('id', requestId)
+      .single();
+
+    if (reqErr || !reqRow) {
+      logger.warn('Request not found when regenerating manual_bl', { requestId, err: reqErr });
+      throw new Error('Request not found');
+    }
+
+    if (reqRow.manual_bl && String(reqRow.manual_bl).trim() !== '') {
+      // Nothing to do
+      return { success: true, manual_bl: reqRow.manual_bl, message: 'manual_bl already present' };
+    }
+
+    // Generate MKC{year}{seq} using the reusable function
+    const ref = await AdminService.generateBlReference();
+
+    const { data: updated, error: updErr } = await supabaseAdmin
+      .from('requests')
+      .update({ manual_bl: ref, bl_number: ref })
+      .eq('id', requestId)
+      .select()
+      .single();
+
+    if (updErr || !updated) {
+      logger.error('Failed to update request with regenerated manual_bl', { requestId, updErr });
+      throw new Error('Failed to update request with manual_bl');
+    }
+
+    // Audit
+    try {
+      await AuditService.log({ actor_id: adminId, action: 'REGENERATE_MANUAL_BL', entity: 'request', entity_id: requestId, metadata: { manual_bl: ref } });
+    } catch (e) {
+      logger.warn('Failed to write audit for regenerate manual_bl', { err: e });
+    }
+
+    return { success: true, manual_bl: ref, request: updated };
   }
 
   // ===============================
@@ -275,7 +365,7 @@ export class AdminService {
     }
 
     // 4. Update request status to COMPLETED
-    await RequestsService.forceUpdateStatus(requestId, 'COMPLETED');
+    await RequestsService.forceUpdateStatus(requestId, 'COMPLETED', { notifyClient: false });
 
     // 5. Audit
     await AuditService.log({
@@ -288,6 +378,7 @@ export class AdminService {
 
     // 6. Prepare signed URLs
     const docsWithUrls = [] as any[];
+    const requestTypeKey = (request && (request as any).type) ? String((request as any).type).toUpperCase() : null;
     for (const d of createdDocs) {
       try {
         if (d.pdf_url) {
@@ -299,7 +390,23 @@ export class AdminService {
             if (signedErr || !signed || !signed.signedUrl) {
               logger.warn('Failed to create signed url for feri_delivery', { requestId, path, err: signedErr });
             } else {
-              docsWithUrls.push({ id: d.id, type: 'FERI', category: d.category || 'FINAL', format: 'PDF', downloadUrl: signed.signedUrl, file_name: d.file_name });
+              // Prefer request-level type when explicit (AD_ONLY or FERI_ONLY).
+              // For mixed flows (FERI_AND_AD) or unknown, fall back to filename/path heuristics.
+              let derivedType: string | null = null;
+              if (requestTypeKey === 'AD_ONLY') {
+                derivedType = 'AD';
+              } else if (requestTypeKey === 'FERI_ONLY') {
+                derivedType = 'FERI';
+              } else {
+                // Derive type from filename or path to distinguish FERI vs AD
+                const fname = (d.file_name || '').toString().toLowerCase();
+                const p = (path || '').toString().toLowerCase();
+                derivedType = 'FERI';
+                if (fname.includes('ad') || fname.includes(' a d') || fname.includes('ad_') || p.includes('/ad_') || p.includes('-ad')) {
+                  derivedType = 'AD';
+                }
+              }
+              docsWithUrls.push({ id: d.id, type: derivedType, category: d.category || 'FINAL', format: 'PDF', downloadUrl: signed.signedUrl, file_name: d.file_name });
             }
           } catch (e) {
             logger.warn('Failed to create signed url for feri_delivery', { requestId, path, err: (e as any)?.message ?? String(e) });
@@ -313,7 +420,36 @@ export class AdminService {
       }
     }
 
-    // 7. Notify user
+    // 7. Prepare attachments (download binaries) and notify user
+    const attachments: Array<{ name: string; mime: string; base64: string }> = [];
+    for (const d of createdDocs) {
+      try {
+        if (d.pdf_url) {
+          // feri_deliveries entry: download from feri_documents bucket
+          const bucket = 'feri_documents';
+          const path = d.pdf_url;
+          const { data: fileData, error: downloadErr } = await supabase.storage.from(bucket).download(path);
+          if (downloadErr || !fileData) {
+            logger.warn('Failed to download feri_delivery file for attachment', { requestId, path, downloadErr });
+          } else {
+            const arrayBuffer = await fileData.arrayBuffer();
+            const buffer = Buffer.from(arrayBuffer);
+            attachments.push({ name: d.file_name || path.split('/').pop() || 'document.pdf', mime: d.mime_type || 'application/pdf', base64: buffer.toString('base64') });
+          }
+        } else if (d.id) {
+          // document stored in documents table — reuse DocumentsService download helper
+          try {
+            const { file, document } = await DocumentsService.downloadDocument(d.id, adminId, 'ADMIN');
+            attachments.push({ name: document.file_name || `${d.id}.pdf`, mime: document.mime_type || 'application/pdf', base64: file.toString('base64') });
+          } catch (e) {
+            logger.warn('Failed to download document entry for attachment', { requestId, docId: d.id, err: (e as any)?.message ?? e });
+          }
+        }
+      } catch (e) {
+        logger.warn('Unexpected error while preparing attachment', { requestId, doc: d, err: (e as any)?.message ?? e });
+      }
+    }
+
     try {
       const { NotificationsService } = await import('../notifications/notifications.service');
 
@@ -325,8 +461,8 @@ export class AdminService {
         entityType: 'REQUEST',
         entityId: requestId,
         channels: ['in_app', 'email'],
-        links: docsWithUrls.map(d => ({ name: d.type || d.id, url: d.downloadUrl, expires_in: 3600 })),
-        attachments: []
+        links: docsWithUrls.map(d => ({ name: d.type || d.file_name || d.id, url: d.downloadUrl, expires_in: 3600 })),
+        attachments: attachments
       });
     } catch (err) {
       logger.warn('Notification send failed', { err });
@@ -401,7 +537,7 @@ export class AdminService {
       });
 
       // Update request to COMPLETED
-      await RequestsService.forceUpdateStatus(requestId, 'COMPLETED');
+      await RequestsService.forceUpdateStatus(requestId, 'COMPLETED', { notifyClient: false });
 
       // Audit
       await AuditService.log({
@@ -550,7 +686,11 @@ export class AdminService {
           metadata: { invoice_id: invoice.id, invoice_number: invoice.invoice_number, draft_id: createdDraft.id }
         });
       } catch (e) {
-        logger.warn('Failed to send draft notification', { requestId, err: e });
+        logger.error('Failed to send draft notification', { 
+          requestId, 
+          err: e instanceof Error ? e.message : JSON.stringify(e),
+          stack: e instanceof Error ? e.stack : undefined
+        });
       }
 
       // 7. Return the authoritative invoice object

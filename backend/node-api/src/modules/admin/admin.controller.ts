@@ -209,12 +209,31 @@ export class AdminController {
 			if (req.body.feri_ref) opts.feri_ref = String(req.body.feri_ref);
 
 			const result = await AdminService.publishFinalDocuments(requestId, adminId, opts);
-
-			return res.status(200).json({ success: true, ...result });
+			// Avoid duplicate `success` property at compile-time by merging at runtime
+			if (result && typeof result === 'object' && Object.prototype.hasOwnProperty.call(result, 'success')) {
+				return res.status(200).json(result as any);
+			}
+			return res.status(200).json(Object.assign({ success: true }, result || {}));
 		} catch (error: unknown) {
 			return handleControllerError(res, error, 'Publish final documents');
 		}
 	}
+
+		static async regenerateManualBl(req: AuthRequest, res: Response) {
+			try {
+				if (!ensureAdminOrSystem(req, res)) return;
+				const adminId = getAuthUserId(req) ?? '';
+				if (!adminId) return res.status(401).json({ message: 'Unauthorized' });
+				const requestId = req.params.id;
+				const result = await AdminService.regenerateManualBl(requestId, adminId);
+				if (result && typeof result === 'object' && Object.prototype.hasOwnProperty.call(result, 'success')) {
+					return res.status(200).json(result as any);
+				}
+				return res.status(200).json(Object.assign({ success: true }, result || {}));
+			} catch (error: unknown) {
+				return handleControllerError(res, error, 'Regenerate manual BL');
+			}
+		}
 
 	static async uploadDraft(req: AuthRequest, res: Response) {
 		try {
@@ -251,7 +270,8 @@ export class AdminController {
 				const draft = await DraftsService.createDraft({
 					requestId,
 					file: f,
-					uploadedBy: adminId
+					uploadedBy: adminId,
+					type: docType
 				});
 				createdDrafts.push(draft);
 			}
@@ -268,8 +288,17 @@ export class AdminController {
 			for (const d of createdDrafts) {
 				try {
 					const signed = await DraftsService.generateSignedUrl(d.id, 60 * 60 * 24 * 3);
-					links.push({ name: d.file_name || 'Draft', url: signed, expires_in: 60 * 60 * 24 * 3 });
-					metadataItems.push({ draft_id: d.id, file_name: d.file_name, file_path: d.file_path });
+					// Prefer explicit naming by draft type so email groups links correctly
+					let linkName = d.file_name || 'File';
+					try {
+						const t = (d.type || '').toString().toLowerCase();
+						if (t.includes('proforma')) linkName = 'Proforma';
+						else if (t.includes('feri') || t.includes('draft')) linkName = 'Draft';
+					} catch (nerr) {
+						// ignore and use file_name fallback
+					}
+					links.push({ name: linkName, url: signed, expires_in: 60 * 60 * 24 * 3 });
+					metadataItems.push({ draft_id: d.id, file_name: d.file_name, file_path: d.file_path, type: d.type });
 				} catch (e) {
 					logger.warn('Failed to create signed url for draft', { draftId: d.id, e });
 				}
@@ -329,15 +358,37 @@ export class AdminController {
 			// Notify client
 			try {
 				const { NotificationsService } = await import('../notifications/notifications.service');
-				await NotificationsService.send({
+
+				// Send client notification (in-app + email)
+				const clientPromise = NotificationsService.send({
 					userId: request.user_id,
 					type: 'PAYMENT_CONFIRMED',
 					title: 'Paiement confirmé',
-					message: 'Votre paiement a été confirmé par l\'administration. La génération des documents finaux sera lancée.',
+					message: `Le paiement pour la demande ${request.ref || requestId} a été confirmé.`,
 					entityType: 'request',
 					entityId: requestId,
 					channels: ['in_app', 'email']
 				});
+
+				// Also notify configured admin emails (best-effort)
+				const adminRecipients: string[] = [];
+				if (process.env.ADMIN_EMAIL) adminRecipients.push(process.env.ADMIN_EMAIL);
+				if (process.env.ADMIN_EMAILS) adminRecipients.push(...process.env.ADMIN_EMAILS.split(',').map(s => s.trim()).filter(Boolean));
+
+				const adminNotifications = adminRecipients.map(email =>
+					NotificationsService.send({
+						userId: request.user_id,
+						overrideEmail: email,
+						type: 'PAYMENT_CONFIRMED',
+						title: 'Paiement confirmé',
+						message: `Le paiement pour la demande ${request.ref || requestId} a été confirmé.`,
+						entityType: 'request',
+						entityId: requestId,
+						channels: ['email']
+					})
+				);
+
+				await Promise.allSettled([clientPromise, ...adminNotifications]);
 			} catch (e) {
 				logger.warn('Failed to send payment confirmed notification', { e });
 			}

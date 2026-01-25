@@ -41,6 +41,8 @@ export const adminModule = (): Router => {
 	router.post('/requests/:id/confirm-payment', AdminController.confirmPayment);
 	router.post('/requests/:id/generate-feri', AdminController.generateFeri);
 	router.post('/requests/:id/generate-ad', AdminController.generateAd);
+	// Regenerate/fix manual BL (admin only)
+	router.post('/requests/:id/regenerate-manual-bl', AdminController.regenerateManualBl);
 
 	// SEND DRAFT (atomic: create/update invoice + attach draft + transition + notify)
 	router.post('/requests/:id/send-draft', uploadMiddleware.single('file'), AdminController.sendDraft);

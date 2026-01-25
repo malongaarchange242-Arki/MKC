@@ -138,6 +138,38 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Initialize i18n translations for the filter bar
   applyTranslations();
+  // Start automatic refresh to keep admin UI in sync with client actions
+  try { startAdminAutoRefresh(); } catch (e) {}
+});
+
+// --- Auto-refresh (polling) for admin UI ---
+const ADMIN_POLL_INTERVAL_MS = 8000; // 8 seconds
+let _adminAutoRefreshTimer = null;
+async function refreshAdminOnce() {
+  try {
+    await loadAdminRequests();
+    reRenderCurrentView();
+  } catch (e) {
+    // ignore transient errors
+  }
+}
+function startAdminAutoRefresh() {
+  if (_adminAutoRefreshTimer) return;
+  _adminAutoRefreshTimer = setInterval(() => {
+    refreshAdminOnce();
+  }, ADMIN_POLL_INTERVAL_MS);
+  // immediate fetch
+  refreshAdminOnce();
+}
+function stopAdminAutoRefresh() {
+  if (_adminAutoRefreshTimer) {
+    clearInterval(_adminAutoRefreshTimer);
+    _adminAutoRefreshTimer = null;
+  }
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) stopAdminAutoRefresh(); else startAdminAutoRefresh();
 });
 
 function applyTranslations() {
@@ -415,8 +447,8 @@ function openAdminModal(bl, mode) {
 
     if (mode === 'DRAFT') {
     if (title) title.innerText = (i18n.issue_draft_price && (i18n.issue_draft_price[(document.getElementById('lang-select') && document.getElementById('lang-select').value) || 'en'] || i18n.issue_draft_price.en)) || "Issue Draft & Pricing";
-    if (labelInput) { labelInput.innerText = "Proforma Amount ($)"; labelInput.style.display = ''; }
-    if (inputField) { inputField.placeholder = "e.g. 450.00"; inputField.style.display = ''; }
+    if (labelInput) { labelInput.innerText = "Proforma Amount (XAF)"; labelInput.style.display = ''; }
+    if (inputField) { inputField.placeholder = "e.g. 450000"; inputField.style.display = ''; }
     if (btnSubmit) btnSubmit.innerText = (i18n.send_draft_to_client && (i18n.send_draft_to_client[(document.getElementById('lang-select') && document.getElementById('lang-select').value) || 'en'] || i18n.send_draft_to_client.en)) || "SEND DRAFT TO CLIENT";
   } else {
     if (title) title.innerText = (i18n.deliver_final_feri && (i18n.deliver_final_feri[(document.getElementById('lang-select') && document.getElementById('lang-select').value) || 'en'] || i18n.deliver_final_feri.en)) || "Deliver Official FERI";
@@ -579,7 +611,7 @@ async function handleAdminSubmit() {
       fd.append('cargo_route', cargoVal);
     }
     fd.append('amount', inputValue.replace(/[^0-9.]/g, ''));
-    fd.append('currency', 'USD');
+    fd.append('currency', 'XAF');
     fd.append('file', fileInp.files[0]);
 
     const resp = await fetch(`${API_BASE.replace(/\/$/, '')}/admin/requests/${requestId}/send-draft`, {

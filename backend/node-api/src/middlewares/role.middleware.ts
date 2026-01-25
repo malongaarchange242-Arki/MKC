@@ -18,7 +18,13 @@ export const requireRole =
       }
 
       if (!allowedRoles.includes(role as any)) {
-        logger.warn('User role not allowed', { role, allowedRoles });
+        logger.warn('User role not allowed', { 
+          role, 
+          allowedRoles,
+          path: req.path,
+          method: req.method,
+          userId: (req as any).user?.id
+        });
         res.status(403).json({ message: 'Forbidden' });
         return;
       }
