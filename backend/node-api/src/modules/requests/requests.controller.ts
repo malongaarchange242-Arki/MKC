@@ -24,7 +24,12 @@ const createRequestSchema = z.object({
   ref: z.string().optional(),
   fxi_number: z.string().optional(),
   feri_number: z.string().optional(),
-  manual_bl: z.string().optional()
+  vehicle_registration: z.string().optional(),
+  manual_bl: z.string().optional(),
+  carrier_name: z.string().optional(),
+  // amounts may come as strings from the client; allow string or number
+  transport_road_amount: z.union([z.string(), z.number()]).optional(),
+  transport_river_amount: z.union([z.string(), z.number()]).optional()
 });
 
 const updateRequestSchema = z.object({
@@ -72,13 +77,25 @@ export class RequestsController {
 
       const body = createRequestSchema.parse(req.body);
 
+      // normalize numeric amounts (strip non-numeric chars and parse)
+      const parseAmount = (v: unknown) => {
+        if (v === undefined || v === null || v === '') return null;
+        const s = String(v).replace(/[^0-9.\-]/g, '');
+        const n = Number(s);
+        return Number.isFinite(n) ? n : null;
+      };
+
       const request = await RequestsService.createRequest({
         userId: userId,
         type: body.type,
         ref: body.ref,
         fxi_number: body.fxi_number,
         feri_number: body.feri_number,
-        manual_bl: body.manual_bl
+        vehicle_registration: body.vehicle_registration,
+        manual_bl: body.manual_bl,
+        carrier_name: body.carrier_name ?? null,
+        transport_road_amount: parseAmount(body.transport_road_amount),
+        transport_river_amount: parseAmount(body.transport_river_amount)
       });
 
       return res.status(201).json(request);

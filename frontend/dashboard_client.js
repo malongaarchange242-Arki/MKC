@@ -1201,11 +1201,24 @@ function goToStep2(type) {
     hideElement(feriBlock);
     showElement(adBlock);
     const fxi = document.getElementById('input-fxi'); if (fxi) fxi.style.display = 'none';
-    const feriInput = document.getElementById('input-feri'); if (feriInput) feriInput.style.display = '';
+    // Ensure Numéro FERI field is visible for AD-only flows
+    try {
+      const feriInput = document.getElementById('input-feri');
+      const feriLabel = document.querySelector('label[for="input-feri"]');
+      if (feriInput) feriInput.style.display = '';
+      if (feriLabel) feriLabel.style.display = '';
+    } catch (e) {}
   } else { // FERI + AD
     showElement(feriBlock);
     showElement(adBlock);
     const fxi = document.getElementById('input-fxi'); if (fxi) fxi.style.display = '';
+    // For combined FERI + AD, remove (hide) the Numéro FERI field per request
+    try {
+      const feriInput = document.getElementById('input-feri');
+      const feriLabel = document.querySelector('label[for="input-feri"]');
+      if (feriInput) feriInput.style.display = 'none';
+      if (feriLabel) feriLabel.style.display = 'none';
+    } catch (e) {}
   }
   // show submit button when on step 2
   const submitBtn = document.getElementById('submit-btn');
@@ -1268,16 +1281,7 @@ function submitNewRequest() {
     const refInput = document.getElementById('refInput');
     const ref = refInput ? refInput.value.trim() : "";
 
-    // If AD_ONLY, require feri_number
-    if (selectedRequestType === 'AD_ONLY') {
-      const feriInput = document.getElementById('input-feri');
-      const feriVal = feriInput ? (feriInput.value || '').trim() : '';
-      if (!feriVal) {
-        alert('Le champ "Numéro FERI" est requis pour les demandes AD.');
-        if (submitBtn) { submitBtn.disabled = false; submitBtn.innerText = __origSubmitText || 'Submit'; }
-        return;
-      }
-    }
+    // Read optional fields: FXI, manual BL and FERI number (FERI may be required for AD flows)
 
     if (!selectedRequestType) {
       alert('Sélectionnez un type de demande.');
@@ -1291,15 +1295,56 @@ function submitNewRequest() {
       // 1) Create request on backend
         const fxiInput = document.getElementById('input-fxi');
         const fxiNumber = fxiInput ? (fxiInput.value || '').trim() : '';
-        const feriInput = document.getElementById('input-feri');
-        const feriNumber = feriInput ? (feriInput.value || '').trim() : '';
         const manualBlInput = document.getElementById('manual-bl');
         const manualBl = manualBlInput ? (manualBlInput.value || '').trim() : '';
 
+        const feriInput = document.getElementById('input-feri');
+        const feriNumber = feriInput ? (feriInput.value || '').trim() : '';
+        const vehicleInput = document.getElementById('input-vehicle');
+        const vehicleRegistration = vehicleInput ? (vehicleInput.value || '').trim() : '';
+
+        // AD-specific fields
+        const transporteurInput = document.getElementById('input-transporteur');
+        const carrierName = transporteurInput ? (transporteurInput.value || '').trim() : '';
+        const roadAmountInput = document.getElementById('input-road-amount');
+        const riverAmountInput = document.getElementById('input-river-amount');
+        const roadAmount = roadAmountInput ? (roadAmountInput.value || '').trim() : '';
+        const riverAmount = riverAmountInput ? (riverAmountInput.value || '').trim() : '';
+
         const payload = { type: selectedRequestType, ref: ref };
         if (fxiNumber) payload.fxi_number = fxiNumber;
-        if (feriNumber) payload.feri_number = feriNumber;
         if (manualBl) payload.manual_bl = manualBl;
+        if (feriNumber) payload.feri_number = feriNumber;
+        if (vehicleRegistration) payload.vehicle_registration = vehicleRegistration;
+        if (carrierName) payload.carrier_name = carrierName;
+        if (roadAmount) payload.transport_road_amount = roadAmount;
+        if (riverAmount) payload.transport_river_amount = riverAmount;
+
+        // Validation: for AD-only requests, require FERI number, IM8 file, carrier name and vehicle registration
+        const isAdOnly = selectedRequestType === 'AD_ONLY';
+        if (isAdOnly) {
+          const fileIm8Check = document.getElementById('file-im8');
+          if (!feriNumber) {
+            alert('Numéro FERI requis pour une demande AD.');
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.innerText = __origSubmitText || 'Submit'; }
+            return;
+          }
+          if (!fileIm8Check || !fileIm8Check.files || fileIm8Check.files.length === 0) {
+            alert('La déclaration IM8 (fichier) est requise pour une demande AD.');
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.innerText = __origSubmitText || 'Submit'; }
+            return;
+          }
+          if (!carrierName) {
+            alert('Nom du transporteur est requis pour une demande AD.');
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.innerText = __origSubmitText || 'Submit'; }
+            return;
+          }
+          if (!vehicleRegistration) {
+            alert('Numéro d\'immatriculation est requis pour une demande AD.');
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.innerText = __origSubmitText || 'Submit'; }
+            return;
+          }
+        }
         const created = await createRequest(payload);
       const requestId = created.id || created[0]?.id || created.request_id || null;
       if (!requestId) throw new Error('Impossible de récupérer l\'ID de la demande');
@@ -1314,7 +1359,7 @@ function submitNewRequest() {
       // AD files
       const fileIm8 = document.getElementById('file-im8');
       const fileRoad = document.getElementById('file-road');
-      const fileVehicle = document.getElementById('file-vehicle');
+      // vehicle registration is now a text input (`input-vehicle`) not a file
       const fileRoadInv = document.getElementById('file-road-inv');
       const fileRiverInv = document.getElementById('file-river-inv');
 
@@ -1325,7 +1370,7 @@ function submitNewRequest() {
       // AD pushes
       if (fileIm8 && fileIm8.files && fileIm8.files.length) filesToUpload.push({ type: DOCUMENT_TYPES.CUSTOMS_DECLARATION, files: Array.from(fileIm8.files) });
       if (fileRoad && fileRoad.files && fileRoad.files.length) filesToUpload.push({ type: DOCUMENT_TYPES.ROAD_CARRIER, files: Array.from(fileRoad.files) });
-      if (fileVehicle && fileVehicle.files && fileVehicle.files.length) filesToUpload.push({ type: DOCUMENT_TYPES.VEHICLE_REGISTRATION, files: Array.from(fileVehicle.files) });
+      // no file upload for vehicle registration; value sent as payload.vehicle_registration
       if (fileRoadInv && fileRoadInv.files && fileRoadInv.files.length) filesToUpload.push({ type: DOCUMENT_TYPES.ROAD_FREIGHT_INVOICE, files: Array.from(fileRoadInv.files) });
       if (fileRiverInv && fileRiverInv.files && fileRiverInv.files.length) filesToUpload.push({ type: DOCUMENT_TYPES.RIVER_FREIGHT_INVOICE, files: Array.from(fileRiverInv.files) });
 
@@ -1416,8 +1461,11 @@ function resetModalForm() {
   document.querySelectorAll('.doc-upload-btn input[type="file"]').forEach(i => i.value = '');
   const fxi = document.getElementById('input-fxi');
   if (fxi) fxi.value = '';
+  // Reset optional inputs including FERI number
   const feri = document.getElementById('input-feri');
   if (feri) feri.value = '';
+  const vehicle = document.getElementById('input-vehicle');
+  if (vehicle) vehicle.value = '';
   extractedBL = "";
     // reset requirement blocks visibility: default to FERI visible, AD hidden
     const feriBlock = document.querySelector('.feri-req');

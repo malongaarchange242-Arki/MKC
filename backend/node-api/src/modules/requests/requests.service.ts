@@ -19,7 +19,11 @@ export interface CreateRequestInput {
   ref?: string | null;
   fxi_number?: string | null;
   feri_number?: string | null;
+  vehicle_registration?: string | null;
   manual_bl?: string | null;
+  carrier_name?: string | null;
+  transport_road_amount?: number | null;
+  transport_river_amount?: number | null;
 }
 
 export interface TransitionInput {
@@ -60,7 +64,11 @@ export class RequestsService {
     if (input.ref) insertObj.ref = input.ref;
     if (input.fxi_number) insertObj.fxi_number = input.fxi_number;
     if (input.feri_number) insertObj.feri_number = input.feri_number;
+    if (input.vehicle_registration) insertObj.vehicle_registration = input.vehicle_registration;
     if (input.manual_bl) insertObj.manual_bl = input.manual_bl;
+    if (typeof input.carrier_name !== 'undefined' && input.carrier_name !== null) insertObj.carrier_name = input.carrier_name;
+    if (typeof input.transport_road_amount !== 'undefined' && input.transport_road_amount !== null) insertObj.transport_road_amount = input.transport_road_amount;
+    if (typeof input.transport_river_amount !== 'undefined' && input.transport_river_amount !== null) insertObj.transport_river_amount = input.transport_river_amount;
     // For AD_ONLY requests, use the provided feri_number as the temporary BL display value
     if (input.type === 'AD_ONLY' && input.feri_number) {
       insertObj.bl_number = input.feri_number;
@@ -218,6 +226,35 @@ export class RequestsService {
     } catch (e) {
       // best-effort: do not fail the whole request listing if enrichment fails
       logger.warn('Failed to enrich requests with feri_deliveries', { err: (e as any)?.message ?? String(e) });
+    }
+
+    // Enrich with payment_mode from latest invoice if available
+    try {
+      const ids = rows.map((r: any) => r.id).filter(Boolean);
+      if (ids.length > 0) {
+        const { data: invoices, error: invErr } = await supabase
+          .from('invoices')
+          .select('request_id, payment_mode')
+          .in('request_id', ids)
+          .order('created_at', { ascending: false });
+
+        if (!invErr && Array.isArray(invoices) && invoices.length > 0) {
+          const latestByRequest: Record<string, string> = {};
+          for (const inv of invoices) {
+            if (!latestByRequest[inv.request_id] && inv.payment_mode) {
+              latestByRequest[inv.request_id] = inv.payment_mode;
+            }
+          }
+
+          for (const r of rows) {
+            if (latestByRequest[r.id]) {
+              r.payment_mode = latestByRequest[r.id];
+            }
+          }
+        }
+      }
+    } catch (e) {
+      logger.warn('Failed to enrich requests with payment_mode from invoices', { err: (e as any)?.message ?? String(e) });
     }
 
     return rows;
@@ -598,6 +635,45 @@ export class RequestsService {
             return;
         }
 
+        // For COMPLETED status, attach the final document to the email
+        let attachments: Array<{ name: string; mime: string; base64: string }> = [];
+        if (String(to) === 'COMPLETED') {
+          try {
+            const { data: delivery, error: deliveryErr } = await supabase
+              .from('feri_deliveries')
+              .select('pdf_url, file_name')
+              .eq('request_id', requestId)
+              .eq('status', 'COMPLETED')
+              .order('delivered_at', { ascending: false })
+              .limit(1)
+              .single();
+
+            if (delivery && delivery.pdf_url) {
+              const bucket = 'feri_documents';
+              const filePath = delivery.pdf_url;
+              const fileName = delivery.file_name || 'document.pdf';
+
+              const { data: fileBuffer, error: downloadErr } = await supabase.storage
+                .from(bucket)
+                .download(filePath);
+
+              if (fileBuffer && !downloadErr) {
+                const arrayBuffer = await (fileBuffer as any).arrayBuffer();
+                const base64Content = Buffer.from(arrayBuffer).toString('base64');
+                attachments.push({
+                  name: fileName,
+                  mime: 'application/pdf',
+                  base64: base64Content
+                });
+              } else {
+                logger.warn('Failed to download final document for attachment', { requestId, filePath, downloadErr });
+              }
+            }
+          } catch (e) {
+            logger.warn('Error preparing final document attachment', { requestId, e: e instanceof Error ? e.message : String(e) });
+          }
+        }
+
         await NotificationsService.send({
           userId: clientIdLocal,
           type: eventType,
@@ -605,7 +681,8 @@ export class RequestsService {
           message,
           entityType: 'request',
           entityId: requestId,
-          channels: ['in_app', 'email']
+          channels: ['in_app', 'email'],
+          attachments: attachments.length > 0 ? attachments : undefined
         });
       } catch (e) {
         logger.error('Failed to send client targeted notification', { 

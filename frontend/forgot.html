@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Récupération - Plateforme FERI AD</title>
+    <link rel="stylesheet" href="index.css" />
+    <style>
+        /* --- STABILITÉ GLOBALE --- */
+        .form {
+            min-height: 310px;
+            /* Hauteur fixe pour éviter les sauts */
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* --- OTP (ANTI-DÉBORDEMENT) --- */
+        .otp-inputs {
+            display: flex;
+            justify-content: space-between;
+            gap: 6px;
+            margin: 20px 0;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .otp-field {
+            width: 15%;
+            /* Taille relative calculée */
+            max-width: 48px;
+            height: 54px;
+            text-align: center;
+            font-size: 1.4rem;
+            font-weight: 700;
+            background: #f9f9f9;
+            border: 2px solid rgba(0, 0, 0, 0.05);
+            border-radius: 10px;
+            color: var(--text);
+            box-sizing: border-box;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .otp-field:focus {
+            border-color: var(--accent-orange);
+            background: #fff;
+            box-shadow: 0 4px 12px rgba(255, 152, 0, 0.2);
+            outline: none;
+            transform: translateY(-2px);
+        }
+
+        /* --- ANIMATIONS ET UTILITAIRES --- */
+        .hidden {
+            display: none !important;
+        }
+
+        .step-container {
+            width: 100%;
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="cursor-effect"></div>
+
+    <div class="page">
+        <div class="scene">
+            <div class="floating-logo" aria-hidden="true">
+                <img src="Logotype_mkc_bon-removebg-preview.png" alt="Logo" class="logo-svg" />
+            </div>
+
+            <main class="card" role="main">
+                <header class="card-header">
+                    <h1 id="title">Récupération</h1>
+                    <p class="subtitle" id="step-desc">Vérifions votre identité.</p>
+                </header>
+
+                <form id="forgotForm" class="form" novalidate>
+
+                    <div id="email-step" class="step-container">
+                        <div class="input-group">
+                            <label for="email">Email professionnel</label>
+                            <input id="email" type="email" autocomplete="email" placeholder="utilisateur@exemple.com"
+                                required />
+                            <span class="hint">Nous vous enverrons un code sécurisé.</span>
+                        </div>
+                    </div>
+
+                    <div id="otp-step" class="step-container hidden">
+                        <div class="input-group">
+                            <label>Code de sécurité</label>
+                            <div class="otp-inputs">
+                                <input type="text" maxlength="1" class="otp-field" inputmode="numeric" pattern="[0-9]*">
+                                <input type="text" maxlength="1" class="otp-field" inputmode="numeric" pattern="[0-9]*">
+                                <input type="text" maxlength="1" class="otp-field" inputmode="numeric" pattern="[0-9]*">
+                                <input type="text" maxlength="1" class="otp-field" inputmode="numeric" pattern="[0-9]*">
+                                <input type="text" maxlength="1" class="otp-field" inputmode="numeric" pattern="[0-9]*">
+                                <input type="text" maxlength="1" class="otp-field" inputmode="numeric" pattern="[0-9]*">
+                            </div>
+                            <span class="hint">Vérifiez votre boîte de réception.</span>
+                        </div>
+                    </div>
+
+                    <div id="password-step" class="step-container hidden">
+                        <div class="input-group">
+                            <label for="new-password">Nouveau mot de passe</label>
+                            <div class="password-wrap">
+                                <input id="new-password" class="pass-input" type="password"
+                                    placeholder="8 caractères min." />
+                                <button type="button" id="togglePassBtn" class="toggle-pass"
+                                    aria-label="Afficher le mot de passe">👁️</button>
+                            </div>
+
+                            <label for="confirm-password" style="margin-top: 12px;">Confirmation</label>
+                            <div class="password-wrap">
+                                <input id="confirm-password" class="pass-input" type="password"
+                                    placeholder="Répétez le mot de passe" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="actions" style="margin-top: auto; padding-top: 20px;">
+                        <button id="mainBtn" class="btn primary" type="submit">Envoyer le code</button>
+                    </div>
+
+                    <div class="meta">
+                        <a class="link" href="index.html">← Retour à la connexion</a>
+                    </div>
+
+                    <div id="message" class="message" role="status"></div>
+                </form>
+            </main>
+        </div>
+
+        <footer class="footer">
+            <small>&copy; 2026 Plateforme FERI AD</small>
+        </footer>
+    </div>
+
+    <script src="forgot.js"></script>
+    <script>
+        // Effet curseur
+        const effectLayer = document.querySelector('.cursor-effect');
+        document.addEventListener('mousemove', e => {
+            const x = (e.clientX / window.innerWidth) * 100;
+            const y = (e.clientY / window.innerHeight) * 100;
+            effectLayer.style.setProperty('--x', x + '%');
+            effectLayer.style.setProperty('--y', y + '%');
+        });
+    </script>
+</body>
+
+</html>

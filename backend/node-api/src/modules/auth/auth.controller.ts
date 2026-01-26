@@ -4,6 +4,9 @@ import { z, ZodError } from 'zod';
 import { AuthService } from './auth.service';
 import { getAuthUserId } from '../../utils/request-user';
 import { logger } from '../../utils/logger';
+import { JWTUtils } from '../../utils/jwt';
+import { NotificationsService } from '../notifications/notifications.service';
+import { supabase } from '../../config/supabase';
 
 // ===============================
 // SCHEMAS (ZOD)
@@ -39,6 +42,11 @@ const handleControllerError = (
       errors: error.format()
     });
   }
+
+  // ===============================
+  // MAGIC LINK REQUEST
+  // ===============================
+  // (magic link handlers moved into `AuthController` below)
 
   if (error instanceof Error) {
     logger.error(`${context} failed`, { message: error.message, stack: error.stack });
@@ -145,6 +153,121 @@ export class AuthController {
       });
     } catch (error: unknown) {
       return handleControllerError(res, error, 'Get profile');
+    }
+  }
+
+  // ===============================
+  // MAGIC LINK REQUEST
+  // ===============================
+  static async requestMagic(req: Request, res: Response) {
+    try {
+      const body = z.object({ email: z.string().email(), redirect: z.string().optional() }).parse(req.body);
+      const email = body.email;
+      const redirect = body.redirect || '/';
+
+      // Try to resolve profile silently
+      let profile: any = null;
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id, prenom')
+          .eq('email', email)
+          .maybeSingle();
+        if (error) {
+          logger.warn('Profile lookup failed for magic link', { email, error });
+        }
+        profile = data || null;
+      } catch (e) {
+        logger.warn('Supabase profile lookup error (magic request)', { e });
+      }
+
+      // Always return 200 to avoid user enumeration
+      if (!profile || !profile.id) {
+        // Do not send an email if user not found, but respond success
+        return res.status(200).json({ success: true });
+      }
+
+      // generate magic token
+      const token = JWTUtils.generateMagicToken({ sub: profile.id, email, redirect });
+
+      const apiBase = (process.env.API_BASE_URL || (`http://localhost:${process.env.APP_PORT || 3000}`)).replace(/\/$/, '');
+      const link = `${apiBase}/auth/magic/redirect?token=${encodeURIComponent(token)}`;
+
+      // send notification email with link
+      await NotificationsService.send({
+        userId: profile.id,
+        type: 'MAGIC_LINK',
+        title: 'Access your document',
+        message: `Click the link to open your document (valid for 15 minutes).`,
+        links: [{ name: 'Open document', url: link, expires_in: 900 }],
+        language: 'fr'
+      });
+
+      return res.status(200).json({ success: true });
+    } catch (error: unknown) {
+      return handleControllerError(res, error, 'Request magic link');
+    }
+  }
+
+  // ===============================
+  // MAGIC LINK REDIRECT / CONSUME
+  // ===============================
+  static async consumeMagicRedirect(req: Request, res: Response) {
+    try {
+      const token = (req.query.token || req.body.token || req.params.token) as string;
+      if (!token) return res.status(400).send('Missing token');
+
+      const payload: any = JWTUtils.verifyMagicToken(token);
+      const userId = payload.sub as string;
+      const email = payload.email as string;
+      const redirect = payload.redirect || '/';
+
+      // fetch role from profile
+      let role: any = 'CLIENT';
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', userId)
+          .maybeSingle();
+        if (!error && data && data.role) role = data.role;
+      } catch (e) {
+        logger.warn('Failed to fetch profile role during magic consume', { e, userId });
+      }
+
+      // generate application session token (24h)
+      const appToken = JWTUtils.generateToken({ sub: userId, email, role });
+
+      const frontendBase = (process.env.FRONTEND_URL || 'http://localhost:8080').replace(/\/$/, '');
+      // redirect to a small frontend helper page that stores token then navigates
+      // Place token in query string as a fallback for email clients that strip fragments.
+      // The frontend consumer will accept token from either query or fragment.
+      const consumeUrl = `${frontendBase}/_magic_consume.html?token=${encodeURIComponent(appToken)}&redirect=${encodeURIComponent(redirect)}`;
+
+      return res.redirect(302, consumeUrl);
+    } catch (error: unknown) {
+      logger.warn('Magic consume failed', { error });
+      return res.status(400).send('Invalid or expired magic link');
+    }
+  }
+
+  // ===============================
+  // RESET PASSWORD (after magic-consume stores app token)
+  // ===============================
+  static async resetPassword(req: Request, res: Response) {
+    try {
+      const authUserId = (req as any).authUserId;
+      if (!authUserId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
+      const body = z.object({ password: z.string().min(8) }).parse(req.body);
+
+      // Delegate to AuthService to perform password update via Supabase admin API
+      await AuthService.changePassword(authUserId, body.password);
+
+      // On success, return generic success
+      return res.status(200).json({ success: true, message: 'Password updated' });
+    } catch (error: unknown) {
+      return handleControllerError(res, error, 'Reset password');
     }
   }
 

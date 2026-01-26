@@ -1,5 +1,5 @@
 // utils/jwt.ts
-import jwt from 'jsonwebtoken';
+import jwt, { Secret } from 'jsonwebtoken';
 import { logger } from './logger';
 
 // ===============================
@@ -35,7 +35,8 @@ export class JWTUtils {
       role: payload.role
     };
 
-    const token = jwt.sign(tokenPayload, this.JWT_SECRET, {
+    // @ts-ignore - jsonwebtoken types overload mismatch in this TS setup
+    const token = jwt.sign(tokenPayload, this.JWT_SECRET as Secret, {
       expiresIn: this.JWT_EXPIRES_IN,
       issuer: 'feri-ad-backend',
       audience: 'feri-ad-client'
@@ -50,6 +51,48 @@ export class JWTUtils {
   }
 
   // ===============================
+  // MAGIC LINK TOKEN (short lived)
+  // ===============================
+  static generateMagicToken(payload: { sub: string; email: string; redirect?: string; jti?: string }, expiresIn = '15m'): string {
+    if (!this.JWT_SECRET) {
+      logger.error('JWT_SECRET is not configured');
+      throw new Error('JWT_SECRET is not configured');
+    }
+
+    // @ts-ignore - jsonwebtoken types overload mismatch in this TS setup
+    const token = jwt.sign(
+      { sub: payload.sub, email: payload.email, redirect: payload.redirect, type: 'magic', jti: payload.jti },
+      this.JWT_SECRET as Secret,
+      {
+        expiresIn,
+        issuer: 'feri-ad-backend',
+        audience: 'feri-ad-magic'
+      }
+    );
+
+    logger.info('Magic token generated', { userId: payload.sub, expiresIn });
+    return token;
+  }
+
+  static verifyMagicToken(token: string): any {
+    if (!this.JWT_SECRET) {
+      logger.error('JWT_SECRET is not configured');
+      throw new Error('JWT_SECRET is not configured');
+    }
+
+    try {
+      const decoded = jwt.verify(token, this.JWT_SECRET as Secret, {
+        issuer: 'feri-ad-backend',
+        audience: 'feri-ad-magic'
+      });
+      return decoded;
+    } catch (error) {
+      logger.warn('Magic token verification failed', { error });
+      throw new Error('Invalid or expired magic token');
+    }
+  }
+
+  // ===============================
   // VERIFY TOKEN
   // ===============================
   static verifyToken(token: string): JWTPayload {
@@ -59,7 +102,7 @@ export class JWTUtils {
     }
 
     try {
-      const decoded = jwt.verify(token, this.JWT_SECRET, {
+      const decoded = jwt.verify(token, this.JWT_SECRET as Secret, {
         issuer: 'feri-ad-backend',
         audience: 'feri-ad-client'
       }) as JWTPayload;

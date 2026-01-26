@@ -250,6 +250,10 @@ input:focus {
     font-size: 0.95rem;
 }
 
+/* Modal overrides for index page */
+.modal-overlay { display:none; align-items:center; justify-content:center; }
+.modal-box { max-width:420px; }
+
 /* Footer */
 .footer {
     margin-top: 18px;

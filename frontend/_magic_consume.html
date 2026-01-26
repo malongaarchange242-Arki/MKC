@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Processing…</title>
+  <style>body{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;margin:0;display:flex;align-items:center;justify-content:center;height:100vh;background:#f7fafc;color:#111} .box{background:#fff;padding:20px;border-radius:8px;box-shadow:0 8px 30px rgba(2,6,23,0.08);max-width:420px;text-align:center}</style>
+</head>
+<body>
+  <div class="box">
+    <h3>Processing sign-in…</h3>
+    <p id="msg">Please wait while we sign you in and redirect you.</p>
+  </div>
+
+  <script>
+    (function(){
+      try {
+        // accept token either in the query string or in the fragment (some email clients strip fragments)
+        const qs = new URLSearchParams(location.search.replace(/^\?/, ''));
+        const hash = location.hash.replace(/^#/, '');
+        const hs = new URLSearchParams(hash);
+        const token = qs.get('token') || hs.get('token');
+        const redirect = qs.get('redirect') || hs.get('redirect') || '/';
+        if (!token) {
+          document.getElementById('msg').textContent = 'Invalid token.';
+          return;
+        }
+        // store token in localStorage for client to use
+        try { localStorage.setItem('token', token); localStorage.setItem('access_token', token); } catch(e){}
+        // small delay to ensure storage is set, then navigate
+        setTimeout(()=>{
+          // protect against open redirect: allow only relative paths or same origin
+          try {
+            const url = new URL(redirect, location.origin);
+            if (url.origin !== location.origin) {
+              // redirect to root instead
+              window.location.href = '/';
+            } else {
+              window.location.href = url.pathname + url.search + url.hash;
+            }
+          } catch(e) {
+            window.location.href = redirect || '/';
+          }
+        }, 300);
+      } catch (e) {
+        document.getElementById('msg').textContent = 'An error occurred.';
+      }
+    })();
+  </script>
+</body>
+</html>

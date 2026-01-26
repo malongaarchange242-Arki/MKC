@@ -172,5 +172,23 @@ export class AuthService {
     const profile = await UsersService.getMe(authUserId);
     return profile;
   }
+    // ===============================
+    // CHANGE PASSWORD (ADMIN via service role)
+    // ===============================
+    static async changePassword(userId: string, newPassword: string) {
+      if (!userId) throw new Error('userId is required');
+      if (!newPassword || newPassword.length < 8) throw new Error('Password must be at least 8 characters');
 
-}
+      try {
+        const resp = await supabase.auth.admin.updateUserById(userId, { password: newPassword });
+        if ((resp as any).error) {
+          throw (resp as any).error;
+        }
+        return resp.data;
+      } catch (err: any) {
+        const meta = { message: err?.message || String(err) };
+        throw new Error('Failed to update password');
+      }
+    }
+
+  }

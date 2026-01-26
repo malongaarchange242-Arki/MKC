@@ -31,6 +31,13 @@ export const authModule = (): Router => {
     asyncHandler(AuthController.login)
   );
 
+  // Magic link endpoints
+  router.post('/magic/request', asyncHandler(AuthController.requestMagic));
+  router.get('/magic/redirect', asyncHandler(AuthController.consumeMagicRedirect));
+
+  // Reset password (requires auth token issued by magic consume)
+  router.post('/reset-password', authMiddleware, asyncHandler(AuthController.resetPassword));
+
   // ===============================
   // PROTECTED ROUTES
   // ===============================

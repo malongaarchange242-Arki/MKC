@@ -23,19 +23,19 @@
             <!-- Carte principale -->
             <main class="card" role="main" aria-labelledby="title">
                 <header class="card-header">
-                    <h1 id="title">Sign in</h1>
-                        <p class="subtitle">Access your FERI and AD requests</p>
+                    <h1 id="title" data-i18n="index_title">Sign in</h1>
+                        <p class="subtitle" data-i18n="index_subtitle">Access your FERI and AD requests</p>
                 </header>
 
                 <form id="authForm" class="form" novalidate>
                     <div class="input-group">
-                        <label for="email">Email</label>
-                        <input id="email" name="email" type="email" inputmode="email" autocomplete="email" required />
-                        <span class="hint">ex: utilisateur@exemple.com</span>
+                        <label for="email" data-i18n="email_label">Email</label>
+                        <input id="email" name="email" type="email" inputmode="email" autocomplete="email" required placeholder="" data-i18n-placeholder="email_hint" />
+                        <span class="hint" data-i18n="email_hint">ex: utilisateur@exemple.com</span>
                     </div>
 
                     <div class="input-group">
-                        <label for="password">Password</label>
+                        <label for="password" data-i18n="password_label">Password</label>
                         <div class="password-wrap">
                             <input id="password" name="password" type="password" autocomplete="current-password"
                                 required />
@@ -43,16 +43,18 @@
                         </div>
                     </div>
 
+                    
+
                     <div class="actions">
-                        <button id="submitBtn" class="btn primary" type="submit">Sign in</button>
-                        <button id="switchBtn" class="btn ghost" type="button">Create account</button>
+                        <button id="submitBtn" class="btn primary" type="submit" data-i18n="index_title">Sign in</button>
+                        <button id="switchBtn" class="btn ghost" type="button" data-i18n="create_account">Create account</button>
                     </div>
 
                     <div class="meta">
                         <label class="remember">
-                            <input type="checkbox" id="remember" /> Remember me
+                            <input type="checkbox" id="remember" /> <span data-i18n="remember_me">Remember me</span>
                         </label>
-                        <a class="link" href="forgot.html" id="forgot">Forgot password</a>
+                        <a class="link" href="forgot.html" id="forgot" data-i18n="forgot_password">Forgot password</a>
                     </div>
 
                     <div id="message" class="message" role="status" aria-live="polite"></div>
@@ -61,13 +63,16 @@
         </div>
 
         <footer class="footer">
-            <small>&copy; 2026 FERI AD Platform</small>
+            <small>&copy; 2026 FERI AD Platform </small>
         </footer>
     </div>
 
     <!-- Script principal -->
     <script src="i18n.js"></script>
     <script src="index.js"></script>
+
+    <!-- Floating FAQ above language switcher (visible over lang float) -->
+    <a id="faq-float" href="faq.html" target="_blank" rel="noopener" aria-label="FAQ" style="position:fixed; right:12px; bottom:72px; z-index:10001; background:#0b75f5; color:#fff; padding:10px 14px; border-radius:8px; text-decoration:none; font-weight:600; box-shadow:0 8px 20px rgba(11,117,245,0.24);">FAQ</a>
 
     <!-- Script effet curseur orange -->
     <script>
@@ -79,6 +84,25 @@
             effectLayer.style.setProperty('--y', y + '%');
         });
     </script>
+        <!-- Forgot-password modal -->
+        <div id="forgot-modal" class="modal-overlay" aria-hidden="true" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:10002; align-items:center; justify-content:center;">
+            <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="forgot-modal-title" style="background:#fff; padding:20px; border-radius:8px; width:360px; max-width:94%; box-shadow:0 20px 50px rgba(0,0,0,0.3);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <h3 id="forgot-modal-title" data-i18n="forgot_modal_title" style="margin:0; font-size:1.05rem;">Reset your password</h3>
+                    <button id="forgot-close" aria-label="Close" style="background:transparent;border:0;font-size:18px;cursor:pointer;">×</button>
+                </div>
+                <p id="forgot-instructions" data-i18n="forgot_modal_instructions" style="margin:0 0 12px; color:#555;">Enter your account email and we'll send reset instructions.</p>
+                <form id="forgot-form">
+                    <label for="forgot-email" style="display:block; font-size:13px; color:#555; margin-bottom:6px;" data-i18n="email_label">Email</label>
+                    <input id="forgot-email" type="email" placeholder="" data-i18n-placeholder="forgot_modal_email_placeholder" required style="width:100%; padding:10px; border:1px solid #e5e7eb; border-radius:6px; margin-bottom:12px;" />
+                    <div style="display:flex; gap:8px; justify-content:flex-end;">
+                        <button type="button" id="forgot-cancel" class="btn ghost" data-i18n="forgot_modal_close">Close</button>
+                        <button type="submit" id="forgot-submit" class="btn primary" data-i18n="forgot_modal_submit">Send reset link</button>
+                    </div>
+                    <p id="forgot-feedback" style="margin-top:12px; color:var(--muted); font-size:13px; display:none;"></p>
+                </form>
+            </div>
+        </div>
 </body>
 
 </html>

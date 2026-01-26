@@ -24,9 +24,10 @@
     switchBtn.addEventListener('click', () => {
         if (mode === 'login') {
             mode = 'register';
-            submitBtn.textContent = "S'inscrire";
-            switchBtn.textContent = "Déjà inscrit ? Se connecter";
-            document.querySelector('.subtitle').textContent = "Créez un compte en quelques secondes";
+            submitBtn.textContent = window.i18n ? window.i18n.t('sign_up') : "S'inscrire";
+            switchBtn.textContent = window.i18n ? window.i18n.t('already_registered') : "Déjà inscrit ? Se connecter";
+            const sub = document.querySelector('.subtitle');
+            if (sub) sub.textContent = window.i18n ? window.i18n.t('register_subtitle') : "Créez un compte en quelques secondes";
             if (!document.getElementById('nameField')) {
                 const group = document.createElement('div');
                 group.className = 'input-group';
@@ -37,9 +38,10 @@
             }
         } else {
             mode = 'login';
-            submitBtn.textContent = "Se connecter";
-            switchBtn.textContent = "Créer un compte";
-            document.querySelector('.subtitle').textContent = "Accédez à vos demandes FERI et AD";
+            submitBtn.textContent = window.i18n ? window.i18n.t('index_title') : "Se connecter";
+            switchBtn.textContent = window.i18n ? window.i18n.t('create_account') : "Créer un compte";
+            const sub = document.querySelector('.subtitle');
+            if (sub) sub.textContent = window.i18n ? window.i18n.t('index_subtitle') : "Accédez à vos demandes FERI et AD";
             const nf = document.getElementById('nameField');
             if (nf) nf.remove();
         }
@@ -57,23 +59,23 @@
 
         if (!email.value || !password.value) {
             message.style.color = 'var(--danger)';
-            message.textContent = 'Veuillez remplir tous les champs requis.';
+            message.textContent = window.i18n ? window.i18n.t('validation_fill_required') : 'Veuillez remplir tous les champs requis.';
             return;
         }
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value)) {
             message.style.color = 'var(--danger)';
-            message.textContent = 'Adresse email invalide.';
+            message.textContent = window.i18n ? window.i18n.t('validation_invalid_email') : 'Adresse email invalide.';
             return;
         }
         if (password.value.length < 8) {
             message.style.color = 'var(--danger)';
-            message.textContent = 'Le mot de passe doit contenir au moins 8 caractères.';
+            message.textContent = window.i18n ? window.i18n.t('validation_password_length') : 'Le mot de passe doit contenir au moins 8 caractères.';
             return;
         }
 
         submitBtn.disabled = true;
         submitBtn.style.opacity = 0.8;
-        submitBtn.textContent = mode === 'login' ? 'Connexion…' : "Inscription…";
+        submitBtn.textContent = mode === 'login' ? (window.i18n ? window.i18n.t('signing_in') : 'Connexion…') : (window.i18n ? window.i18n.t('registering') : 'Inscription…');
 
         floatingLogo.style.transition = 'transform 0.6s cubic-bezier(.2,.9,.3,1)';
         floatingLogo.style.transform = 'translateZ(40px) rotateY(-18deg) scale(1.03)';
@@ -152,7 +154,7 @@
             }
 
             message.style.color = 'var(--success)';
-            message.textContent = mode === 'login' ? 'Connexion réussie. Redirection…' : "Inscription réussie. Redirection…";
+            message.textContent = mode === 'login' ? (window.i18n ? window.i18n.t('sign_in_success') : 'Connexion réussie. Redirection…') : (window.i18n ? window.i18n.t('register_success') : 'Inscription réussie. Redirection…');
 
             // Déterminer le rôle utilisateur et rediriger en conséquence
             const extractRole = (obj) => {
@@ -181,10 +183,10 @@
 
         } catch (err) {
             message.style.color = 'var(--danger)';
-            message.textContent = err?.message || 'Erreur serveur. Réessayez plus tard.';
+            message.textContent = err?.message || (window.i18n ? window.i18n.t('validation_fill_required') : 'Erreur serveur. Réessayez plus tard.');
             submitBtn.disabled = false;
             submitBtn.style.opacity = 1;
-            submitBtn.textContent = mode === 'login' ? 'Se connecter' : "S'inscrire";
+            submitBtn.textContent = mode === 'login' ? (window.i18n ? window.i18n.t('index_title') : 'Se connecter') : (window.i18n ? window.i18n.t('sign_up') : "S'inscrire");
             floatingLogo.style.transform = '';
         }
     });
@@ -210,5 +212,66 @@
     document.addEventListener('mouseleave', () => {
         card.style.transform = '';
         floatingLogo.style.transform = '';
+    });
+
+    // Forgot-password modal behavior
+    const forgotLink = document.getElementById('forgot');
+    const forgotModal = document.getElementById('forgot-modal');
+    const forgotClose = document.getElementById('forgot-close');
+    const forgotCancel = document.getElementById('forgot-cancel');
+    const forgotForm = document.getElementById('forgot-form');
+    const forgotEmail = document.getElementById('forgot-email');
+    const forgotFeedback = document.getElementById('forgot-feedback');
+
+    function openForgot() {
+        if (!forgotModal) return;
+        forgotModal.style.display = 'flex';
+        forgotModal.setAttribute('aria-hidden', 'false');
+        forgotEmail && forgotEmail.focus();
+        forgotFeedback.style.display = 'none';
+        forgotFeedback.textContent = '';
+    }
+
+    function closeForgot() {
+        if (!forgotModal) return;
+        forgotModal.style.display = 'none';
+        forgotModal.setAttribute('aria-hidden', 'true');
+    }
+
+    // Allow the default link navigation to `forgot.html` instead of opening the modal.
+    // (Previously the click was intercepted to open an inline modal.)
+    if (forgotClose) forgotClose.addEventListener('click', closeForgot);
+    if (forgotCancel) forgotCancel.addEventListener('click', closeForgot);
+
+    forgotForm && forgotForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        forgotFeedback.style.display = 'none';
+        const emailVal = forgotEmail.value && forgotEmail.value.trim();
+        if (!emailVal || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
+            forgotFeedback.style.display = 'block';
+            forgotFeedback.style.color = 'var(--danger)';
+            forgotFeedback.textContent = window.i18n ? window.i18n.t('validation_invalid_email') : 'Adresse email invalide.';
+            return;
+        }
+
+        // Best-effort send to backend; do not reveal existence — show generic success message.
+        try {
+            const resetEndpoint = `${API_BASE}/forgot`;
+            await fetch(resetEndpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: emailVal })
+            }).catch(() => null);
+        } catch (e) {
+            // ignore
+        }
+
+        forgotFeedback.style.display = 'block';
+        forgotFeedback.style.color = 'var(--muted)';
+        forgotFeedback.textContent = window.i18n ? window.i18n.t('forgot_modal_success') : 'If an account exists, you will receive an email with reset instructions.';
+        // disable inputs to avoid re-submits
+        forgotEmail.disabled = true;
+        document.getElementById('forgot-submit').disabled = true;
+        setTimeout(closeForgot, 2200);
     });
 })();

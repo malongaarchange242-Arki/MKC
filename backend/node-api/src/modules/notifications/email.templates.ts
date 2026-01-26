@@ -59,7 +59,7 @@ function brandedLayout(title: string, body: string) {
   return `
 <div style="font-family:Arial,Helvetica,sans-serif;color:#222">
   <div style="display:flex;align-items:center;gap:12px">
-    ${logo ? `<img src="${escapeHtml(logo)}" alt="logo" style="height:48px" />` : ''}
+    ${logo ? `<img src="${escapeHtml(logo)}" alt="logo" style="height:24px;max-height:24px;width:auto;object-fit:contain" />` : ''}
     <h2 style="color:${primary};margin:0">${escapeHtml(title)}</h2>
   </div>
   <div style="margin-top:12px">${body}</div>

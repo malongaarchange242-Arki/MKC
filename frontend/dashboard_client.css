@@ -669,6 +669,25 @@ body {
   cursor: wait;
 }
 
+/* Inputs that should visually match upload buttons */
+.input-upload-like {
+  background: #f1f5f9;
+  padding: 15px;
+  margin-bottom: 10px;
+  border-radius: 4px;
+  color: #475569;
+  font-weight: 500;
+  min-height: 56px;
+  box-sizing: border-box;
+  border: 1px solid transparent;
+  display: flex;
+  align-items: center;
+}
+
+.input-upload-like::placeholder {
+  color: #9ca3af;
+}
+
 .doc-upload-btn small {
   display: block;
   font-size: 0.75rem;

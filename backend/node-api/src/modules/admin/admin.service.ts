@@ -667,24 +667,52 @@ export class AdminService {
         // Build a user-facing invoice preview URL on the frontend. Fall back to frontend base env var.
         // Allow controller to pass `frontend_base` (origin/referer) for local dev convenience.
         const providedFrontend = (opts as any)?.frontend_base || process.env.FRONTEND_URL || process.env.ADMIN_DASHBOARD_URL || '';
-        const frontendBase = (providedFrontend || 'https://feri-mkc.com').replace(/\/$/, '');
+        const frontendBase = (providedFrontend || process.env.FRONTEND_URL || 'https://feri-mkc.com').replace(/\/$/, '');
         // Facture_.html is at the root of the frontend, no need to add /frontend prefix
-        const invoicePreviewUrl = `${frontendBase}/Facture_.html?invoice_id=${encodeURIComponent(invoice.id)}`;
+        const previewPath = `/Facture_.html?invoice_id=${encodeURIComponent(invoice.id)}`;
+        // Generate a magic link token so recipients can open the preview without manual login
+        try {
+          const { JWTUtils } = await import('../../utils/jwt');
+          const apiBase = (process.env.API_BASE_URL || (`http://localhost:${process.env.APP_PORT || 3000}`)).replace(/\/$/, '');
+          const magic = JWTUtils.generateMagicToken({ sub: request.user_id, email: request.customer_email || '', redirect: previewPath });
+          const invoicePreviewUrl = `${apiBase}/auth/magic/redirect?token=${encodeURIComponent(magic)}`;
 
-        await NotificationsService.send({
-          userId: request.user_id,
-          type: 'DRAFT_AVAILABLE',
-          title: 'Draft & Proforma disponibles',
-          message: `A draft invoice is available. Invoice number: ${invoice.invoice_number}`,
-          entityType: 'request',
-          entityId: requestId,
-          channels: ['in_app', 'email'],
-          links: [
-            { name: 'Proforma', url: signed, expires_in: 60 * 60 * 24 * 3 },
-            { name: `Facture ${invoice.invoice_number}`, url: invoicePreviewUrl, expires_in: 60 * 60 * 24 * 3 }
-          ],
-          metadata: { invoice_id: invoice.id, invoice_number: invoice.invoice_number, draft_id: createdDraft.id }
-        });
+          // replace the invoicePreviewUrl variable in the links below
+          await NotificationsService.send({
+            userId: request.user_id,
+            type: 'DRAFT_AVAILABLE',
+            title: 'Draft & Proforma disponibles',
+            message: `A draft invoice is available. Invoice number: ${invoice.invoice_number}`,
+            entityType: 'request',
+            entityId: requestId,
+            channels: ['in_app', 'email'],
+            links: [
+              { name: 'Proforma', url: signed, expires_in: 60 * 60 * 24 * 3 },
+              { name: `Facture ${invoice.invoice_number}`, url: invoicePreviewUrl, expires_in: 60 * 60 * 24 * 3 }
+            ],
+            metadata: { invoice_id: invoice.id, invoice_number: invoice.invoice_number, draft_id: createdDraft.id }
+          });
+        } catch (e) {
+          // fallback to original behavior if magic token creation fails
+          const frontendBase2 = (providedFrontend || 'https://feri-mkc.com').replace(/\/$/, '');
+          const invoicePreviewUrl = `${frontendBase2}/Facture_.html?invoice_id=${encodeURIComponent(invoice.id)}`;
+
+          await NotificationsService.send({
+            userId: request.user_id,
+            type: 'DRAFT_AVAILABLE',
+            title: 'Draft & Proforma disponibles',
+            message: `A draft invoice is available. Invoice number: ${invoice.invoice_number}`,
+            entityType: 'request',
+            entityId: requestId,
+            channels: ['in_app', 'email'],
+            links: [
+              { name: 'Proforma', url: signed, expires_in: 60 * 60 * 24 * 3 },
+              { name: `Facture ${invoice.invoice_number}`, url: invoicePreviewUrl, expires_in: 60 * 60 * 24 * 3 }
+            ],
+            metadata: { invoice_id: invoice.id, invoice_number: invoice.invoice_number, draft_id: createdDraft.id }
+          });
+        }
+        
       } catch (e) {
         logger.error('Failed to send draft notification', { 
           requestId, 

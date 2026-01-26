@@ -898,6 +898,31 @@ function openSidePanel(req) {
   document.getElementById('side-client').innerText = 'Client: ' + (getClientName(req) || '—');
   const fxiEl = document.getElementById('side-fxi');
   if (fxiEl) fxiEl.innerText = 'FXI: ' + (req.fxi_number || '—');
+  
+  // Display request type (FERI, AD, FERI_AND_AD)
+  const typeEl = document.getElementById('side-type');
+  if (typeEl) {
+    const typeValue = req.type || '—';
+    const typeDisplay = typeValue.replace(/_/g, ' ');
+    typeEl.innerText = typeDisplay;
+  }
+  
+  // Populate AD fields (transporteur, immatriculation, montants transport, mode paiement)
+  const carrierEl = document.getElementById('side-carrier');
+  if (carrierEl) carrierEl.innerText = req.carrier_name || '—';
+  
+  const vehicleEl = document.getElementById('side-vehicle');
+  if (vehicleEl) vehicleEl.innerText = req.vehicle_registration || '—';
+  
+  const roadAmountEl = document.getElementById('side-road-amount');
+  if (roadAmountEl) roadAmountEl.innerText = req.transport_road_amount ? (req.transport_road_amount + ' XAF') : '—';
+  
+  const riverAmountEl = document.getElementById('side-river-amount');
+  if (riverAmountEl) riverAmountEl.innerText = req.transport_river_amount ? (req.transport_river_amount + ' XAF') : '—';
+  
+  const paymentModeEl = document.getElementById('side-payment-mode');
+  if (paymentModeEl) paymentModeEl.innerText = req.payment_mode || '—';
+  
   const docsEl = document.getElementById('side-docs');
   docsEl.innerHTML = '';
   let docs = req.documents || req.files || [];
