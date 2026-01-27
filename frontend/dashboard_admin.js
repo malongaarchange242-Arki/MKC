@@ -834,11 +834,16 @@ async function saveBLSaisi(requestId) {
 // Format BL for display: append marker when BL was entered manually
 function formatBLDisplayFromRow(row) {
   if (!row) return '';
-  const bl = row.extracted_bl || row.manual_bl || row.manualBl || row.bl || row.bl_number || row.bill_of_lading || '';
+  // If admin-entered BL exists, prefer it and display it directly
+  if (row.bl_saisi && String(row.bl_saisi).trim()) {
+    return String(row.bl_saisi).trim();
+  }
+
+  const bl = row.manual_bl || row.manualBl || row.bl_number || row.extracted_bl || row.bill_of_lading || row.bl || '';
   if (!bl) return '';
-  if (row.manual_bl || row.manualBl) {
+  if (row.manual_bl) {
     const blGenLabel = (window.i18n && typeof window.i18n.t === 'function') ? window.i18n.t('bl_generator') : 'BL generator';
-    return `${bl} (${blGenLabel})`;
+    return `${row.manual_bl} (${blGenLabel})`;
   }
   return bl;
 }

@@ -126,38 +126,41 @@ export class NotificationsService {
 					.join('');
 
 				const getHtmlFor = async (prenom?: string) => {
-					let html = `
+					let defaultFrHtml = `
 						<p>Bonjour ${prenom ?? ''},</p>
 						<p>${payload.message}</p>
 						${linksHtml ? `<ul>${linksHtml}</ul>` : ''}
 					`;
-					let subjectOverride: string | undefined;
-					let textOverride: string | undefined;
+					let defaultEnHtml = `
+						<p>Hello ${prenom ?? ''},</p>
+						<p>${payload.message}</p>
+						${linksHtml ? `<ul>${linksHtml}</ul>` : ''}
+					`;
+					let subjectFr: string | undefined;
+					let textFr: string | undefined;
+					let htmlFr: string | undefined = defaultFrHtml;
+					let subjectEn: string | undefined;
+					let textEn: string | undefined;
+					let htmlEn: string | undefined = defaultEnHtml;
 
 					try {
 						const { EmailTemplates } = await import('./email.templates');
 
-						// Use the template based on the event type
-						// Always use the appropriate template for the event type
 						let tplKey = payload.type as keyof typeof EmailTemplates;
-
-						// If this email is prepared for the admin (prenom passed as 'Admin' or 'Administrateur'),
-						// prefer an ADMIN-specific template variant if available (e.g. REQUEST_CREATED_ADMIN).
-						let tpl: any = EmailTemplates[tplKey];
+						let tplFunc: any = (EmailTemplates as any)[tplKey];
 						try {
 							const isAdminRecipient = (prenom || '').toString().toLowerCase().includes('admin');
 							const adminKey = (tplKey as string) + '_ADMIN';
 							if (isAdminRecipient && (EmailTemplates as any)[adminKey]) {
-								tpl = (EmailTemplates as any)[adminKey];
+								tplFunc = (EmailTemplates as any)[adminKey];
 							}
-
-							// Log which template key will be used to render the email (helps debug wrong template selection)
 							const chosenKey = (isAdminRecipient && (EmailTemplates as any)[adminKey]) ? adminKey : tplKey;
 							logger.info('Resolved email template key', { tplKey: String(tplKey), adminKey: String(adminKey), chosenKey: String(chosenKey) });
 						} catch (e) {
-							// ignore and use base tpl
+							// ignore and use base tplFunc
 						}
-						if (tpl) {
+
+						if (tplFunc) {
 							const tplInput: any = {
 								prenom,
 								entityId: payload.entityId,
@@ -171,13 +174,25 @@ export class NotificationsService {
 							};
 
 							try {
-								const tplOut: any = tpl(payload.language ?? 'fr', tplInput);
-								if (typeof tplOut === 'string') {
-									html = tplOut;
-								} else if (tplOut && typeof tplOut === 'object') {
-									subjectOverride = tplOut.subject ?? tplOut.title;
-									textOverride = tplOut.text;
-									html = tplOut.html ?? html;
+								const outFr: any = tplFunc('fr', tplInput);
+								const outEn: any = tplFunc('en', tplInput);
+
+								if (outFr) {
+									if (typeof outFr === 'string') htmlFr = outFr;
+									else if (typeof outFr === 'object') {
+										subjectFr = outFr.subject ?? outFr.title;
+										textFr = outFr.text;
+										htmlFr = outFr.html ?? htmlFr;
+									}
+								}
+
+								if (outEn) {
+									if (typeof outEn === 'string') htmlEn = outEn;
+									else if (typeof outEn === 'object') {
+										subjectEn = outEn.subject ?? outEn.title;
+										textEn = outEn.text;
+										htmlEn = outEn.html ?? htmlEn;
+									}
 								}
 							} catch (tplErr) {
 								logger.warn('Email template function threw', { tplErr, tplKey });
@@ -187,7 +202,25 @@ export class NotificationsService {
 						logger.warn('Email template error, fallback HTML used', { e });
 					}
 
-					return { html, subjectOverride, textOverride };
+					// Combine FR + EN into a single email body (FR first, then EN)
+					const combinedHtml = `
+						<div>
+							<section>
+								<h3>Français</h3>
+								${htmlFr}
+							</section>
+							<hr/>
+							<section>
+								<h3>English</h3>
+								${htmlEn}
+							</section>
+						</div>
+					`;
+
+					const combinedSubject = [subjectFr, subjectEn].filter(Boolean).join(' / ') || undefined;
+					const combinedText = [textFr ?? payload.message, '\n\n---\n\n', textEn ?? payload.message].join('');
+
+					return { html: combinedHtml, subjectOverride: combinedSubject, textOverride: combinedText };
 				};
 
 				/* Resolve client email (non-blocking for admin send) */
