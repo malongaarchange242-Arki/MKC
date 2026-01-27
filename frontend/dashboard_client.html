@@ -224,46 +224,46 @@
                 <!-- Uploads first -->
                 <div style="display:flex; flex-direction:column; gap:8px; width:100%;">
                   <label class="doc-upload-btn" id="btn-im8" for="file-im8" role="button" tabindex="0">
-                    <i class="fas fa-cloud-upload-alt" aria-hidden="true"></i> <span id="label-im8" data-i18n="customs_declaration">Déclaration en douane (IM8)</span>
+                    <i class="fas fa-cloud-upload-alt" aria-hidden="true"></i> <span id="label-im8" data-i18n="customs_declaration"></span>
                     <input id="file-im8" class="doc-file" type="file" hidden aria-label="Charger IM8" accept=".pdf,.jpg,.jpeg,.png">
                   </label>
 
                   <label class="doc-upload-btn" id="btn-road-inv" for="file-road-inv" role="button" tabindex="0">
-                    <i class="fas fa-cloud-upload-alt" aria-hidden="true"></i> <span id="label-road-inv" data-i18n="road_freight_invoice">Facture routière</span>
-                    <input id="file-road-inv" class="doc-file" type="file" hidden aria-label="Charger Facture routière" accept=".pdf,.jpg,.jpeg,.png">
+                    <i class="fas fa-cloud-upload-alt" aria-hidden="true"></i> <span id="label-road-inv" data-i18n="road_freight_invoice"></span>
+                    <input id="file-road-inv" class="doc-file" type="file" hidden aria-label="Charger Facture fret terrestre" accept=".pdf,.jpg,.jpeg,.png">
                   </label>
 
                   <label class="doc-upload-btn" id="btn-river-inv" for="file-river-inv" role="button" tabindex="0">
-                    <i class="fas fa-cloud-upload-alt" aria-hidden="true"></i> <span id="label-river-inv" data-i18n="river_freight_invoice">Facture fluviale</span>
-                    <input id="file-river-inv" class="doc-file" type="file" hidden aria-label="Charger Facture fluviale" accept=".pdf,.jpg,.jpeg,.png">
+                    <i class="fas fa-cloud-upload-alt" aria-hidden="true"></i> <span id="label-river-inv" data-i18n="river_freight_invoice"></span>
+                    <input id="file-river-inv" class="doc-file" type="file" hidden aria-label="Charger Facture fret fluvial" accept=".pdf,.jpg,.jpeg,.png">
                   </label>
                 </div>
 
                 <!-- Text inputs below uploads -->
                 <div style="width:100%; display:flex; flex-direction:column; gap:8px; margin-top:12px;">
                   <div style="width:100%; display:flex; flex-direction:column; gap:6px;">
-                    <label for="input-feri" style="font-weight:600;" data-i18n="feri_number_label">Numéro FERI</label>
+                    <label for="input-feri" style="font-weight:600;" data-i18n="feri_number_label"></label>
                     <input id="input-feri" class="input-upload-like" type="text" data-i18n-placeholder="feri_number_placeholder" aria-label="Numéro FERI" placeholder="Saisir Numéro FERI requis pour AD" style="width:100%; font-size:14px;">
                   </div>
 
                   <div id="transporteur-group" role="group" tabindex="0" style="display:flex; flex-direction:column; gap:6px; width:100%;">
-                    <label for="input-transporteur" style="font-weight:600;" id="label-transporteur" data-i18n="carrier_name">Nom du transporteur</label>
-                    <input id="input-transporteur" class="input-upload-like" type="text" aria-label="Nom du transporteur" placeholder="Saisir le nom du transporteur" style="width:100%; font-size:14px;">
+                    <label for="input-transporteur" style="font-weight:600;" id="label-transporteur" data-i18n="carrier_name"></label>
+                    <input id="input-transporteur" class="input-upload-like" type="text" aria-label="Nom du transporteur" data-i18n-placeholder="carrier_name_placeholder" placeholder="Saisir le nom du transporteur" style="width:100%; font-size:14px;">
                   </div>
 
                   <div id="btn-vehicle" role="group" tabindex="0" style="display:flex; flex-direction:column; gap:6px;">
-                    <label for="input-vehicle" style="font-weight:600;" id="label-vehicle" data-i18n="vehicle_registration">Numéro d'immatriculation du véhicule</label>
+                    <label for="input-vehicle" style="font-weight:600;" id="label-vehicle" data-i18n="vehicle_registration"></label>
                     <input id="input-vehicle" class="input-upload-like" type="text" aria-label="Numéro d'immatriculation du véhicule" data-i18n-placeholder="vehicle_registration_placeholder" placeholder="Saisir le Numéro d'immatriculation du véhicule" style="width:100%;">
                   </div>
 
                   <div style="display:flex; flex-direction:column; gap:6px; width:100%;">
-                    <label for="input-road-amount" style="font-weight:600;">Montant payé transport terrestre (optionnel)</label>
-                    <input id="input-road-amount" class="input-upload-like" type="text" placeholder="Saisir montant payé transport terrestre (XAF)" style="width:100%; font-size:13px;">
+                    <label for="input-road-amount" style="font-weight:600;" data-i18n="road_transport_amount_label"></label>
+                    <input id="input-road-amount" class="input-upload-like" type="text" data-i18n-placeholder="road_transport_amount_placeholder" placeholder="Saisir montant payé transport terrestre (XAF)" style="width:100%; font-size:13px;">
                   </div>
 
                   <div style="display:flex; flex-direction:column; gap:6px; width:100%;">
-                    <label for="input-river-amount" style="font-weight:600;">Montant payé transport fluvial (optionnel)</label>
-                    <input id="input-river-amount" class="input-upload-like" type="text" placeholder="Saisir montant payé transport fluvial (XAF)" style="width:100%; font-size:13px;">
+                    <label for="input-river-amount" style="font-weight:600;" data-i18n="river_transport_amount_label"></label>
+                    <input id="input-river-amount" class="input-upload-like" type="text" data-i18n-placeholder="river_transport_amount_placeholder" placeholder="Saisir montant payé transport fluvial (XAF)" style="width:100%; font-size:13px;">
                   </div>
                 </div>
               </div>

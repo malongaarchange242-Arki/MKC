@@ -37,6 +37,7 @@ export const adminModule = (): Router => {
 	router.get('/requests/:id', AdminController.getRequestById);
 	router.post('/requests/:id/under-review', AdminController.markUnderReview);
 	router.patch('/requests/:id/status', AdminController.forceUpdateRequestStatus);
+	router.patch('/requests/:id/bl-saisi', AdminController.updateBLSaisi);
 	router.post('/requests/:id/publish', uploadMiddleware.fields([{ name: 'file', maxCount: 1 }, { name: 'ad_file', maxCount: 1 }]), AdminController.publishFinalDocuments);
 	router.post('/requests/:id/confirm-payment', AdminController.confirmPayment);
 	router.post('/requests/:id/generate-feri', AdminController.generateFeri);

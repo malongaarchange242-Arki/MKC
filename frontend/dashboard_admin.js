@@ -761,6 +761,76 @@ function escapeJs(unsafe) {
   return String(unsafe).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\"/g, '\\"');
 }
 
+// Save BL saisi to backend
+async function saveBLSaisi(requestId) {
+  if (!requestId) {
+    alert('Request ID not found');
+    return;
+  }
+  
+  const blSaisiInput = document.getElementById('side-bl-saisi-input');
+  if (!blSaisiInput) return;
+  
+  const blSaisiValue = blSaisiInput.value.trim();
+  if (!blSaisiValue) {
+    alert('Veuillez entrer un numéro BL.');
+    return;
+  }
+  
+  try {
+    const btnSave = document.getElementById('btn-save-bl-saisi');
+    const origText = btnSave ? btnSave.innerText : 'Sauvegarder';
+    if (btnSave) {
+      btnSave.disabled = true;
+      btnSave.innerText = 'Saving...';
+    }
+    
+    const metaApi = document.querySelector('meta[name="api-base"]')?.content || '';
+    const API_BASE = metaApi || 'https://mkc-backend-kqov.onrender.com';
+    const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+    
+    if (!token) {
+      alert('Token not found');
+      return;
+    }
+    
+    const resp = await fetch(`${API_BASE.replace(/\/$/, '')}/admin/requests/${requestId}/bl-saisi`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ bl_saisi: blSaisiValue })
+    });
+    
+    if (!resp.ok) {
+      const errData = await resp.json().catch(() => ({}));
+      throw new Error(errData.message || `HTTP ${resp.status}`);
+    }
+    
+    const result = await resp.json();
+    
+    // Update local cache
+    const matching = requests.find(r => r.id === requestId || r.request_id === requestId);
+    if (matching) {
+      matching.bl_saisi = blSaisiValue;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(requests));
+    }
+    
+    showAdminToast('BL saisi mis à jour avec succès');
+    
+  } catch (e) {
+    console.warn('saveBLSaisi error', e);
+    alert('Erreur: ' + (e.message || String(e)));
+  } finally {
+    const btnSave = document.getElementById('btn-save-bl-saisi');
+    if (btnSave) {
+      btnSave.disabled = false;
+      btnSave.innerText = 'Sauvegarder';
+    }
+  }
+}
+
 // Format BL for display: append marker when BL was entered manually
 function formatBLDisplayFromRow(row) {
   if (!row) return '';
@@ -896,6 +966,20 @@ function openSidePanel(req) {
 
   document.getElementById('side-date').innerText = 'Date: ' + (formatDateFromRow(req) || '—');
   document.getElementById('side-client').innerText = 'Client: ' + (getClientName(req) || '—');
+  
+  // Populate BL saisi field
+  const blSaisiInput = document.getElementById('side-bl-saisi-input');
+  if (blSaisiInput) {
+    blSaisiInput.value = req.bl_saisi || '';
+  }
+  
+  // Store current request ID for save handler
+  const btnSaveBL = document.getElementById('btn-save-bl-saisi');
+  if (btnSaveBL) {
+    btnSaveBL.dataset.requestId = req.id || req.request_id || '';
+    btnSaveBL.onclick = () => saveBLSaisi(req.id || req.request_id);
+  }
+  
   const fxiEl = document.getElementById('side-fxi');
   if (fxiEl) fxiEl.innerText = 'FXI: ' + (req.fxi_number || '—');
   

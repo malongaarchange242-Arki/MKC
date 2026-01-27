@@ -7,6 +7,7 @@ import { AuditService } from '../audit/audit.service';
 import { DocumentsService } from '../documents/documents.service';
 import { logger } from '../../utils/logger';
 import { DraftsService } from '../drafts/drafts.service';
+import { supabaseAdmin as supabase } from '../../config/supabaseAdmin';
 
 type AuthRequest = Request & {
 	user?: {
@@ -145,6 +146,48 @@ export class AdminController {
 			return res.status(200).json(result);
 		} catch (error: unknown) {
 			return handleControllerError(res, error, 'Force update request status');
+		}
+	}
+
+	static async updateBLSaisi(req: AuthRequest, res: Response) {
+		try {
+			if (!ensureAdminOrSystem(req, res)) return;
+			const schema = z.object({ bl_saisi: z.string().min(1) });
+			const body = schema.parse(req.body);
+
+			const adminId = getAuthUserId(req);
+			if (!adminId) return res.status(401).json({ message: 'Unauthorized' });
+
+			const requestId = req.params.id;
+
+			const { error, data } = await supabase
+				.from('requests')
+				.update({ bl_saisi: body.bl_saisi })
+				.eq('id', requestId)
+				.select()
+				.single();
+
+			if (error) {
+				logger.error('Error updating bl_saisi', { requestId, error });
+				return res.status(500).json({ message: 'Failed to update BL saisi' });
+			}
+
+			if (!data) {
+				return res.status(404).json({ message: 'Request not found' });
+			}
+
+			// Audit log
+			await AuditService.log({
+				actor_id: adminId,
+				action: 'UPDATE_BL_SAISI',
+				entity: 'request',
+				entity_id: requestId,
+				metadata: { bl_saisi: body.bl_saisi }
+			});
+
+			return res.status(200).json({ success: true, data });
+		} catch (error: unknown) {
+			return handleControllerError(res, error, 'Update BL saisi');
 		}
 	}
 
