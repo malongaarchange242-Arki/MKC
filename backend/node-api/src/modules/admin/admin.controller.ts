@@ -185,6 +185,34 @@ export class AdminController {
 				metadata: { bl_saisi: body.bl_saisi }
 			});
 
+			// After admin provides a manual BL input, use that exact value to replace the
+			// request's manual BL and public BL number (admin override behavior).
+			try {
+				const adminProvided = String(body.bl_saisi).trim();
+				const { data: replaced, error: replaceErr } = await supabase
+					.from('requests')
+					.update({ manual_bl: adminProvided, bl_number: adminProvided })
+					.eq('id', requestId)
+					.select()
+					.single();
+
+				if (replaceErr) {
+					logger.error('Error replacing BL with admin-provided BL', { requestId, replaceErr });
+				} else {
+					// Audit the replacement
+					await AuditService.log({
+						actor_id: adminId,
+						action: 'REPLACE_WITH_ADMIN_BL',
+						entity: 'request',
+						entity_id: requestId,
+						metadata: { admin_bl: adminProvided }
+					});
+					return res.status(200).json({ success: true, data: replaced });
+				}
+			} catch (e) {
+				logger.warn('Failed to replace BL with admin-provided value', { requestId, err: (e as any)?.message ?? String(e) });
+			}
+
 			return res.status(200).json({ success: true, data });
 		} catch (error: unknown) {
 			return handleControllerError(res, error, 'Update BL saisi');
