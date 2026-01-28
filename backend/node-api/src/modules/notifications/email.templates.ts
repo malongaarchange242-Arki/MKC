@@ -50,12 +50,16 @@ function renderLinks(links?: Array<{ name: string; url: string }>) {
 `;
 }
 
-function brandedLayout(title: string, body: string) {
+function brandedLayout(title: string, body: string, lang: 'fr' | 'en' = 'fr') {
   const logo = process.env.BRAND_LOGO_URL || 'https://feri-mkc.com/Logotype_mkc_bon-removebg-preview.png';
   const primary = process.env.BRAND_PRIMARY_COLOR || '#e67b33';
   const brandName = process.env.BRAND_NAME || 'Maritime Kargo Consulting';
   const frontendBase = (process.env.FRONTEND_URL || 'https://feri-mkc.com').replace(/\/$/, '');
   const faqUrl = process.env.FAQ_URL || `${frontendBase}/faq.html`;
+  const automated = lang === 'en' ? 'This is an automated message.' : 'Ceci est un message automatique.';
+  const needHelp = lang === 'en'
+    ? `Need help? See our <a href="${escapeHtml(faqUrl)}">FAQ</a>.`
+    : `Besoin d'aide ? Consultez notre <a href="${escapeHtml(faqUrl)}">FAQ</a>.`;
   return `
 <div style="font-family:Arial,Helvetica,sans-serif;color:#222">
   <div style="display:flex;align-items:center;gap:12px">
@@ -64,8 +68,8 @@ function brandedLayout(title: string, body: string) {
   </div>
   <div style="margin-top:12px">${body}</div>
   <hr/>
-  <p style="font-size:12px;color:#777">${escapeHtml(brandName)} – Ceci est un message automatique.</p>
-  <p style="font-size:12px;color:#777;margin-top:6px">Besoin d'aide ? Consultez notre <a href="${escapeHtml(faqUrl)}">FAQ</a>.</p>
+  <p style="font-size:12px;color:#777">${escapeHtml(brandName)} – ${escapeHtml(automated)}</p>
+  <p style="font-size:12px;color:#777;margin-top:6px">${needHelp}</p>
 </div>
 `;
 }
@@ -91,24 +95,24 @@ export const EmailTemplates: Record<string, (lang: 'fr' | 'en', input: EmailTemp
     const subject = title;
     const ref = escapeHtml(input.requestRef || '');
     const name = escapeHtml(input.client_name || input.prenom || '');
+      // Client-facing message: show translated status label when available
+      const rawStatus = input.status || '';
+      const frStatusLabel = rawStatus ? statusLabel(rawStatus, 'fr') : 'Traitement en cours';
+      const enStatusLabel = rawStatus ? statusLabel(rawStatus, 'en') : 'Processing';
 
-    // Client-facing message: show translated status label when available
-    const rawStatus = input.status || '';
-    const frStatusLabel = rawStatus ? statusLabel(rawStatus, 'fr') : 'Traitement en cours';
-    const enStatusLabel = rawStatus ? statusLabel(rawStatus, 'en') : 'Processing';
-
-    const frBody = `${greeting('fr')} Mr/Mme ${name}, le statut de votre demande (${ref}) a été mis à jour : ${frStatusLabel} / ${enStatusLabel}.`;
-    const enBody = `${greeting('en')} Mr/Mme ${name}, the status of your request (${ref}) has been updated: ${enStatusLabel} / ${frStatusLabel}.`;
+      const honorific = lang === 'en' ? 'Mr/Ms' : 'Mr/Mme';
+      const frBody = `${greeting('fr')} ${honorific} ${name}, le statut de votre demande (${ref}) a été mis à jour : ${frStatusLabel}.`;
+      const enBody = `${greeting('en')} ${honorific} ${name}, the status of your request (${ref}) has been updated: ${enStatusLabel}.`;
 
     const text = lang === 'en'
       ? `${enBody}\n\nWe will notify you of the next steps when available.\n\nMaritime Kargo Consulting – This is an automated message.`
       : `${frBody}\n\nNous vous informerons des prochaines étapes dès qu'elles seront disponibles.\n\nMaritime Kargo Consulting – Ceci est un message automatique.`;
 
     const html = brandedLayout(title, `
-<p>${escapeHtml(lang === 'en' ? enBody : frBody)}</p>
-${renderLinks(input.links)}
-<p style="margin-top:8px;color:#666;font-size:13px">${escapeHtml(lang === 'en' ? 'We will notify you of the next steps when available.' : 'Nous vous informerons des prochaines étapes dès qu\'elles seront disponibles.')}</p>
-`);
+  <p>${escapeHtml(lang === 'en' ? enBody : frBody)}</p>
+  ${renderLinks(input.links)}
+  <p style="margin-top:8px;color:#666;font-size:13px">${escapeHtml(lang === 'en' ? 'We will notify you of the next steps when available.' : 'Nous vous informerons des prochaines étapes dès qu\'elles seront disponibles.')}</p>
+  `, lang);
 
     return { subject, title, text, html };
   },
@@ -126,7 +130,7 @@ ${renderLinks(input.links)}
       ? `${greeting('en')}, status for request ${ref} changed to ${status}. Client: ${client}${clientEmail ? ' <' + clientEmail + '>' : ''}. Please review and take action in the admin dashboard.`
       : `${greeting('fr')}, le statut de la demande ${ref} a été mis à jour : ${status}. Client : ${client}${clientEmail ? ' <' + clientEmail + '>' : ''}. Veuillez vérifier et agir depuis le panneau d'administration.`;
 
-    const html = brandedLayout(title, `<p>${escapeHtml(text)}</p>${adminLink}${renderLinks(input.links)}`);
+    const html = brandedLayout(title, `<p>${escapeHtml(text)}</p>${adminLink}${renderLinks(input.links)}`, lang);
     return { subject, title, text, html };
   },
 
@@ -139,8 +143,8 @@ ${renderLinks(input.links)}
       ? `${greeting('en', input.prenom)}, the status of your request ${ref} has been updated: ${statusLabel}.\n\nWe will notify you of the next steps as soon as they are available.\n\nMaritime Kargo Consulting – This is an automated message.`
       : `${greeting('fr', input.prenom)}, le statut de votre demande ${ref} a été mis à jour : ${statusLabel}.\n\nNous vous informerons des prochaines étapes dès qu'elles seront disponibles.\n\nMaritime Kargo Consulting – Ceci est un message automatique.`;
     const html = brandedLayout(title, `
-<p>${escapeHtml(text).replace(/\n/g, '<br>')}</p>
-`);
+  <p>${escapeHtml(text).replace(/\n/g, '<br>')}</p>
+  `, lang);
     return { subject, title, text, html };
   },
 
@@ -152,8 +156,8 @@ ${renderLinks(input.links)}
       ? `${greeting('en', input.prenom)}, your request ${ref} has been submitted to our operations team for document review. We will contact you only if additional information is required.`
       : `${greeting('fr', input.prenom)}, la demande ${ref} a été transmise à notre équipe opérationnelle pour vérification des documents. Nous vous contacterons uniquement si des informations supplémentaires sont requises.`;
     const html = brandedLayout(title, `
-<p>${escapeHtml(text)}</p>
-`);
+  <p>${escapeHtml(text)}</p>
+  `, lang);
     return { subject, title, text, html };
   },
 
@@ -165,9 +169,9 @@ ${renderLinks(input.links)}
       ? `${greeting('en', input.prenom)}, you have received a new message regarding your request ${ref}. Sign in to view and reply.`
       : `${greeting('fr', input.prenom)}, vous avez reçu un nouveau message concernant votre demande ${ref}. Connectez-vous pour consulter et répondre.`;
     const html = brandedLayout(title, `
-<p>${escapeHtml(text)}</p>
-${renderLinks(input.links)}
-`);
+  <p>${escapeHtml(text)}</p>
+  ${renderLinks(input.links)}
+  `, lang);
     return { subject, title, text, html };
   },
 
@@ -180,10 +184,10 @@ ${renderLinks(input.links)}
       : `${greeting('fr', input.prenom)}, un nouveau message a été publié pour la demande ${ref}. Consultez-le et répondez depuis le tableau de bord admin.`;
     const adminLink = input.admin_dashboard_url ? `<p><a href="${escapeHtml(input.admin_dashboard_url)}">Open admin dashboard</a></p>` : '';
     const html = brandedLayout(title, `
-<p>${escapeHtml(text)}</p>
-${renderLinks(input.links)}
-${adminLink}
-`);
+  <p>${escapeHtml(text)}</p>
+  ${renderLinks(input.links)}
+  ${adminLink}
+  `, lang);
     return { subject, title, text, html };
   },
 
@@ -196,10 +200,10 @@ ${adminLink}
       ? `${greeting('en', input.prenom)}, a dispute has been raised for your request ${ref}.${reason ? ' Reason: ' + reason : ''} Our team will review and contact you if more information is needed.`
       : `${greeting('fr', input.prenom)}, une contestation a été signalée pour votre demande ${ref}.${reason ? ' Raison : ' + reason : ''} Notre équipe examinera et vous contactera si des informations supplémentaires sont nécessaires.`;
     const html = brandedLayout(title, `
-<p>${escapeHtml(text)}</p>
-${reason ? `<p><strong>${lang === 'en' ? 'Reason' : 'Raison'}:</strong> ${reason}</p>` : ''}
-${renderLinks(input.links)}
-`);
+  <p>${escapeHtml(text)}</p>
+  ${reason ? `<p><strong>${lang === 'en' ? 'Reason' : 'Raison'}:</strong> ${reason}</p>` : ''}
+  ${renderLinks(input.links)}
+  `, lang);
     return { subject, title, text, html };
   },
 
@@ -213,11 +217,11 @@ ${renderLinks(input.links)}
       : `${greeting('fr', input.prenom)}, une contestation a été signalée pour la demande ${ref}.${reason ? ' Raison : ' + reason : ''} Merci d'examiner et de répondre via le panneau d'administration.`;
     const adminLink = input.admin_dashboard_url ? `<p><a href="${escapeHtml(input.admin_dashboard_url)}">Open admin dashboard</a></p>` : '';
     const html = brandedLayout(title, `
-<p>${escapeHtml(text)}</p>
-${reason ? `<p><strong>${lang === 'en' ? 'Reason' : 'Raison'}:</strong> ${reason}</p>` : ''}
-${renderLinks(input.links)}
-${adminLink}
-`);
+  <p>${escapeHtml(text)}</p>
+  ${reason ? `<p><strong>${lang === 'en' ? 'Reason' : 'Raison'}:</strong> ${reason}</p>` : ''}
+  ${renderLinks(input.links)}
+  ${adminLink}
+  `, lang);
     return { subject, title, text, html };
   },
 
@@ -230,7 +234,7 @@ ${adminLink}
       ? `${greeting('en', input.prenom)}, a new request ${ref} was created. Review it in the admin dashboard and assign an operator.`
       : `${greeting('fr', input.prenom)}, une nouvelle demande ${ref} a été créée. Consultez-la dans le tableau de bord admin et assignez un opérateur.`;
     const adminLink = input.admin_dashboard_url ? `<p><a href="${escapeHtml(input.admin_dashboard_url)}">Open admin dashboard</a></p>` : '';
-    const html = brandedLayout(title, `<p>${escapeHtml(text)}</p>${adminLink}`);
+    const html = brandedLayout(title, `<p>${escapeHtml(text)}</p>${adminLink}`, lang);
     return { subject, title, text, html };
   },
 
@@ -242,7 +246,7 @@ ${adminLink}
       ? `${greeting('en', input.prenom)}, documents have been submitted for request ${ref}. Please review and validate or request corrections.`
       : `${greeting('fr', input.prenom)}, des documents ont été soumis pour la demande ${ref}. Veuillez vérifier et valider ou demander des corrections.`;
     const adminLink = input.admin_dashboard_url ? `<p><a href="${escapeHtml(input.admin_dashboard_url)}">Open admin dashboard</a></p>` : '';
-    const html = brandedLayout(title, `<p>${escapeHtml(text)}</p>${adminLink}${renderLinks(input.links)}`);
+    const html = brandedLayout(title, `<p>${escapeHtml(text)}</p>${adminLink}${renderLinks(input.links)}`, lang);
     return { subject, title, text, html };
   },
 
@@ -254,7 +258,7 @@ ${adminLink}
       ? `${greeting('en', input.prenom)}, a payment proof was uploaded for ${ref}. Please verify payment and update status.`
       : `${greeting('fr', input.prenom)}, une preuve de paiement a été téléversée pour ${ref}. Vérifiez le paiement et mettez à jour le statut.`;
     const adminLink = input.admin_dashboard_url ? `<p><a href="${escapeHtml(input.admin_dashboard_url)}">Open admin dashboard</a></p>` : '';
-    const html = brandedLayout(title, `<p>${escapeHtml(text)}</p>${adminLink}${renderLinks(input.links)}`);
+    const html = brandedLayout(title, `<p>${escapeHtml(text)}</p>${adminLink}${renderLinks(input.links)}`, lang);
     return { subject, title, text, html };
   },
 
@@ -266,7 +270,7 @@ ${adminLink}
       ? `${greeting('en', input.prenom)}, payment for ${ref} is confirmed. Proceed to generate final documents.`
       : `${greeting('fr', input.prenom)}, le paiement pour ${ref} est confirmé. Procédez à la génération des documents finaux.`;
     const adminLink = input.admin_dashboard_url ? `<p><a href="${escapeHtml(input.admin_dashboard_url)}">Open admin dashboard</a></p>` : '';
-    const html = brandedLayout(title, `<p>${escapeHtml(text)}</p>${adminLink}`);
+    const html = brandedLayout(title, `<p>${escapeHtml(text)}</p>${adminLink}`, lang);
     return { subject, title, text, html };
   },
 
@@ -286,24 +290,24 @@ ${adminLink}
     if (lang === 'en') {
       const text = `${greeting('en')},\n\nPlease be informed that the draft and proforma invoice related to request ${ref} have been delivered to the client.\n\nClient: ${client}\n\nNo immediate action is required. The request remains available in the administrative dashboard for review or further follow-up if necessary.\n\nKind regards,\nNotification System`;
       const html = brandedLayout(title, `
-<p>${escapeHtml(greeting('en'))},</p>
-<p>Please be informed that the draft and proforma invoice related to request <strong>${escapeHtml(ref)}</strong> have been delivered to the client.</p>
-<p><strong>Client:</strong> ${escapeHtml(client)}</p>
-<p>No immediate action is required. The request remains available in the administrative dashboard for review or further follow-up if necessary.</p>
-<p>Kind regards,<br/>Notification System</p>
-`);
+    <p>${escapeHtml(greeting('en'))},</p>
+    <p>Please be informed that the draft and proforma invoice related to request <strong>${escapeHtml(ref)}</strong> have been delivered to the client.</p>
+    <p><strong>Client:</strong> ${escapeHtml(client)}</p>
+    <p>No immediate action is required. The request remains available in the administrative dashboard for review or further follow-up if necessary.</p>
+    <p>Kind regards,<br/>Notification System</p>
+    `, lang);
       return { subject, title, text, html };
     }
 
     // FR
     const text = `${greeting('fr')},\n\nNous vous informons que le draft et la facture proforma relatifs à la demande ${ref} ont été délivrés au client.\n\nClient : ${client}\n\nAucune action immédiate n’est requise. Le dossier reste accessible via le tableau de bord administratif pour consultation ou suivi ultérieur.\n\nCordialement,\nSystème de notification`;
     const html = brandedLayout(title, `
-<p>${escapeHtml(greeting('fr'))},</p>
-<p>Nous vous informons que le draft et la facture proforma relatifs à la demande <strong>${escapeHtml(ref)}</strong> ont été délivrés au client.</p>
-<p><strong>Client :</strong> ${escapeHtml(client)}</p>
-<p>Aucune action immédiate n’est requise. Le dossier reste accessible via le tableau de bord administratif pour consultation ou suivi ultérieur.</p>
-<p>Cordialement,<br/>Système de notification</p>
-`);
+  <p>${escapeHtml(greeting('fr'))},</p>
+  <p>Nous vous informons que le draft et la facture proforma relatifs à la demande <strong>${escapeHtml(ref)}</strong> ont été délivrés au client.</p>
+  <p><strong>Client :</strong> ${escapeHtml(client)}</p>
+  <p>Aucune action immédiate n’est requise. Le dossier reste accessible via le tableau de bord administratif pour consultation ou suivi ultérieur.</p>
+  <p>Cordialement,<br/>Système de notification</p>
+  `, lang);
 
     return { subject, title, text, html };
   },
@@ -316,7 +320,7 @@ ${adminLink}
       ? `${greeting('en', input.prenom)}, request ${ref} is completed. Final documents were generated.`
       : `${greeting('fr', input.prenom)}, la demande ${ref} est clôturée. Les documents finaux ont été générés.`;
     const adminLink = input.admin_dashboard_url ? `<p><a href="${escapeHtml(input.admin_dashboard_url)}">Open admin dashboard</a></p>` : '';
-    const html = brandedLayout(title, `<p>${escapeHtml(text)}</p>${adminLink}`);
+    const html = brandedLayout(title, `<p>${escapeHtml(text)}</p>${adminLink}`, lang);
     return { subject, title, text, html };
   },
 
@@ -328,7 +332,7 @@ ${adminLink}
       ? `${greeting('en', input.prenom)}, request ${ref} was rejected. Please follow up with the client for corrections.`
       : `${greeting('fr', input.prenom)}, la demande ${ref} a été rejetée. Merci de contacter le client pour corrections.`;
     const adminLink = input.admin_dashboard_url ? `<p><a href="${escapeHtml(input.admin_dashboard_url)}">Open admin dashboard</a></p>` : '';
-    const html = brandedLayout(title, `<p>${escapeHtml(text)}</p>${adminLink}`);
+    const html = brandedLayout(title, `<p>${escapeHtml(text)}</p>${adminLink}`, lang);
     return { subject, title, text, html };
   },
 
@@ -340,9 +344,9 @@ ${adminLink}
       ? `${greeting('en', input.prenom)}, a payment proof has been uploaded for request ${ref}. We will verify and update the status accordingly.`
       : `${greeting('fr', input.prenom)}, une preuve de paiement a été téléversée pour la demande ${ref}. Nous vérifierons et mettrons à jour le statut en conséquence.`;
     const html = brandedLayout(title, `
-<p>${escapeHtml(text)}</p>
-${renderLinks(input.links)}
-`);
+  <p>${escapeHtml(text)}</p>
+  ${renderLinks(input.links)}
+  `, lang);
     return { subject, title, text, html };
   },
 
@@ -399,8 +403,25 @@ ${invoiceLinks.length ? `<h3>${lang === 'en' ? 'Invoice' : 'Facture'}</h3>${invo
 ${proformaLinks.length ? `<h3>${lang === 'en' ? 'Proforma' : 'Proforma'}</h3>${proformaHtml}` : ''}
 ${otherLinks.length ? `<h3>${lang === 'en' ? 'Files' : 'Fichiers'}</h3>${otherHtml}` : ''}
 <p style="margin-top:8px;color:#666;font-size:13px">${lang === 'en' ? 'You can preview the files before downloading.' : "Vous pouvez prévisualiser les fichiers avant de les télécharger."}</p>
-`
+`, lang
     );
+    return { subject, title, text, html };
+  },
+
+  DRAFT_AVAILABLE_FERI: (lang, input) => {
+    const title = lang === 'en' ? 'FERI draft available' : 'Draft FERI disponible';
+    const subject = title;
+    const name = escapeHtml(input.prenom || '');
+
+    const frText = `${greeting('fr', input.prenom)},\n\nVotre draft FERI est disponible. Connectez‑vous à votre espace pour le consulter et procéder au paiement.\n\nCordialement,\nMaritime Kargo Consulting\nCeci est un message automatique.`;
+    const enText = `${greeting('en', input.prenom)},\n\nYour FERI draft is available. Please log in to your client area to view it and proceed with payment.\n\nKind regards,\nMaritime Kargo Consulting\nThis is an automated message.`;
+
+    const text = lang === 'en' ? enText : frText;
+    const html = brandedLayout(title, `
+  <p>${escapeHtml(text).replace(/\n/g, '<br>')}</p>
+  ${renderLinks(input.links)}
+  `, lang);
+
     return { subject, title, text, html };
   },
 
@@ -412,10 +433,10 @@ ${otherLinks.length ? `<h3>${lang === 'en' ? 'Files' : 'Fichiers'}</h3>${otherHt
       ? `${greeting('en', input.prenom)}, we have received and recorded your payment for request ${ref}. We will generate the final document and notify you when ready.`
       : `${greeting('fr', input.prenom)}, nous avons reçu et enregistré votre paiement pour la demande ${ref}. Nous générerons le document final et vous informerons.`;
     const html = brandedLayout(title, `
-<p>${escapeHtml(text)}</p>
-${renderLinks(input.links)}
-<p style="color:#666;font-size:12px">${lang === 'en' ? 'Reference' : 'Référence'} : <strong>${ref}</strong></p>
-`);
+  <p>${escapeHtml(text)}</p>
+  ${renderLinks(input.links)}
+  <p style="color:#666;font-size:12px">${lang === 'en' ? 'Reference' : 'Référence'} : <strong>${ref}</strong></p>
+  `, lang);
     return { subject, title, text, html };
   },
 
@@ -424,13 +445,13 @@ ${renderLinks(input.links)}
     const subject = title;
     const ref = escapeHtml(input.requestRef || '');
     const text = lang === 'en'
-      ? `${greeting('en', input.prenom)}, we have received and validated the documents for your request ${ref}. The file is complete and is now being processed.`
+      ? `${greeting('en', input.prenom)},\n\nWe would like to inform you that your request has been fully processed.\n\nThe documents have been validated, and the final document is now available.\n\nYou can view and download it via your client area.\n\nKind regards,\nMaritime Kargo Consulting\n\nThis is an automated message.\n\nNeed help? Check out our FAQ.`
       : `${greeting('fr', input.prenom)},\n\nNous vous informons que votre demande a été entièrement traitée.\n\nLes documents ont été validés et le document final est désormais disponible.\n\nVous pouvez le consulter et le télécharger via votre espace client.\n\nCordialement,\nMaritime Kargo Consulting\nCeci est un message automatique.`;
 
     const html = brandedLayout(title, `
-<p>${escapeHtml(text).replace(/\n/g, '<br>')}</p>
-${renderLinks(input.links)}
-`);
+  <p>${escapeHtml(text).replace(/\n/g, '<br>')}</p>
+  ${renderLinks(input.links)}
+  `, lang);
     return { subject, title, text, html };
   },
 
@@ -442,9 +463,15 @@ ${renderLinks(input.links)}
       ? `${greeting('en', input.prenom)}, one or more submitted documents are incomplete or do not meet our requirements for request ${ref}. Please review and upload corrected documents.`
       : `${greeting('fr', input.prenom)}, un ou plusieurs documents fournis sont incomplets ou non conformes pour la demande ${ref}. Merci de téléverser les documents corrigés.`;
     const html = brandedLayout(title, `
-<p>${escapeHtml(text)}</p>
-<p style="margin-top:8px;color:#666;font-size:13px">${lang === 'en' ? 'Reference' : 'Référence'} : <strong>${ref}</strong></p>
-`);
+  <p>${escapeHtml(text)}</p>
+  <p style="margin-top:8px;color:#666;font-size:13px">${lang === 'en' ? 'Reference' : 'Référence'} : <strong>${ref}</strong></p>
+  `, lang);
     return { subject, title, text, html };
   }
 };
+
+// Alias client-oriented event keys (emitted by RequestsService) to existing templates
+// so that the notifications system can resolve both FR and EN template outputs.
+(EmailTemplates as any).CLIENT_PAYMENT_CONFIRMED = (EmailTemplates as any).PAYMENT_CONFIRMED;
+(EmailTemplates as any).CLIENT_DRAFT_AVAILABLE = (EmailTemplates as any).DRAFT_AVAILABLE_FERI;
+(EmailTemplates as any).CLIENT_FERI_ISSUED = (EmailTemplates as any).REQUEST_COMPLETED;

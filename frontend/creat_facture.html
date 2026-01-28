@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <title>MKC - Générateur de Facture</title>
+    <link rel="stylesheet" href="creat_facture.css">
+</head>
+
+<body>
+    <div class="admin-panel no-print">
+        <div class="admin-header">
+            <h2>Gestion Maritime Kargo Consulting</h2>
+            <button id="previewBtn" class="btn-primary">Aperçu de la Facture</button>
+        </div>
+
+        <div class="form-grid">
+            <input type="text" id="clientName" placeholder="Nom du Client">
+            <input type="text" id="origine" placeholder="Origine de la marchandise">
+            <input type="text" id="objetRef" placeholder="Référence BL Principal">
+        </div>
+
+        <table id="editTable">
+            <thead>
+                <tr>
+                    <th>Description</th>
+                    <th>N° BL</th>
+                    <th>Cond.</th>
+                    <th>PU (XAF)</th>
+                    <th>Qté</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                <tr class="item-row">
+                    <td>
+                        <select class="in-desc">
+                            <option value="" disabled selected>Choisir...</option>
+                            <option value="FERI">FERI</option>
+                            <option value="AD">AD</option>
+                            <option value="FERI+AD">FERI + AD</option>
+                            <option value="Frais de Service">Frais de Service</option>
+                        </select>
+                    </td>
+                    <td><input type="text" class="in-bl" placeholder="N° BL"></td>
+                    <td><input type="text" class="in-cond" placeholder="Vrac/Conteneur"></td>
+                    <td><input type="number" class="in-pu" placeholder="Prix en XAF"></td>
+                    <td><input type="number" class="in-qty" placeholder="Quantité"></td>
+                    <td><button class="btn-del">×</button></td>
+                </tr>
+            </tbody>
+        </table>
+        <button id="addBtn" class="btn-secondary">+ Ligne supplémentaire</button>
+    </div>
+
+    <div id="previewModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-nav no-print">
+                <button id="backBtn" class="btn-back">← Éditer</button>
+                <div class="nav-right">
+                    <button id="sendBtn" class="btn-send">✉ Envoyer</button>
+                    <button id="printBtn" class="btn-print">⎙ Imprimer</button>
+                </div>
+            </div>
+
+            <div id="invoiceRender" class="a4-page">
+            </div>
+        </div>
+    </div>
+
+    <script src="creat_facture.js"></script>
+</body>
+
+</html>
