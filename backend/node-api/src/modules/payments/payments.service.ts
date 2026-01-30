@@ -18,7 +18,7 @@ export class PaymentsService {
       // Read authoritative invoices table and join requests to get BL and owner
       const { data, error } = await supabaseAdmin
         .from('invoices')
-        .select(`id, invoice_number, amount, currency, cargo_route, status, created_at, request_id, requests ( bl_number, user_id )`)
+        .select(`id, invoice_number, total_amount, subtotal_amount, service_fee_amount, currency, cargo_route, status, created_at, request_id, requests ( bl_number, user_id )`)
         .order('created_at', { ascending: false });
 
       if (error) return { data: null, error };
@@ -34,7 +34,7 @@ export class PaymentsService {
             bl_number: bl,
             cargo_route: row.cargo_route || null,
             client_id: owner,
-            amount_due: row.amount,
+            amount_due: row.total_amount,
             currency: row.currency,
             status: row.status,
             created_at: row.created_at
@@ -64,9 +64,16 @@ export class PaymentsService {
     customer_reference?: string | null;
     cargo_route?: string | null;
     created_by?: string | null;
+    client_name?: string | null;
+    objet?: string | null;
+    origin?: string | null;
+    subtotal_amount?: number | null;
+    service_fee_amount?: number | null;
+    invoice_date?: string | null;
+    items?: Array<any>;
   }) {
     try {
-      const { request_id, amount, currency = 'USD', customer_reference, cargo_route = null, created_by } = input;
+      const { request_id, amount, currency = 'USD', customer_reference, cargo_route = null, created_by, client_name = null, objet = null, origin = null, subtotal_amount = null, service_fee_amount = null, invoice_date = null, items = undefined } = input;
 
       // Log input for debugging
       logger.info('Creating invoice with input:', input);
@@ -101,10 +108,18 @@ export class PaymentsService {
         .maybeSingle();
 
       if (existing) {
-        // Update amount/currency/cargo_route and set status to DRAFT
+        // Update total_amount/currency/cargo_route and set status to DRAFT
+        const updatePayload: any = { total_amount: Number(amount), currency, cargo_route: cargo_route || existing.cargo_route || null, status: 'DRAFT' };
+        if (client_name) updatePayload.client_name = client_name;
+        if (objet) updatePayload.objet = objet;
+        if (origin) updatePayload.origin = origin;
+        if (subtotal_amount !== null && subtotal_amount !== undefined) updatePayload.subtotal_amount = Number(subtotal_amount);
+        if (service_fee_amount !== null && service_fee_amount !== undefined) updatePayload.service_fee_amount = Number(service_fee_amount);
+        if (invoice_date) updatePayload.invoice_date = invoice_date;
+
         const { data: updated, error: updErr } = await supabaseAdmin
           .from('invoices')
-          .update({ amount: Number(amount), currency, cargo_route: cargo_route || existing.cargo_route || null, status: 'DRAFT' })
+          .update(updatePayload)
           .eq('id', existing.id)
           .select()
           .single();
@@ -112,6 +127,30 @@ export class PaymentsService {
         if (updErr) {
           logger.error('Failed to update existing invoice during createInvoice', { request_id, error: updErr });
           return { data: null, error: updErr };
+        }
+
+        // If items provided, replace existing invoice_items for this invoice
+        try {
+          if (Array.isArray(items) && items.length > 0) {
+            await supabaseAdmin.from('invoice_items').delete().eq('invoice_id', existing.id);
+            const itemsToInsert = (items || []).map((it: any, i: number) => ({
+              id: uuidv4(),
+              invoice_id: existing.id,
+              description: it.description || null,
+              bl_number: it.bl_number || null,
+              packaging: it.packaging || null,
+              unit_price: it.unit_price !== undefined && it.unit_price !== null ? Number(it.unit_price) : null,
+              quantity: it.quantity !== undefined && it.quantity !== null ? Number(it.quantity) : null,
+              line_total: it.line_total !== undefined && it.line_total !== null ? Number(it.line_total) : null,
+              position: it.position !== undefined && it.position !== null ? Number(it.position) : (i + 1),
+              created_at: new Date().toISOString()
+            }));
+            if (itemsToInsert.length > 0) {
+              await supabaseAdmin.from('invoice_items').insert(itemsToInsert);
+            }
+          }
+        } catch (e) {
+          logger.warn('Failed to persist invoice items on update', { err: (e as any)?.message ?? String(e) });
         }
 
         return { data: updated, error: null };
@@ -124,7 +163,12 @@ export class PaymentsService {
         id: uuidv4(),
         request_id,
         client_id,
-        amount: Number(amount),
+        total_amount: Number(amount),
+        client_name: client_name || null,
+        objet: objet || null,
+        origin: origin || null,
+        subtotal_amount: subtotal_amount !== null && subtotal_amount !== undefined ? Number(subtotal_amount) : null,
+        service_fee_amount: service_fee_amount !== null && service_fee_amount !== undefined ? Number(service_fee_amount) : null,
         currency,
         cargo_route: cargo_route || null,
         bill_of_lading,              
@@ -194,6 +238,29 @@ export class PaymentsService {
         return { data: null, error: err };
       }
 
+      // Persist items for newly created invoice (if provided)
+      try {
+        if (Array.isArray(items) && items.length > 0 && inserted && inserted.id) {
+          const itemsToInsert = (items || []).map((it: any, i: number) => ({
+            id: uuidv4(),
+            invoice_id: inserted.id,
+            description: it.description || null,
+            bl_number: it.bl_number || null,
+            packaging: it.packaging || null,
+            unit_price: it.unit_price !== undefined && it.unit_price !== null ? Number(it.unit_price) : null,
+            quantity: it.quantity !== undefined && it.quantity !== null ? Number(it.quantity) : null,
+            line_total: it.line_total !== undefined && it.line_total !== null ? Number(it.line_total) : null,
+            position: it.position !== undefined && it.position !== null ? Number(it.position) : (i + 1),
+            created_at: new Date().toISOString()
+          }));
+          if (itemsToInsert.length > 0) {
+            await supabaseAdmin.from('invoice_items').insert(itemsToInsert);
+          }
+        }
+      } catch (e) {
+        logger.warn('Failed to persist invoice items on insert', { err: (e as any)?.message ?? String(e) });
+      }
+
       return { data: inserted, error: null };
 
     } catch (err: any) {
@@ -201,6 +268,10 @@ export class PaymentsService {
       return { data: null, error: err };
     }
   }
+
+  // ---------------------------------------------------------------------------
+  // GET INVOICE BY ID (FACTURE HTML / PDF)
+  // (existing method below was present; we augment it to include items)
 
   // ---------------------------------------------------------------------------
   // GET INVOICE BY ID (FACTURE HTML / PDF)
@@ -224,6 +295,21 @@ export class PaymentsService {
 
       if (prof) {
         (data as any).profile = prof;
+      }
+
+      // Load line items if present
+      try {
+        const { data: itemsRows, error: itemsErr } = await supabaseAdmin
+          .from('invoice_items')
+          .select('*')
+          .eq('invoice_id', id)
+          .order('position', { ascending: true });
+
+        if (!itemsErr && Array.isArray(itemsRows)) {
+          (data as any).items = itemsRows;
+        }
+      } catch (e) {
+        // non-fatal
       }
 
       return { data, error: null };

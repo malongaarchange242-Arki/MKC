@@ -183,7 +183,7 @@ function buildInvoiceUrl({ invoice, amount, bl, ref, date, nom, prenom, email })
   if (nom) p.set('nom', String(nom));
   if (prenom) p.set('prenom', String(prenom));
   if (email) p.set('email', String(email));
-  return `Facture_.html?${p.toString()}`;
+  return `Fac_Prev.html?${p.toString()}`;
 }
 
 // --- USER INFO RENDERING ---

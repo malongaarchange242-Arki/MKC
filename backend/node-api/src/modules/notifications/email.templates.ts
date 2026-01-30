@@ -473,5 +473,5 @@ ${otherLinks.length ? `<h3>${lang === 'en' ? 'Files' : 'Fichiers'}</h3>${otherHt
 // Alias client-oriented event keys (emitted by RequestsService) to existing templates
 // so that the notifications system can resolve both FR and EN template outputs.
 (EmailTemplates as any).CLIENT_PAYMENT_CONFIRMED = (EmailTemplates as any).PAYMENT_CONFIRMED;
-(EmailTemplates as any).CLIENT_DRAFT_AVAILABLE = (EmailTemplates as any).DRAFT_AVAILABLE_FERI;
+(EmailTemplates as any).CLIENT_DRAFT_AVAILABLE = (EmailTemplates as any).DRAFT_AVAILABLE;
 (EmailTemplates as any).CLIENT_FERI_ISSUED = (EmailTemplates as any).REQUEST_COMPLETED;

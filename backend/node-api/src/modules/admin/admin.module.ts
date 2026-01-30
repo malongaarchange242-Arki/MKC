@@ -48,6 +48,10 @@ export const adminModule = (): Router => {
 	// SEND DRAFT (atomic: create/update invoice + attach draft + transition + notify)
 	router.post('/requests/:id/send-draft', uploadMiddleware.single('file'), AdminController.sendDraft);
 
+	// NOTIFY DRAFT (notification-only: admin triggers sending draft/proforma notification
+	// to client for an existing invoice/draft. Accepts JSON { invoice_id? invoice_number? })
+	router.post('/requests/:id/notify-draft', AdminController.notifyDraft);
+
 	// ADMIN upload draft/proforma (legacy, keeps array flow)
 	router.post('/requests/:id/upload-draft', uploadMiddleware.array('files'), AdminController.uploadDraft);
 

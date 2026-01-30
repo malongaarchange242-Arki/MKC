@@ -24,7 +24,7 @@ Content-Type: multipart/form-data
 
 **Exemple (curl):**
 ```bash
-curl -X POST https://mkc-backend-kqov.onrender.com/documents/{requestId}/upload \
+curl -X POST http://localhost:3000/documents/{requestId}/upload \
   -H "Authorization: Bearer <token>" \
   -F "file=@/path/to/file.pdf"
 ```
@@ -65,7 +65,7 @@ Authorization: Bearer <token>
 
 **Exemple:**
 ```bash
-curl -X GET "https://mkc-backend-kqov.onrender.com/documents/me?requestId={requestId}&limit=10" \
+curl -X GET "http://localhost:3000/documents/me?requestId={requestId}&limit=10" \
   -H "Authorization: Bearer <token>"
 ```
 
@@ -133,7 +133,7 @@ Authorization: Bearer <token>
 
 **Exemple:**
 ```bash
-curl -X GET https://mkc-backend-kqov.onrender.com/documents/{id}/download \
+curl -X GET http://localhost:3000/documents/{id}/download \
   -H "Authorization: Bearer <token>" \
   -o downloaded_file.pdf
 ```

@@ -495,7 +495,9 @@ export class AdminService {
     }
 
     const pythonUrlBase = process.env.PYTHON_SERVICE_URL || 'https://mkc-5slv.onrender.com/api/v1';
-    const endpoint = kind === 'FERI' ? `${pythonUrlBase}/api/v1/generate/feri` : `${pythonUrlBase}/api/v1/generate/ad`;
+    const endpoint = kind === 'FERI'
+      ? (pythonUrlBase.includes('/api/') ? `${pythonUrlBase.replace(/\/$/, '')}/generate/feri` : `${pythonUrlBase.replace(/\/$/, '')}/api/v1/generate/feri`)
+      : (pythonUrlBase.includes('/api/') ? `${pythonUrlBase.replace(/\/$/, '')}/generate/ad` : `${pythonUrlBase.replace(/\/$/, '')}/api/v1/generate/ad`);
     const apiKey = process.env.PYTHON_SERVICE_API_KEY || '';
 
     try {
@@ -726,6 +728,84 @@ export class AdminService {
       return fullInvoice || invoice;
     } catch (err) {
       logger.error('AdminService.sendDraft failed', { requestId, adminId, err: (err as any)?.message ?? err });
+      throw err;
+    }
+  }
+
+  static async notifyDraft(requestId: string, adminId: string, opts: { invoiceId?: string | null; invoiceNumber?: string | null } = {}) {
+    try {
+      logger.info('Admin: notify draft', { requestId, adminId, opts });
+
+      const request = await RequestsService.getRequestById(requestId);
+      if (!request) throw new Error('Request not found');
+
+      // Discover an existing draft for this request; prefer one linked to the invoice if provided
+      let proformaDraft: any | null = null;
+      try {
+        const drafts = await DraftsService.getDraftsByRequestId(requestId);
+        if (Array.isArray(drafts) && drafts.length > 0) {
+          if (opts.invoiceId) {
+            proformaDraft = drafts.find((d: any) => String(d.invoice_id || '') === String(opts.invoiceId));
+          }
+          if (!proformaDraft) {
+            proformaDraft = drafts.find((d: any) => (d.type || '').toString().toLowerCase().includes('proforma')) || drafts[drafts.length - 1];
+          }
+        }
+      } catch (e) {
+        logger.warn('Failed to query drafts when notifying', { requestId, err: e });
+      }
+
+      const links: Array<{ name: string; url: string; expires_in?: number }> = [];
+
+      if (proformaDraft) {
+        try {
+          const signed = await DraftsService.generateSignedUrl(proformaDraft.id, 60 * 60 * 24 * 3);
+          links.push({ name: 'Proforma', url: signed, expires_in: 60 * 60 * 24 * 3 });
+        } catch (e) {
+          logger.warn('Failed to sign proforma draft', { requestId, draftId: proformaDraft.id, err: e });
+        }
+      }
+
+      // If invoice id provided, link to invoice preview via magic token
+      if (opts.invoiceId) {
+        try {
+          const paymentsService = new PaymentsService();
+          const { data: invoice } = await paymentsService.getInvoiceById(opts.invoiceId);
+          const invoiceId = invoice?.id || opts.invoiceId;
+          const invoiceNumber = invoice?.invoice_number || opts.invoiceNumber || '';
+
+          const { JWTUtils } = await import('../../utils/jwt');
+          const apiBase = (process.env.API_BASE_URL || (`http://localhost:${process.env.APP_PORT || 3000}`)).replace(/\/$/, '');
+          const previewPath = `/Facture_.html?invoice_id=${encodeURIComponent(invoiceId)}`;
+          const magic = JWTUtils.generateMagicToken({ sub: request.user_id, email: request.customer_email || '', redirect: previewPath });
+          const invoicePreviewUrl = `${apiBase}/auth/magic/redirect?token=${encodeURIComponent(magic)}`;
+          links.push({ name: `Facture ${invoiceNumber || ''}`, url: invoicePreviewUrl, expires_in: 60 * 60 * 24 * 3 });
+        } catch (e) {
+          logger.warn('Failed to create invoice preview link when notifying draft', { requestId, err: e });
+        }
+      }
+
+      // Send notification
+      try {
+        const { NotificationsService } = await import('../notifications/notifications.service');
+        await NotificationsService.send({
+          userId: request.user_id,
+          type: 'DRAFT_AVAILABLE',
+          title: 'Draft & Proforma disponibles',
+          message: `A draft invoice is available.`,
+          entityType: 'request',
+          entityId: requestId,
+          channels: ['in_app', 'email'],
+          links,
+          metadata: { invoice_id: opts.invoiceId || null }
+        });
+      } catch (e) {
+        logger.warn('Failed to send notify-draft notification', { requestId, err: e });
+      }
+
+      return { notified: true };
+    } catch (err) {
+      logger.error('AdminService.notifyDraft failed', { requestId, adminId, err: (err as any)?.message ?? err });
       throw err;
     }
   }

@@ -4,6 +4,26 @@
 <head>
     <meta charset="UTF-8">
     <title>MKC Invoice - Original Design</title>
+    <script>
+        // Redirect legacy Facture_.html links to Fac_Prev.html preserving invoice id
+        (function(){
+            try {
+                const params = new URLSearchParams(window.location.search);
+                const invoiceId = params.get('invoice_id') || params.get('invoice') || params.get('id');
+                if (invoiceId) {
+                    // build new URL preserving other params but ensuring `id` is set for Fac_Prev
+                    const newParams = new URLSearchParams(window.location.search);
+                    newParams.set('id', invoiceId);
+                    // If old param names exist, remove them to avoid duplication
+                    newParams.delete('invoice_id');
+                    newParams.delete('invoice');
+                    // Preserve `download` and other flags
+                    const target = 'Fac_Prev.html?' + newParams.toString();
+                    window.location.replace(target);
+                }
+            } catch (e) { /* ignore and continue rendering */ }
+        })();
+    </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         /* Reset et Base */

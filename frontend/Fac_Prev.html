@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Preview Facture Proforma - MKC</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        body {
+            margin: 0;
+            padding: 40px 0;
+            font-family: 'Arial', sans-serif;
+            background-color: #525659;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .a4-page {
+            width: 210mm;
+            height: 297mm;
+            background: #fff;
+            padding: 30mm 20mm 15mm 20mm;
+            position: relative;
+            color: #000;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header-logos {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .header-logos img {
+            height: 70px;
+            width: auto;
+        }
+
+        .date-line {
+            text-align: right;
+            font-weight: bold;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        .invoice-title {
+            text-align: center;
+            font-size: 30px;
+            font-weight: 900;
+            margin: 25px 0;
+        }
+
+        .client-meta {
+            margin-bottom: 30px;
+            line-height: 1.8;
+            font-size: 14px;
+        }
+
+        .client-meta p {
+            margin: 0;
+            font-weight: bold;
+        }
+
+        .main-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        .main-table th {
+            background: #bfbfbf !important;
+            border: 1.5px solid #000;
+            padding: 10px;
+            font-size: 11px;
+        }
+
+        .main-table td {
+            border: 1px solid #000;
+            padding: 8px;
+            text-align: center;
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        .total-line td {
+            border: 2.5px solid #000 !important;
+            font-size: 15px;
+            background: #f9f9f9;
+        }
+
+        .signature-section {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 25px;
+        }
+
+        .signature-block {
+            text-align: center;
+            width: 250px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .payment-info {
+            margin-top: auto;
+            padding-bottom: 170px;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        .footer-line {
+            position: absolute;
+            bottom: 20mm;
+            left: 20mm;
+            right: 20mm;
+            border-top: 2.5px solid #ffcc00;
+            padding-top: 10px;
+            text-align: center;
+            font-size: 10px;
+            font-weight: bold;
+        }
+
+        .no-print {
+            margin-bottom: 20px;
+        }
+
+        .btn-print {
+            background: #ff8c00;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        @media print {
+            @page {
+                size: A4;
+                margin: 0;
+            }
+
+            body {
+                background: none;
+                padding: 0;
+            }
+
+            .a4-page {
+                box-shadow: none;
+                margin: 0;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="no-print">
+        <button class="btn-print" onclick="window.print()">⎙ Imprimer la Facture</button>
+    </div>
+
+    <div class="a4-page" id="invoice-content">
+        <div class="header-logos">
+            <img src="Logotype mkc_bon.png" alt="Logo Maritime Kargo">
+            <img src="Capture_d_écran_2026-01-27_202504-removebg-preview.png" alt="Logo OGEFREM">
+        </div>
+
+        <div class="date-line">Date: <span id="date_facture">...</span></div>
+        <div class="invoice-title">FACTURE PROFORMA</div>
+
+        <div class="client-meta">
+            <p>REF: <span id="ref_facture">...</span></p>
+            <p>Client: <span id="nom_client">...</span></p>
+            <p>Objet: Souscription FERI BL: <span id="num_bl">...</span></p>
+            <p>Origine: <span id="origine">...</span></p>
+        </div>
+
+        <table class="main-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>DESCRIPTION</th>
+                    <th>N° BL</th>
+                    <th>CONDITIONNEMENT</th>
+                    <th>PU (XAF)</th>
+                    <th>QUANTITE</th>
+                    <th>MT (XAF)</th>
+                </tr>
+            </thead>
+            <tbody id="table-body">
+            </tbody>
+            <tr class="total-line">
+                <td colspan="6" style="text-align:right; padding-right:20px;">TOTAL GENERAL</td>
+                <td><span id="total_general">0</span></td>
+            </tr>
+        </table>
+
+        <div class="signature-section">
+            <div class="signature-block">
+                La Direction<br><br><br><br>
+                <span id="nom_signataire">...</span>
+            </div>
+        </div>
+
+        <div class="payment-info">
+            <strong>MODE DE PAIEMENT :</strong><br>
+            • Espèce ; MOMOPAY (Code marchand) : 459975 ;<br>
+            • Chèque au nom de Maritime Kargo Consulting ;<br>
+            • Compte Bancaire : 30012 00125 26893701101 30
+        </div>
+
+        <div class="footer-line">
+            Siège Social: Immeuble Tour Mayombe 7è étage A - B.P: 4809 Pointe-Noire, République du Congo<br>
+            Tél : +242 05 614 9191 || feri@kargo-consulting.com || www.kargo-consulting.com
+        </div>
+    </div>
+
+    <script>
+        // Dynamic loader for Fac_Prev: accepts ?id=... or ?invoice_id=... or ?invoice=...
+        function parseQuery() {
+            const qs = window.location.search.substring(1);
+            const parts = qs.split('&').filter(Boolean);
+            const out = {};
+            for (const p of parts) {
+                const [k, v] = p.split('=');
+                if (!k) continue;
+                try { out[decodeURIComponent(k)] = decodeURIComponent(v || ''); } catch (e) { out[k] = v || ''; }
+            }
+            return out;
+        }
+
+        function setNumericPrice(value) {
+            const priceEl = document.getElementById('total_general');
+            const val = Number(value) || 0;
+            priceEl.innerText = val.toLocaleString() + ' XAF';
+        }
+
+        function formatDateOnly(raw) {
+            if (!raw) return '';
+            try {
+                const d = new Date(raw);
+                if (!isNaN(d.getTime())) return d.toLocaleDateString('fr-FR');
+            } catch (e) { }
+            // fallback: strip time portion if present
+            if (typeof raw === 'string') {
+                // handle ISO or '30/01/2026 12:50:49' -> keep part before space or 'T'
+                const m = raw.split(/[T ]/)[0];
+                // try to normalize yyyy-mm-dd -> dd/mm/yyyy
+                const iso = m.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+                if (iso) return `${iso[3]}/${iso[2]}/${iso[1]}`;
+                return m;
+            }
+            return String(raw);
+        }
+
+        function populateFromData(data) {
+            if (!data) return;
+            // Header fields
+            if (data.date) document.getElementById('date_facture').innerText = formatDateOnly(data.date);
+            if (data.reference || data.ref) document.getElementById('ref_facture').innerText = data.reference || data.ref;
+            if (data.client_nom || data.nom || data.lastName) document.getElementById('nom_client').innerText = data.client_nom || data.nom || data.lastName;
+            if (data.bl || data.bl_numero || data.bill_of_lading) document.getElementById('num_bl').innerText = data.bl || data.bl_numero || data.bill_of_lading;
+            if (data.origine_pays || data.origine || data.origin) document.getElementById('origine').innerText = data.origine_pays || data.origine || data.origin;
+            if (data.signataire) document.getElementById('nom_signataire').innerText = data.signataire;
+
+            const items = data.items || data.articles || data.line_items || data.articles_facture || [];
+            let tableBody = '';
+            let totalItems = 0;
+
+            if (Array.isArray(items) && items.length) {
+                items.forEach((item, index) => {
+                    const description = item.description || item.libelle || item.name || item.item || '';
+                    const pu = Number(item.pu || item.unit_price || item.price || item.pu_ht || 0) || 0;
+                    const quantite = Number(item.quantite || item.qty || item.quantity || 1) || 1;
+                    const conditionnement = item.conditionnement || item.packaging || '-';
+                    const mt = Math.round(pu * quantite);
+                    totalItems += mt;
+                    tableBody += `
+                        <tr>
+                            <td>${index + 1}</td>
+                            <td style="text-align:left; padding-left:10px;">${description}</td>
+                            <td>${document.getElementById('num_bl').innerText || ''}</td>
+                            <td>${conditionnement}</td>
+                            <td>${pu.toLocaleString()}</td>
+                            <td>${quantite}</td>
+                            <td>${mt.toLocaleString()}</td>
+                        </tr>`;
+                });
+            }
+
+            // If no item rows but server provided subtotal, show it as a single service line
+            if ((!Array.isArray(items) || items.length === 0) && (data.subtotal_amount || data.total_amount)) {
+                const subtotal = Number(data.subtotal_amount || data.total_amount) || 0;
+                if (subtotal > 0) {
+                    const mt = Math.round(subtotal);
+                    totalItems += mt;
+                    tableBody = `
+                        <tr>
+                            <td>1</td>
+                            <td style="text-align:left; padding-left:10px;">Services</td>
+                            <td>${document.getElementById('num_bl').innerText || ''}</td>
+                            <td>-</td>
+                            <td>${mt.toLocaleString()}</td>
+                            <td>1</td>
+                            <td>${mt.toLocaleString()}</td>
+                        </tr>` + tableBody;
+                }
+            }
+
+            // Frais Service: prefer server-provided `service_fee_amount` when present
+            const fraisService = Number(data.service_fee_amount) || Math.round(totalItems * 0.018);
+            tableBody += `
+                <tr style="font-style: italic;">
+                    <td>-</td>
+                    <td style="text-align:left; padding-left:10px;">Frais de Service</td>
+                    <td>-</td><td>-</td><td>-</td><td>-</td>
+                    <td>${fraisService.toLocaleString()}</td>
+                </tr>`;
+
+            document.getElementById('table-body').innerHTML = tableBody;
+            document.getElementById('total_general').innerText = (totalItems + fraisService).toLocaleString() + ' XAF';
+        }
+
+        async function loadInvoiceData() {
+            const params = parseQuery();
+            const invoiceId = params.id || params.invoice_id || params.invoice;
+            // Prefer backend API if available
+            if (invoiceId) {
+                try {
+                    const API_BASE = (window && window.__API_BASE__) || 'https://mkc-backend-kqov.onrender.com';
+                    const token = localStorage.getItem('access_token') || localStorage.getItem('token') || null;
+                    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+                    const res = await fetch(`${API_BASE}/api/client/invoices/${encodeURIComponent(invoiceId)}`, { headers });
+                    if (res.ok) {
+                        const j = await res.json();
+                        const inv = j && j.invoice ? j.invoice : (j || {});
+                        // Map backend invoice to expected shape
+                        // Format created_at into a readable date for display
+                        const rawDate = inv.created_at || inv.invoice_date || inv.date || params.date || new Date().toISOString();
+                        const formattedDate = formatDateOnly(rawDate);
+
+                        const payload = {
+                            date: formattedDate,
+                            reference: inv.customer_reference || inv.reference || inv.invoice_number || params.ref || params.reference,
+                            client_nom: inv.client_name || (inv.profile && (inv.profile.nom || inv.profile.lastName)) || inv.client_last_name || params.nom || params.lastName,
+                            bl_numero: inv.bill_of_lading || inv.bl || params.bl,
+                            origine_pays: inv.origin || inv.origine_pays || params.origin || params.origine,
+                            signataire: inv.signataire || params.signataire || 'MKC',
+                            items: inv.items || inv.articles || inv.line_items || [],
+                            subtotal_amount: inv.subtotal_amount || inv.sub_total || inv.subtotal || null,
+                            service_fee_amount: inv.service_fee_amount || inv.service_fee || inv.frais_service || null,
+                            total_amount: inv.total_amount || inv.total || inv.total_amount || params.amount || null,
+                            invoice_number: inv.invoice_number || inv.invoice || null
+                        };
+                        populateFromData(payload);
+                        return;
+                    }
+                } catch (e) {
+                    // fall through to params-based rendering
+                }
+            }
+
+            // Fallback: use query params directly
+            const fallback = {
+                date: params.date || params.created_at,
+                reference: params.ref || params.reference,
+                client_nom: params.nom || params.lastName || params.client_nom,
+                bl_numero: params.bl || params.bill_of_lading,
+                origine_pays: params.origine || params.origin,
+                signataire: params.signataire || 'MKC',
+                items: []
+            };
+
+            // If amount/proforma provided, show single-item invoice
+            const amount = params.amount || params.proforma;
+            if (amount) {
+                fallback.items.push({ description: params.cargo_route || 'Service', pu: Number(amount), quantite: 1, conditionnement: '-' });
+            }
+
+            populateFromData(fallback);
+        }
+
+        document.addEventListener('DOMContentLoaded', loadInvoiceData);
+    </script>
+</body>
+
+</html>

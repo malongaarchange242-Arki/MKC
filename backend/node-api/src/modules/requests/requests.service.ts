@@ -451,6 +451,9 @@ export class RequestsService {
   // ===============================
   static async transitionStatus(input: TransitionInput) {
     const { requestId, to, actorRole, actorId } = input;
+    // Allow callers to suppress client notifications for this transition.
+    const notifyClientFlag = (input as any)?.notifyClient;
+    const notificationsEnabled = notifyClientFlag !== false;
 
     logger.info('Request status transition attempt', {
       requestId,
@@ -521,6 +524,10 @@ export class RequestsService {
 
     // Notify user (best-effort) — dynamic import to avoid circular deps
     (async () => {
+      if (!notificationsEnabled) {
+        logger.info('Notifications suppressed for this transition (generic notifications)', { requestId, from, to, actorRole });
+        return;
+      }
       try {
         const { NotificationsService } = await import('../notifications/notifications.service');
 
@@ -590,6 +597,10 @@ export class RequestsService {
 
     // Additional client-targeted emails for key statuses (do not impact admin emails)
     (async () => {
+      if (!notificationsEnabled) {
+        logger.info('Notifications suppressed for this transition (important client-targeted notifications)', { requestId, from, to });
+        return;
+      }
       try {
         const { NotificationsService } = await import('../notifications/notifications.service');
 
@@ -618,8 +629,8 @@ export class RequestsService {
         switch (String(to)) {
           case 'DRAFT_SENT':
             eventType = 'CLIENT_DRAFT_AVAILABLE';
-            title = 'Draft FERI disponible';
-            message = 'Votre draft FERI est disponible. Connectez‑vous à votre espace pour le consulter et procéder au paiement.';
+            title = 'Draft et proforma disponibles';
+            message = 'Le draft et la facture proforma relatifs à votre demande sont disponibles. Connectez‑vous à votre espace client pour les consulter et les télécharger.';
             break;
           case 'PAYMENT_CONFIRMED':
             eventType = 'CLIENT_PAYMENT_CONFIRMED';

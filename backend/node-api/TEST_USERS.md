@@ -1,4 +1,4 @@
-# Guide de test des endpoints Users
+﻿# Guide de test des endpoints Users
 
 ## Prérequis
 
@@ -10,7 +10,7 @@
 
 ### 1. Health Check
 ```powershell
-curl https://mkc-backend-kqov.onrender.com/health
+curl http://localhost:3000/health
 ```
 
 ### 2. Register (créer un utilisateur)
@@ -22,7 +22,7 @@ $body = @{
     prenom = "User"
 } | ConvertTo-Json
 
-Invoke-RestMethod -Uri "https://mkc-backend-kqov.onrender.com/auth/register" -Method Post -Body $body -ContentType "application/json"
+Invoke-RestMethod -Uri "http://localhost:3000/auth/register" -Method Post -Body $body -ContentType "application/json"
 ```
 
 ### 3. Login (obtenir un token)
@@ -32,7 +32,7 @@ $body = @{
     password = "Test123456!"
 } | ConvertTo-Json
 
-$response = Invoke-RestMethod -Uri "https://mkc-backend-kqov.onrender.com/auth/login" -Method Post -Body $body -ContentType "application/json"
+$response = Invoke-RestMethod -Uri "http://localhost:3000/auth/login" -Method Post -Body $body -ContentType "application/json"
 $token = $response.session.access_token
 Write-Host "Token: $token"
 ```
@@ -43,7 +43,7 @@ $headers = @{
     "Authorization" = "Bearer $token"
 }
 
-Invoke-RestMethod -Uri "https://mkc-backend-kqov.onrender.com/users/me" -Method Get -Headers $headers
+Invoke-RestMethod -Uri "http://localhost:3000/users/me" -Method Get -Headers $headers
 ```
 
 ### 5. PATCH /users/me (mettre à jour mon profil)
@@ -57,7 +57,7 @@ $headers = @{
     "Authorization" = "Bearer $token"
 }
 
-Invoke-RestMethod -Uri "https://mkc-backend-kqov.onrender.com/users/me" -Method Patch -Body $body -ContentType "application/json" -Headers $headers
+Invoke-RestMethod -Uri "http://localhost:3000/users/me" -Method Patch -Body $body -ContentType "application/json" -Headers $headers
 ```
 
 ### 6. GET /users (liste des utilisateurs - ADMIN seulement)
@@ -66,7 +66,7 @@ $headers = @{
     "Authorization" = "Bearer $token"
 }
 
-Invoke-RestMethod -Uri "https://mkc-backend-kqov.onrender.com/users" -Method Get -Headers $headers
+Invoke-RestMethod -Uri "http://localhost:3000/users" -Method Get -Headers $headers
 ```
 
 ### 7. GET /users/:id (détails d'un utilisateur - ADMIN seulement)
@@ -76,7 +76,7 @@ $headers = @{
     "Authorization" = "Bearer $token"
 }
 
-Invoke-RestMethod -Uri "https://mkc-backend-kqov.onrender.com/users/$userId" -Method Get -Headers $headers
+Invoke-RestMethod -Uri "http://localhost:3000/users/$userId" -Method Get -Headers $headers
 ```
 
 ## Tests avec Postman/Thunder Client
@@ -85,12 +85,12 @@ Invoke-RestMethod -Uri "https://mkc-backend-kqov.onrender.com/users/$userId" -Me
 
 1. **GET /health**
   - Method: GET
-  - URL: `https://mkc-backend-kqov.onrender.com/health`
+  - URL: `http://localhost:3000/health`
   - Headers: Aucun
 
 2. **POST /auth/register**
   - Method: POST
-  - URL: `https://mkc-backend-kqov.onrender.com/auth/register`
+  - URL: `http://localhost:3000/auth/register`
    - Headers: `Content-Type: application/json`
    - Body (JSON):
    ```json
@@ -104,7 +104,7 @@ Invoke-RestMethod -Uri "https://mkc-backend-kqov.onrender.com/users/$userId" -Me
 
 3. **POST /auth/login**
   - Method: POST
-  - URL: `https://mkc-backend-kqov.onrender.com/auth/login`
+  - URL: `http://localhost:3000/auth/login`
    - Headers: `Content-Type: application/json`
    - Body (JSON):
    ```json
@@ -117,14 +117,14 @@ Invoke-RestMethod -Uri "https://mkc-backend-kqov.onrender.com/users/$userId" -Me
 
 4. **GET /users/me**
   - Method: GET
-  - URL: `https://mkc-backend-kqov.onrender.com/users/me`
+  - URL: `http://localhost:3000/users/me`
    - Headers: 
      - `Authorization: Bearer <token>`
      - `Content-Type: application/json`
 
 5. **PATCH /users/me**
   - Method: PATCH
-  - URL: `https://mkc-backend-kqov.onrender.com/users/me`
+  - URL: `http://localhost:3000/users/me`
    - Headers: 
      - `Authorization: Bearer <token>`
      - `Content-Type: application/json`
@@ -138,21 +138,21 @@ Invoke-RestMethod -Uri "https://mkc-backend-kqov.onrender.com/users/$userId" -Me
 
 6. **GET /users** (ADMIN)
   - Method: GET
-  - URL: `https://mkc-backend-kqov.onrender.com/users`
+  - URL: `http://localhost:3000/users`
    - Headers: 
      - `Authorization: Bearer <token-admin>`
      - `Content-Type: application/json`
 
 7. **GET /users/:id** (ADMIN)
   - Method: GET
-  - URL: `https://mkc-backend-kqov.onrender.com/users/{userId}`
+  - URL: `http://localhost:3000/users/{userId}`
    - Headers: 
      - `Authorization: Bearer <token-admin>`
      - `Content-Type: application/json`
 
 8. **PATCH /users/:id/role** (ADMIN)
   - Method: PATCH
-  - URL: `https://mkc-backend-kqov.onrender.com/users/{userId}/role`
+  - URL: `http://localhost:3000/users/{userId}/role`
    - Headers: 
      - `Authorization: Bearer <token-admin>`
      - `Content-Type: application/json`
@@ -204,4 +204,5 @@ Invoke-RestMethod -Uri "https://mkc-backend-kqov.onrender.com/users/$userId" -Me
 - [ ] GET /users nécessite ADMIN
 - [ ] GET /users/:id nécessite ADMIN
 - [ ] PATCH /users/:id/role nécessite ADMIN
+
 

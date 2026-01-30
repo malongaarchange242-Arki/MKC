@@ -19,6 +19,30 @@
       #side-panel.slide.show { right: 0; }
       tr.clickable-row { cursor: pointer; }
       tr.clickable-row:hover { background: #FFF4E6; transition: background 120ms ease-in-out; }
+            /* Header action buttons styling: orange theme */
+            .slide-header .header-actions .btn {
+                background: #f59e0b;
+                color: #fff;
+                border: 1px solid #f59e0b;
+                padding: 6px 10px;
+                border-radius: 6px;
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                font-weight: 600;
+                cursor: pointer;
+            }
+            .slide-header .header-actions .btn svg { color: currentColor; }
+            .slide-header .header-actions .btn:hover { filter: brightness(0.95); }
+            .slide-header .header-actions .btn.disabled,
+            .slide-header .header-actions .btn[disabled] {
+                background: #f3f4f6; /* gray-100 */
+                color: #9ca3af; /* gray-400 */
+                border-color: #f3f4f6;
+                cursor: not-allowed;
+                opacity: 0.9;
+                pointer-events: none;
+            }
     </style>
 </head>
 
@@ -32,6 +56,7 @@
             <ul role="menu">
                 <li class="active" role="menuitem"><i class="fas fa-tray-full"></i> <span data-i18n="incoming_requests">Incoming Requests</span></li>
                 <li role="menuitem"><i class="fas fa-file-invoice-dollar"></i> <span data-i18n="pending_payments">Pending Payments</span></li>
+               
             </ul>
             <div class="logout" onclick="window.location.href='index.html'">
                 <i class="fas fa-sign-out-alt"></i> <span data-i18n="logout">Logout</span>
@@ -124,12 +149,6 @@
                 <h3>Process File: <span id="target-bl-display" class="text-blue"></span></h3>
             </div>
             <div class="modal-body">
-                <label id="cargo-label">Cargo Route (From → To)</label>
-                <input type="text" id="admin-cargo-route" class="input-ref" placeholder="e.g. Shanghai → Pointe-Noire">
-
-                <label id="main-label">Proforma Amount (XAF)</label>
-                <input type="text" id="admin-amount" class="input-ref" placeholder="e.g. 450000">
-
                 <div class="upload-group">
                     <p class="sub-text">Attach PDF document for client:</p>
                     <label class="doc-upload-btn" for="admin-file-draft" id="upload-btn-label">
@@ -164,6 +183,25 @@
                     </div>
                     <div class="status-wrap">
                         <span id="side-status" class="status badge">--</span>
+                    </div>
+                    <div class="header-actions" style="margin-left:auto; display:flex; gap:8px; align-items:center;">
+                        <button id="btn-dispute" class="btn btn-outline-danger" title="Contester">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+                              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+                              <path d="M12 9v4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+                              <path d="M12 17h.01" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <span data-i18n="btn_dispute">Contester</span>
+                        </button>
+
+                        <button id="btn-message" class="btn btn-outline-secondary" title="Message">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+                              <path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <span data-i18n="btn_message">Message</span>
+                        </button>
+
+                                                <!-- Invoice button removed -->
                     </div>
                 </header>
 
@@ -229,25 +267,8 @@
                     </section>
                 </div>
 
-                <footer class="slide-footer">
-                    <div class="actions">
-                        <button id="btn-dispute" class="btn btn-outline-danger" title="Contester">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-                              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
-                              <path d="M12 9v4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
-                              <path d="M12 17h.01" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
-                            <span>Contester</span>
-                        </button>
-
-                        <button id="btn-message" class="btn btn-outline-secondary" title="Message">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-                              <path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
-                            <span>Message</span>
-                        </button>
-                    </div>
-                </footer>
+                                <footer class="slide-footer">
+                                </footer>
 
                 <!-- Message / Dispute form (hidden by default) - kept for compatibility -->
                 <div id="side-message-form" style="display:none; margin-top:12px; padding:18px 0">

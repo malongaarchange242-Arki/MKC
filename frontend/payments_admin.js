@@ -58,7 +58,7 @@
       // If admin validated the payment, attempt to notify via backend by transitioning the related request
       if (newStatus === 'validated' && requestId) {
         try {
-          const API_BASE = (() => {
+            const API_BASE = (() => {
             const meta = document.querySelector('meta[name="api-base"]')?.content || '';
             if (meta) return meta.replace(/\/$/, '');
             return 'https://mkc-backend-kqov.onrender.com';

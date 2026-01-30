@@ -38,16 +38,23 @@ export const paymentsModule = () => {
   router.post('/invoices', async (req: Request, res: Response) => {
     try {
       const authUserId = (req as any).authUserId ?? null;
-      const { request_id, amount, currency, bill_of_lading, customer_reference } = req.body || {};
+      const { request_id, amount, currency, bill_of_lading, customer_reference, client_name, objet, origin, subtotal_amount, service_fee_amount, invoice_date, items } = req.body || {};
 
-      if (!request_id || !amount) return res.status(400).json({ success: false, message: 'request_id and amount are required' });
+      if (!request_id || (amount === undefined || amount === null)) return res.status(400).json({ success: false, message: 'request_id and amount are required' });
 
       const { data, error } = await service.createInvoice({
         request_id,
         amount,
         currency,
         customer_reference,
-        created_by: authUserId
+        created_by: authUserId,
+        client_name: client_name || null,
+        objet: objet || null,
+        origin: origin || null,
+        subtotal_amount: subtotal_amount !== undefined ? Number(subtotal_amount) : null,
+        service_fee_amount: service_fee_amount !== undefined ? Number(service_fee_amount) : null,
+        invoice_date: invoice_date || null,
+        items: Array.isArray(items) ? items : undefined
       });
 
       if (error) {

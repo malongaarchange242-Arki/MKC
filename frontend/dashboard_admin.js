@@ -279,6 +279,14 @@ const i18n = {
   }
 };
 
+// UI button labels and sidebar
+Object.assign(i18n, {
+  menu_create_invoice: { en: 'Create invoice', fr: 'Création facture' },
+  btn_dispute: { en: 'Dispute', fr: 'Contester' },
+  btn_message: { en: 'Message', fr: 'Message' },
+  btn_invoice: { en: 'Invoice', fr: 'Facture' }
+});
+
 // Load requests from backend to ensure admin sees same data as client
 async function loadAdminRequests() {
   try {
@@ -394,8 +402,6 @@ function openAdminModal(bl, mode) {
   if (!modal) return;
 
   const title = modal.querySelector('h3') || null;
-  const labelInput = document.getElementById('main-label');
-  const inputField = document.getElementById('admin-amount');
   const btnSubmit = document.getElementById('admin-submit-btn');
   const labelUpload = document.getElementById('label-draft');
 
@@ -446,50 +452,18 @@ function openAdminModal(bl, mode) {
   }
 
     if (mode === 'DRAFT') {
-    if (title) title.innerText = (i18n.issue_draft_price && (i18n.issue_draft_price[(document.getElementById('lang-select') && document.getElementById('lang-select').value) || 'en'] || i18n.issue_draft_price.en)) || "Issue Draft & Pricing";
-    if (labelInput) { labelInput.innerText = "Proforma Amount (XAF)"; labelInput.style.display = ''; }
-    if (inputField) { inputField.placeholder = "e.g. 450000"; inputField.style.display = ''; }
-    if (btnSubmit) btnSubmit.innerText = (i18n.send_draft_to_client && (i18n.send_draft_to_client[(document.getElementById('lang-select') && document.getElementById('lang-select').value) || 'en'] || i18n.send_draft_to_client.en)) || "SEND DRAFT TO CLIENT";
-  } else {
-    if (title) title.innerText = (i18n.deliver_final_feri && (i18n.deliver_final_feri[(document.getElementById('lang-select') && document.getElementById('lang-select').value) || 'en'] || i18n.deliver_final_feri.en)) || "Deliver Official FERI";
-    // Do NOT show or use a separate FERI/AD number field in the modal.
-    // Hide the Proforma Amount label/input for FINAL — only require attaching the PDF.
-    if (labelInput) { labelInput.style.display = 'none'; }
-    if (inputField) { inputField.style.display = 'none'; inputField.value = ''; }
-    if (btnSubmit) btnSubmit.innerText = (i18n.validate_and_deliver_final && (i18n.validate_and_deliver_final[(document.getElementById('lang-select') && document.getElementById('lang-select').value) || 'en'] || i18n.validate_and_deliver_final.en)) || "VALIDATE & DELIVER FINAL";
-  }
-
-  // Determine whether to show the Cargo Route field based on the request status
-  try {
-    const cargoLabel = document.getElementById('cargo-label');
-    const cargoInputEl = document.getElementById('admin-cargo-route');
-    // Find matching request for this BL (same logic used elsewhere)
-    const matchingReq = requests.find(r => {
-      const bls = [r.extracted_bl, r.bl_number, r.bl, r.bill_of_lading];
-      if (r.request) bls.push(r.request.extracted_bl, r.request.bl_number, r.request.bl);
-      return bls.some(x => x && String(x) === String(bl));
-    });
-    const shouldHideCargo = matchingReq && (String(matchingReq.status) === 'PAYMENT_CONFIRMED' || String(matchingReq.status) === 'COMPLETED');
-    if (shouldHideCargo) {
-      if (cargoLabel) cargoLabel.style.display = 'none';
-      if (cargoInputEl) { cargoInputEl.style.display = 'none'; cargoInputEl.value = ''; }
-      modal.dataset.skipCargo = '1';
+      if (title) title.innerText = (i18n.issue_draft_price && (i18n.issue_draft_price[(document.getElementById('lang-select') && document.getElementById('lang-select').value) || 'en'] || i18n.issue_draft_price.en)) || "Issue Draft & Pricing";
+      if (btnSubmit) btnSubmit.innerText = (i18n.send_draft_to_client && (i18n.send_draft_to_client[(document.getElementById('lang-select') && document.getElementById('lang-select').value) || 'en'] || i18n.send_draft_to_client.en)) || "SEND DRAFT TO CLIENT";
     } else {
-      if (cargoLabel) cargoLabel.style.display = '';
-      if (cargoInputEl) cargoInputEl.style.display = '';
-      modal.dataset.skipCargo = '0';
+      if (title) title.innerText = (i18n.deliver_final_feri && (i18n.deliver_final_feri[(document.getElementById('lang-select') && document.getElementById('lang-select').value) || 'en'] || i18n.deliver_final_feri.en)) || "Deliver Official FERI";
+      if (btnSubmit) btnSubmit.innerText = (i18n.validate_and_deliver_final && (i18n.validate_and_deliver_final[(document.getElementById('lang-select') && document.getElementById('lang-select').value) || 'en'] || i18n.validate_and_deliver_final.en)) || "VALIDATE & DELIVER FINAL";
     }
-  } catch (e) {
-    // fail silently and show cargo by default
-    if (modal) modal.dataset.skipCargo = '0';
-  }
 
   modal.style.display = 'flex';
 }
 
 function closeAdminModal() {
   document.getElementById('admin-modal').style.display = 'none';
-  document.getElementById('admin-amount').value = '';
   document.getElementById('admin-file-draft').value = '';
   const adEl = document.getElementById('admin-file-ad');
   if (adEl) adEl.value = '';
@@ -510,11 +484,10 @@ function closeAdminModal() {
  * For FINAL: preserves existing publish flow.
  */
 async function handleAdminSubmit() {
-  const inputEl = document.getElementById('admin-amount');
-  const inputValue = inputEl ? String(inputEl.value).trim() : '';
+  // proforma amount field removed from modal; only require file attachment
   const fileInp = document.getElementById('admin-file-draft');
 
-  if (currentMode === 'DRAFT' && (!inputValue)) return alert('Please fill the required field.');
+  // For DRAFT we only require a file attachment; amount/cargo are handled in the invoice composer
   if (!fileInp || !fileInp.files || fileInp.files.length === 0) return alert('Please attach the PDF file.');
 
   const btnSubmit = document.getElementById('admin-submit-btn');
@@ -599,48 +572,54 @@ async function handleAdminSubmit() {
       return;
     }
 
-    // DRAFT flow: call backend atomic endpoint
-    const fd = new FormData();
-    const cargoInput = document.getElementById('admin-cargo-route');
-    const cargoVal = cargoInput ? String(cargoInput.value || '').trim() : '';
-    // Respect modal flag: when skipCargo is set we don't require or send cargo_route
-    const modalEl = document.getElementById('admin-modal');
-    const skipCargo = modalEl && modalEl.dataset && modalEl.dataset.skipCargo === '1';
-    if (!skipCargo) {
-      if (!cargoVal) throw new Error('Please fill Cargo Route');
-      fd.append('cargo_route', cargoVal);
+    // DRAFT flow: upload draft/proforma only, then open creat_facture for invoice creation
+    const fd2 = new FormData();
+    fd2.append('documentType', 'PROFORMA');
+    fd2.append('files', fileInp.files[0]);
+    const adInputEl = document.getElementById('admin-file-ad');
+    if (adInputEl && adInputEl.files && adInputEl.files.length > 0) {
+      // append AD file(s) too (same multipart field name expected by backend)
+      fd2.append('files', adInputEl.files[0]);
     }
-    fd.append('amount', inputValue.replace(/[^0-9.]/g, ''));
-    fd.append('currency', 'XAF');
-    fd.append('file', fileInp.files[0]);
 
-    const resp = await fetch(`${API_BASE.replace(/\/$/, '')}/admin/requests/${requestId}/send-draft`, {
+    // Suppress server-side notification for draft upload; notification will be triggered
+    // later explicitly by the admin after the invoice is recorded.
+    const resp2 = await fetch(`${API_BASE.replace(/\/$/, '')}/admin/requests/${requestId}/upload-draft`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-      body: fd
+      headers: { Authorization: `Bearer ${token}`, 'X-Suppress-Notification': '1' },
+      body: fd2
     });
 
-    if (!resp.ok) {
-      const txt = await resp.text().catch(() => null);
-      throw new Error(`Send Draft failed: ${resp.status} ${txt || ''}`);
+    if (!resp2.ok) {
+      const txt = await resp2.text().catch(() => null);
+      throw new Error(`Upload draft failed: ${resp2.status} ${txt || ''}`);
     }
 
-    const json = await resp.json();
-    if (!json.success || !json.invoice) throw new Error('Failed to create invoice');
+    const json2 = await resp2.json();
+    if (!json2.success) throw new Error('Failed to upload draft');
 
-    const invoice = json.invoice;
-
-    // Update local state and show invoice number
+    // Update local state to reflect DRAFT_SENT (server already transitioned)
     requests = requests.map(req => {
       if ((req.id || req.request_id) === requestId || [req.extracted_bl, req.bl_number, req.bl].some(x => x && String(x) === selectedBL)) {
-        return { ...req, status: 'DRAFT_SENT', invoice_number: invoice.invoice_number, updated: new Date().toLocaleString() };
+        return { ...req, status: 'DRAFT_SENT', updated: new Date().toLocaleString() };
       }
       return req;
     });
     localStorage.setItem(STORAGE_KEY, JSON.stringify(requests));
     renderAdminTable();
     closeAdminModal();
-    alert('Draft envoyé au client avec succès. Invoice: ' + (invoice.invoice_number || '—'));
+
+    // Prefill creat_facture with request info
+    try {
+      const clientName = encodeURIComponent(getClientName(matching) || '');
+      const refVal = encodeURIComponent((matching && (matching.customer_reference || matching.ref || matching.request_ref)) || '');
+      const blVal = encodeURIComponent((matching && (matching.extracted_bl || matching.manual_bl || matching.bl_number || matching.bl || '')) || '');
+      const typeVal = encodeURIComponent((matching && (matching.type || matching.request_type)) || '');
+      const url = `creat_facture.html?request_id=${encodeURIComponent(requestId)}&client=${clientName}&ref=${refVal}&bl=${blVal}&type=${typeVal}`;
+      window.location.href = url;
+    } catch (redirErr) {
+      alert('Draft uploaded successfully. Open creat_facture to continue.');
+    }
 
   } catch (e) {
     console.warn('handleAdminSubmit error', e);
@@ -896,7 +875,7 @@ window.confirmPaymentFor = async function (requestId) {
   const confirmMsg = (i18n.confirm_payment_confirmation && i18n.confirm_payment_confirmation[lang]) || i18n.confirm_payment_confirmation.en;
   if (!confirm(confirmMsg)) return;
 
-  const API_BASE = (() => {
+    const API_BASE = (() => {
     const meta = document.querySelector('meta[name="api-base"]')?.content || '';
     if (meta) return meta.replace(/\/$/, '');
     return 'https://mkc-backend-kqov.onrender.com';
@@ -1089,6 +1068,8 @@ function openSidePanel(req) {
   }
   panel.classList.add('show');
   panel.setAttribute('aria-hidden','false');
+
+  // Invoice button removed from UI; no client-facing invoice action here.
 
   // Wire up message/dispute UI
   const btnMsg = document.getElementById('btn-message');

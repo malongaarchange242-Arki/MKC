@@ -5,18 +5,45 @@
     <meta charset="UTF-8">
     <title>MKC - Générateur de Facture</title>
     <link rel="stylesheet" href="creat_facture.css">
+    <style>
+        /* Make the top-level back button orange to match admin theme */
+        .btn-back-page {
+            background: #f59e0b;
+            color: #ffffff;
+            border: 1px solid #f59e0b;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-back-page:hover {
+            filter: brightness(0.95);
+        }
+    </style>
 </head>
 
 <body>
     <div class="admin-panel no-print">
         <div class="admin-header">
             <h2>Gestion Maritime Kargo Consulting</h2>
-            <button id="previewBtn" class="btn-primary">Aperçu de la Facture</button>
+            <div style="display:flex; gap:8px; align-items:center; margin-left:auto;">
+                <button id="btn-back-page" class="btn-back-page" title="Retour">← Retour</button>
+                <button id="previewBtn" class="btn-primary">Aperçu de la Facture</button>
+            </div>
         </div>
 
         <div class="form-grid">
             <input type="text" id="clientName" placeholder="Nom du Client">
-            <input type="text" id="origine" placeholder="Origine de la marchandise">
+            <select id="origine" class="select-origine" aria-label="Origine de la marchandise">
+                <option value="" disabled selected>Origine de la marchandise</option>
+                <option value="Afrique">Afrique</option>
+                <option value="Antarctique">Antarctique</option>
+                <option value="Asie">Asie</option>
+                <option value="Europe">Europe</option>
+                <option value="Amérique du Nord">Amérique du Nord</option>
+                <option value="Océanie">Océanie</option>
+                <option value="Amérique du Sud">Amérique du Sud</option>
+            </select>
             <input type="text" id="objetRef" placeholder="Référence BL Principal">
         </div>
 
@@ -39,7 +66,7 @@
                             <option value="FERI">FERI</option>
                             <option value="AD">AD</option>
                             <option value="FERI+AD">FERI + AD</option>
-                            <option value="Frais de Service">Frais de Service</option>
+                            
                         </select>
                     </td>
                     <td><input type="text" class="in-bl" placeholder="N° BL"></td>

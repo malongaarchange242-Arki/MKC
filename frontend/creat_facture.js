@@ -2,6 +2,102 @@ document.addEventListener('DOMContentLoaded', () => {
     const objetRefInput = document.getElementById('objetRef');
     const tableBody = document.getElementById('tableBody');
     const previewModal = document.getElementById('previewModal');
+    const clientNameInput = document.getElementById('clientName');
+    const origineInput = document.getElementById('origine');
+
+    const DRAFT_KEY = 'creat_facture_draft_v1';
+
+    function saveDraft() {
+        try {
+            const rows = Array.from(document.querySelectorAll('.item-row')).map(r => ({
+                desc: (r.querySelector('.in-desc') && r.querySelector('.in-desc').value) || '',
+                bl: (r.querySelector('.in-bl') && r.querySelector('.in-bl').value) || '',
+                cond: (r.querySelector('.in-cond') && r.querySelector('.in-cond').value) || '',
+                pu: (r.querySelector('.in-pu') && r.querySelector('.in-pu').value) || '',
+                qty: (r.querySelector('.in-qty') && r.querySelector('.in-qty').value) || ''
+            }));
+            const payload = {
+                clientName: clientNameInput.value || '',
+                origine: origineInput ? (origineInput.value || '') : '',
+                objetRef: objetRefInput.value || '',
+                rows,
+                updated: Date.now()
+            };
+            localStorage.setItem(DRAFT_KEY, JSON.stringify(payload));
+        } catch (e) { console.warn('saveDraft', e); }
+    }
+
+    function loadDraft() {
+        try {
+            const raw = localStorage.getItem(DRAFT_KEY);
+            if (!raw) return null;
+            return JSON.parse(raw);
+        } catch (e) { return null; }
+    }
+
+    function applyDraftToDom(draft) {
+        if (!draft) return;
+        if (clientNameInput && draft.clientName) clientNameInput.value = draft.clientName;
+        if (origineInput && draft.origine) origineInput.value = draft.origine;
+        if (objetRefInput && draft.objetRef) objetRefInput.value = draft.objetRef;
+        // populate existing rows' BL fields
+        if (draft.objetRef) {
+            document.querySelectorAll('.in-bl').forEach(i => i.value = draft.objetRef);
+        }
+        // If saved rows > 1, ensure DOM has same number
+        if (Array.isArray(draft.rows) && draft.rows.length > 1) {
+            // keep first row as template; clear and repopulate
+            const template = document.querySelector('.item-row');
+            tableBody.innerHTML = '';
+            draft.rows.forEach(rData => {
+                const row = template.cloneNode(true);
+                const sel = row.querySelector('.in-desc'); if (sel) sel.value = rData.desc || '';
+                const inbl = row.querySelector('.in-bl'); if (inbl) inbl.value = rData.bl || draft.objetRef || '';
+                const cond = row.querySelector('.in-cond'); if (cond) cond.value = rData.cond || '';
+                const pu = row.querySelector('.in-pu'); if (pu) pu.value = rData.pu || '';
+                const qty = row.querySelector('.in-qty'); if (qty) qty.value = rData.qty || '';
+                tableBody.appendChild(row);
+            });
+        }
+    }
+
+    // Load URL params if present and merge with draft
+    const params = new URLSearchParams(window.location.search);
+    const urlClient = params.get('client');
+    const urlRef = params.get('ref');
+    const urlBl = params.get('bl');
+
+    // If opened from sidebar with ?blank=1, clear any saved draft and keep fields empty
+    const isBlank = params.has('blank');
+    if (isBlank) {
+        try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
+        if (clientNameInput) clientNameInput.value = '';
+        if (objetRefInput) objetRefInput.value = '';
+        document.querySelectorAll('.in-bl').forEach(i => i.value = '');
+    } else {
+        // apply draft first, then override with URL params to ensure opening from admin side-panel wins
+        const existingDraft = loadDraft();
+        if (existingDraft) applyDraftToDom(existingDraft);
+
+        if (urlClient && clientNameInput) clientNameInput.value = urlClient;
+        if (urlRef && objetRefInput) objetRefInput.value = urlRef;
+        if (urlBl) {
+            const cleaned = urlBl.replace(/\s*\([^)]+\)\s*$/,'').trim();
+            document.querySelectorAll('.in-bl').forEach(i => i.value = cleaned);
+            if (objetRefInput && !objetRefInput.value) objetRefInput.value = cleaned;
+        }
+        // Save whatever initial state we have
+        saveDraft();
+    }
+
+    // Save on user interactions
+    [clientNameInput, origineInput, objetRefInput].forEach(el => {
+        if (!el) return;
+        el.addEventListener('input', saveDraft);
+    });
+    // observe table changes to save rows
+    const observer = new MutationObserver(saveDraft);
+    observer.observe(tableBody, { childList: true, subtree: true });
 
     // 1. Synchronisation du N° BL (Recopie la référence dans toutes les lignes)
     objetRefInput.addEventListener('input', () => {
@@ -17,21 +113,95 @@ document.addEventListener('DOMContentLoaded', () => {
         row.querySelectorAll('input').forEach(i => i.value = "");
         row.querySelector('.in-bl').value = objetRefInput.value;
         tableBody.appendChild(row);
+        saveDraft();
     };
 
     tableBody.onclick = (e) => {
         if (e.target.classList.contains('btn-del')) {
             if (document.querySelectorAll('.item-row').length > 1) {
                 e.target.closest('tr').remove();
+                saveDraft();
             }
         }
     };
 
     // 3. Logique de génération de la facture (Preview)
-    document.getElementById('previewBtn').onclick = () => {
+    document.getElementById('previewBtn').onclick = async () => {
         const client = document.getElementById('clientName').value || "................................";
         const origine = document.getElementById('origine').value || "................";
-        const refBL = document.getElementById('objetRef').value || "................";
+        // Prefer the top `objetRef` if provided; otherwise use the first non-empty BL from table rows
+        const _objetRefVal = (document.getElementById('objetRef').value || '').trim();
+        let refBL = _objetRefVal || '';
+
+        // If this preview is tied to a request, prefer the server's BL (manual_bl or bl_number)
+        // and prefer the request type when determining the objet label. This ensures
+        // admin-provided MKC manual BLs or generated FERI refs are used consistently.
+        const apiBaseMeta = document.querySelector('meta[name="api-base"]')?.content || '';
+        const API_BASE_FOR_REQUEST = apiBaseMeta || 'https://mkc-backend-kqov.onrender.com';
+        if (!refBL) {
+            const firstRowBl = Array.from(document.querySelectorAll('.in-bl'))
+                .map(i => (i.value || '').trim())
+                .find(v => v && v.length > 0);
+            refBL = firstRowBl || '................';
+        }
+
+        // default objet label may be adjusted later from request or rows
+        let objetLabel = 'FERI';
+
+        // If a request_id is present, fetch request details and prefer server BL/type
+        const requestIdParamForFetch = params.get('request_id');
+        if (requestIdParamForFetch) {
+            try {
+                const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+                const resp = await fetch(`${API_BASE_FOR_REQUEST.replace(/\/$/, '')}/admin/requests/${requestIdParamForFetch}`, {
+                    method: 'GET',
+                    headers: Object.assign({}, token ? { Authorization: `Bearer ${token}` } : {})
+                });
+                if (resp.ok) {
+                    const json = await resp.json().catch(() => null);
+                    const reqData = json && (json.data || json.request);
+                    if (reqData) {
+                        const serverBl = reqData.manual_bl || reqData.bl_number || reqData.bl_saisi || '';
+                        if (serverBl && serverBl.toString().trim()) {
+                            refBL = serverBl.toString();
+                            try {
+                                if (objetRefInput) objetRefInput.value = refBL;
+                                document.querySelectorAll('.in-bl').forEach(i => i.value = refBL);
+                                saveDraft();
+                            } catch (e) { /* non-fatal */ }
+                        }
+                        const serverType = (reqData.type || '') + '';
+                        if (serverType && serverType.toUpperCase().includes('FERI')) {
+                            objetLabel = 'FERI';
+                        } else if (serverType && serverType.toUpperCase().includes('AD')) {
+                            objetLabel = 'AD';
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn('Failed to fetch request details for preview', e);
+            }
+        }
+
+        // Determine request type for Objet label: prefer URL param, fallback to row selections
+        const paramType = params.get('type') || '';
+        let detectedType = (paramType || '').toString().toUpperCase();
+        if (!detectedType) {
+            // inspect rows for FERI / AD markers
+            const descs = Array.from(document.querySelectorAll('.in-desc')).map(s => (s.value || '').toString().toUpperCase());
+            const hasFERI = descs.some(d => d.includes('FERI'));
+            const hasAD = descs.some(d => d.includes('AD'));
+            if (hasFERI && hasAD) detectedType = 'FERI_AND_AD';
+            else if (hasAD) detectedType = 'AD_ONLY';
+            else if (hasFERI) detectedType = 'FERI_ONLY';
+        }
+        // map to desired label per requirements (default set earlier)
+        if (String(detectedType).includes('AD') && String(detectedType).includes('FERI')) {
+            // when both FERI and AD present, use the first non-empty description value instead of 'FER_AD'
+            const firstDesc = (document.querySelector('.in-desc') && document.querySelector('.in-desc').value) || '';
+            objetLabel = firstDesc || 'FERI_AD';
+        } else if (String(detectedType).includes('AD')) objetLabel = 'AD';
+        else objetLabel = 'FERI';
 
         // Date du jour
         const d = new Date();
@@ -67,11 +237,83 @@ document.addEventListener('DOMContentLoaded', () => {
         const fraisService = Math.round(sousTotalXaf * 0.018);
         const totalGeneral = sousTotalXaf + fraisService;
 
+        // If we have a request_id in the URL and a positive total, create an invoice record first so we can show REF
+        let invoiceRef = '';
+        const urlParams = new URLSearchParams(window.location.search);
+        const requestIdParam = urlParams.get('request_id');
+        // Build items array to send to server (quantity, packaging, unit_price, line_total...)
+        const itemsPayload = Array.from(document.querySelectorAll('.item-row')).map((row, idx) => {
+            const desc = row.querySelector('.in-desc').value || '-';
+            const bl = row.querySelector('.in-bl').value || '';
+            const cond = row.querySelector('.in-cond').value || '';
+            const pu = Math.round(parseFloat(row.querySelector('.in-pu').value) || 0);
+            const qty = Math.round(parseFloat(row.querySelector('.in-qty').value) || 0);
+            const montant = pu * qty;
+            return {
+                description: desc,
+                bl_number: bl,
+                packaging: cond,
+                unit_price: pu,
+                quantity: qty,
+                line_total: montant,
+                position: idx + 1
+            };
+        }).filter(i => i.description || i.line_total > 0);
+        if (requestIdParam && Number(totalGeneral) > 0) {
+            try {
+                const metaApi = document.querySelector('meta[name="api-base"]')?.content || '';
+                const API_BASE = metaApi || 'https://mkc-backend-kqov.onrender.com';
+                const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+                const resp = await fetch(`${API_BASE.replace(/\/$/, '')}/api/client/invoices`, {
+                    method: 'POST',
+                    headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { Authorization: `Bearer ${token}` } : {}),
+                    body: JSON.stringify({ request_id: requestIdParam, amount: totalGeneral, currency: 'XAF', bill_of_lading: refBL || undefined, customer_reference: urlParams.get('ref') || undefined, items: itemsPayload })
+                });
+
+                if (!resp.ok) {
+                    const txt = await resp.text().catch(() => null);
+                    console.warn('Create invoice failed', resp.status, txt);
+                    alert('Impossible de créer la facture côté serveur: ' + (txt || resp.status));
+                } else {
+                    const json = await resp.json().catch(() => null);
+                    if (json && json.success && json.invoice) {
+                        invoiceRef = json.invoice.invoice_number || '';
+                    }
+                }
+            } catch (err) {
+                console.warn('createInvoice error', err);
+                // Non-blocking: continue to show preview even if invoice creation failed
+                alert('Impossible de créer la facture côté serveur: ' + (err.message || err));
+            }
+            // If creation didn't return a REF, try fetching existing invoice for this request_id
+            if ((!invoiceRef || invoiceRef === '') && requestIdParam) {
+                try {
+                    const metaApi2 = document.querySelector('meta[name="api-base"]')?.content || '';
+                    const API_BASE2 = metaApi2 || 'https://mkc-backend-kqov.onrender.com';
+                    const token2 = localStorage.getItem('token') || localStorage.getItem('access_token');
+                    const headers2 = Object.assign({}, token2 ? { Authorization: `Bearer ${token2}` } : {});
+                    const listResp = await fetch(`${API_BASE2.replace(/\/$/, '')}/api/client/invoices?request_id=${encodeURIComponent(requestIdParam)}`, { headers: headers2 });
+                    if (listResp.ok) {
+                        const listJson = await listResp.json().catch(() => null);
+                        const invs = listJson && (listJson.invoices || listJson.data || listJson) ? (listJson.invoices || listJson.data || listJson) : [];
+                        if (Array.isArray(invs) && invs.length > 0) {
+                            const found = invs[0];
+                            invoiceRef = found.invoice_number || found.reference || '';
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Failed to fetch existing invoice for request', e);
+                }
+            }
+        } else if (requestIdParam && Number(totalGeneral) <= 0) {
+            alert('Le montant total est nul. Entrez des PU/Qté valides pour créer la facture côté serveur.');
+        }
+
         // Ajout de la ligne Frais de Service au tableau
         rowsHtml += `
             <tr style="font-style: italic;">
                 <td>${document.querySelectorAll('.item-row').length + 1}</td>
-                <td style="text-align:left; padding-left:10px;">Frais de Service (1.8%)</td>
+                <td style="text-align:left; padding-left:10px;">Frais de Service</td>
                 <td>-</td>
                 <td>-</td>
                 <td>-</td>
@@ -96,12 +338,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
 
                 <div class="date-line">Date: ${dateNow}</div>
-                <div class="ref-line">REF: PRO-007/MKC-OGF/26</div>
+                <div class="ref-line">REF: ${invoiceRef || ''}</div>
                 <div class="invoice-title">FACTURE PROFOMA</div>
 
                 <div class="client-meta">
                     <p>Client: ${client}</p>
-                    <p>Objet: Souscription FERI BL: ${refBL}</p>
+                    <p>Objet: Souscription ${objetLabel} BL: ${refBL}</p>
                     <p>Origine: ${origine}</p>
                 </div>
 
@@ -145,11 +387,108 @@ document.addEventListener('DOMContentLoaded', () => {
         // Ré-attachement des événements des boutons du modal car ils ont été ré-injectés
         document.getElementById('backBtn').onclick = () => previewModal.style.display = 'none';
         document.getElementById('printBtn').onclick = () => window.print();
-        document.getElementById('sendBtn').onclick = () => {
-            const subject = encodeURIComponent(`Facture Proforma - ${client}`);
-            window.location.href = `mailto:?subject=${subject}&body=Veuillez trouver ci-joint votre facture concernant le BL ${refBL}.`;
-        };
+        const _sendBtn = document.getElementById('sendBtn');
+        if (_sendBtn) {
+            _sendBtn.onclick = () => {
+                (async () => {
+                    // disable / grey out to prevent duplicate submissions
+                    _sendBtn.disabled = true;
+                    _sendBtn.style.opacity = '0.5';
+                    _sendBtn.style.cursor = 'not-allowed';
+
+                    const payload = {
+                        client_name: client,
+                        objet: `Souscription ${objetLabel}`,
+                        origin: origine,
+                        invoice_date: dateNow.split('-').reverse().join('-') || dateNow,
+                        subtotal_amount: Number(sousTotalXaf),
+                        service_fee_amount: Number(fraisService),
+                        total_amount: Number(totalGeneral),
+                        amount: Number(totalGeneral)
+                    };
+
+                    // attach items
+                    if (Array.isArray(itemsPayload) && itemsPayload.length > 0) payload.items = itemsPayload;
+
+                    const urlParams2 = new URLSearchParams(window.location.search);
+                    const requestIdParam2 = urlParams2.get('request_id');
+                    const metaApi = document.querySelector('meta[name="api-base"]')?.content || '';
+                    const API_BASE = metaApi || 'https://mkc-backend-kqov.onrender.com';
+                    const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+
+                    try {
+                        if (requestIdParam2) payload.request_id = requestIdParam2;
+
+                        const resp = await fetch(`${API_BASE.replace(/\/$/, '')}/api/client/invoices`, {
+                            method: 'POST',
+                            headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { Authorization: `Bearer ${token}` } : {}),
+                            body: JSON.stringify(payload)
+                        });
+
+                        if (!resp.ok) {
+                            const txt = await resp.text().catch(() => null);
+                            alert('Erreur lors de l enregistrement de la facture: ' + (txt || resp.status));
+                            return;
+                        }
+
+                        const json = await resp.json().catch(() => null);
+                        if (json && json.success && json.invoice) {
+                            alert('Facture enregistrée: ' + (json.invoice.invoice_number || '—'));
+                            // update displayed REF
+                            const refEl = document.querySelector('.ref-line');
+                            if (refEl) refEl.innerText = 'REF: ' + (json.invoice.invoice_number || '');
+
+                            // If this preview was opened with a request_id, explicitly trigger the
+                            // server-side "draft available" notification now (admin endpoint).
+                            if (requestIdParam2) {
+                                try {
+                                    // Call notification-only endpoint to trigger draft/proforma notification
+                                    const notifyResp = await fetch(`${API_BASE.replace(/\/$/, '')}/admin/requests/${requestIdParam2}/notify-draft`, {
+                                        method: 'POST',
+                                        headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { Authorization: `Bearer ${token}` } : {}),
+                                        body: JSON.stringify({ invoice_id: json.invoice.id || null })
+                                    });
+                                    if (!notifyResp.ok) {
+                                        const _txt = await notifyResp.text().catch(() => null);
+                                        console.warn('notify draft failed', notifyResp.status, _txt);
+                                    }
+                                } catch (notifyErr) {
+                                    console.warn('notify draft error', notifyErr);
+                                }
+                            }
+
+                            // close preview modal after successful save then navigate to dashboard
+                            if (previewModal) previewModal.style.display = 'none';
+                            try { window.location.href = 'dashboard_admin.html'; } catch (e) { history.back(); }
+                        } else {
+                            alert('Facture enregistrée (réponse inattendue du serveur)');
+                        }
+                    } catch (e) {
+                        console.warn('send invoice error', e);
+                        alert('Erreur réseau lors de l enregistrement de la facture');
+                    } finally {
+                        // re-enable button after request completes (success or error)
+                        _sendBtn.disabled = false;
+                        _sendBtn.style.opacity = '';
+                        _sendBtn.style.cursor = '';
+                    }
+                })();
+            };
+        }
     };
+
+    // Top-level back button to return to admin dashboard
+    const backPageBtn = document.getElementById('btn-back-page');
+    if (backPageBtn) {
+        backPageBtn.onclick = () => {
+            // Prefer explicit dashboard page; fallback to history.back()
+            try {
+                window.location.href = 'dashboard_admin.html';
+            } catch (e) {
+                history.back();
+            }
+        };
+    }
 
     // Fermer le modal en cliquant à l'extérieur de la page A4
     window.onclick = (event) => {

@@ -25,7 +25,7 @@ async function waitForHealth(url, timeout = 5000) {
 
 (async () => {
   try {
-    const apiBase = 'https://mkc-backend-kqov.onrender.com';
+    const apiBase = 'http://localhost:3000';
     console.log('Waiting for server health...');
     await waitForHealth(`${apiBase}/health`, 10000);
     console.log('Server healthy');

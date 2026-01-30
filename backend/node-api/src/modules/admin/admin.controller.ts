@@ -347,8 +347,9 @@ export class AdminController {
 				createdDrafts.push(draft);
 			}
 
-			// Transition to DRAFT_SENT (single transition)
-			await RequestsService.transitionStatus({ requestId, to: 'DRAFT_SENT', actorRole: 'ADMIN', actorId: adminId });
+			// Transition to DRAFT_SENT (single transition). Do not send client notifications
+			// here — notifications should be explicit and triggered by the invoice send flow.
+			await RequestsService.transitionStatus({ requestId, to: 'DRAFT_SENT', actorRole: 'ADMIN', actorId: adminId, notifyClient: false });
 
 			// Audit
 			await AuditService.log({ actor_id: adminId, action: 'UPLOAD_DRAFT', entity: 'request', entity_id: requestId, metadata: { drafts: createdDrafts.map(d => d.id), type: docType } });
@@ -375,23 +376,10 @@ export class AdminController {
 				}
 			}
 
-			// Send notification + email referencing the draft via metadata (no file content)
-			try {
-				const { NotificationsService } = await import('../notifications/notifications.service');
-				await NotificationsService.send({
-					userId: request.user_id,
-					type: 'DRAFT_AVAILABLE',
-					title: 'Draft & Proforma disponibles',
-					message: 'Votre draft et votre facture proforma sont disponibles. Merci de procéder au paiement.',
-					entityType: 'request',
-					entityId: requestId,
-					channels: ['in_app', 'email'],
-					links: links.length > 0 ? links : [{ name: 'Voir la demande', url: `${process.env.FRONTEND_URL || 'https://app.example.com'}/requests/${requestId}`, expires_in: 259200 }],
-					metadata: metadataItems.length === 1 ? metadataItems[0] : metadataItems
-				});
-			} catch (e) {
-				logger.warn('Failed to send draft notification', { e });
-			}
+			// Do NOT send notifications from the upload endpoint. Notification delivery
+			// must be explicit and initiated by the authorized admin action (e.g. the
+			// invoice composer '✉ Envoyer' / the dedicated sendDraft endpoint).
+			logger.info('Drafts uploaded; notification NOT sent from uploadDraft endpoint', { requestId, adminId, drafts: createdDrafts.map(d => d.id) });
 
 			return res.status(200).json({ success: true, drafts: createdDrafts });
 		} catch (error: unknown) {
@@ -551,6 +539,27 @@ export class AdminController {
 			return res.status(200).json({ success: true, invoice });
 		} catch (error: unknown) {
 			return handleControllerError(res, error, 'Send draft');
+		}
+	}
+
+	static async notifyDraft(req: AuthRequest, res: Response) {
+		try {
+			if (!ensureAdminOrSystem(req, res)) return;
+
+			const adminId = getAuthUserId(req);
+			if (!adminId) return res.status(401).json({ message: 'Unauthorized' });
+
+			const requestId = req.params.id;
+			const body: any = req.body || {};
+
+			// Accept either invoice_id or invoice_number to locate invoice; invoice_id preferred
+			const invoiceId = body.invoice_id || body.invoiceId || null;
+			const invoiceNumber = body.invoice_number || body.invoiceNumber || null;
+
+			const result = await AdminService.notifyDraft(requestId, adminId, { invoiceId, invoiceNumber });
+			return res.status(200).json({ success: true, result });
+		} catch (error: unknown) {
+			return handleControllerError(res, error, 'Notify draft');
 		}
 	}
 }
