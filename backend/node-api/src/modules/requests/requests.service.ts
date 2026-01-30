@@ -31,6 +31,7 @@ export interface TransitionInput {
   to: RequestStatus;
   actorRole: ActorRole;
   actorId: string;
+  notifyClient?: boolean;
 }
 
 // ===============================
