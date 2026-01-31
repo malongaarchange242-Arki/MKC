@@ -238,7 +238,7 @@ export class AuthController {
       // generate application session token (24h)
       const appToken = JWTUtils.generateToken({ sub: userId, email, role });
 
-      const frontendBase = (process.env.FRONTEND_URL || 'http://localhost:8080').replace(/\/$/, '');
+      const frontendBase = (process.env.FRONTEND_URL || 'https://feri-mkc.com').replace(/\/$/, '');
       // redirect to a small frontend helper page that stores token then navigates
       // Place token in query string as a fallback for email clients that strip fragments.
       // The frontend consumer will accept token from either query or fragment.

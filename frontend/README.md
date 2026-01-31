@@ -10,7 +10,7 @@ How to use:
   ```bash
   cd frontend
   python -m http.server 8080
-  # then open http://localhost:8080
+  # then open https://mkc-frontend.onrender.com
   ```
 
   Or using `npx serve`:

@@ -213,7 +213,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         openerIsDashboard = !!(window.opener && window.opener.location && String(window.opener.location).includes('dashboard_admin'));
     } catch (e) { openerIsDashboard = false; }
 
-    const isBlank = params.has('blank') || referrer.includes('dashboard_admin') || openerIsDashboard;
+    // If opened from dashboard/admin sidebar we usually want a blank page,
+    // but if a `request_id` is present (opened after sending a draft),
+    // we must NOT treat the page as blank so request data can be loaded.
+    const isBlank = params.has('blank') || ((referrer.includes('dashboard_admin') || openerIsDashboard) && !params.has('request_id'));
     if (isBlank) {
         try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
         if (clientNameInput) clientNameInput.value = '';
@@ -572,7 +575,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const _sendBtn = document.getElementById('sendBtn');
         if (_sendBtn) {
             // If opened from admin sidebar (manual creation), keep Send button disabled/greyed initially
-            if (openedFromSidebar) {
+            // If opened from admin sidebar and NOT tied to a specific request, keep Send disabled.
+            // If a `request_id` param is present (opened after upload/send draft), allow Send to be enabled.
+            if (openedFromSidebar && !params.has('request_id')) {
                 _sendBtn.disabled = true;
                 _sendBtn.style.opacity = '0.5';
                 _sendBtn.style.cursor = 'not-allowed';
@@ -655,10 +660,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                         console.warn('send invoice error', e);
                         alert('Erreur réseau lors de l enregistrement de la facture');
                     } finally {
-                        // re-enable button after request completes (success or error)
-                        _sendBtn.disabled = false;
-                        _sendBtn.style.opacity = '';
-                        _sendBtn.style.cursor = '';
+                        // re-enable button after request completes only when not opened from sidebar
+                        // Re-enable Send after request completes when either not opened from sidebar,
+                        // or when opened from sidebar but tied to a request (we allow send in that case).
+                        if (!openedFromSidebar || params.has('request_id')) {
+                            _sendBtn.disabled = false;
+                            _sendBtn.style.opacity = '';
+                            _sendBtn.style.cursor = '';
+                        }
                     }
                 })();
             };
