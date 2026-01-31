@@ -74,6 +74,37 @@ export const paymentsModule = () => {
     }
   });
 
+  // POST /api/invoices/manual
+  // Create a manual invoice (ADMIN manual flow). Body optional: { client_name, objet, origin }
+  router.post('/invoices/manual', async (req: Request, res: Response) => {
+    try {
+      const authUserId = (req as any).authUserId ?? null;
+      const { client_name, objet, origin, subtotal_amount, service_fee_amount, currency } = req.body || {};
+
+      // Helpful debug information for diagnosing 500 errors from manual invoice creation
+      console.log('POST /api/invoices/manual called', { authUserId, body: req.body });
+
+      const svc = new PaymentsService();
+      const { data, error } = await svc.createManualInvoice({ created_by: authUserId, client_name: client_name || null, objet: objet || null, origin: origin || null, subtotal_amount: subtotal_amount !== undefined ? Number(subtotal_amount) : null, service_fee_amount: service_fee_amount !== undefined ? Number(service_fee_amount) : null, currency: currency || 'XAF' });
+
+      if (error) {
+        // Log a detailed error snapshot (preserve non-enumerable properties)
+        try {
+          console.error('POST /api/invoices/manual failed', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+        } catch (err) {
+          console.error('POST /api/invoices/manual failed (stringify error)', error);
+        }
+
+        return res.status(500).json({ success: false, message: (error && (error.message || JSON.stringify(error))) || 'Unknown error' });
+      }
+
+      return res.json({ success: true, invoice: data });
+    } catch (err: any) {
+      console.error('POST /api/invoices/manual exception', err);
+      return res.status(500).json({ success: false, message: err.message || String(err) });
+    }
+  });
+
   // GET /api/client/invoices/:id
   router.get('/invoices/:id', async (req: Request, res: Response) => {
     try {

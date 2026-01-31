@@ -663,7 +663,14 @@ export class AdminService {
       await AuditService.log({ actor_id: adminId, action: 'SEND_DRAFT', entity: 'request', entity_id: requestId, metadata: { invoice_number: invoice.invoice_number, draft_id: createdDraft.id, cargo_route: opts.cargo_route } });
 
       // 6. Send notification to client
+      // IMPORTANT: do NOT send notifications for manual invoices
       try {
+        if (invoice && invoice.source === 'MANUAL') {
+          logger.info('Skipping notifications for MANUAL invoice', { invoiceId: invoice.id });
+          const { data: fullInvoice } = await paymentsService.getInvoiceById(invoice.id);
+          return fullInvoice || invoice;
+        }
+
         const { NotificationsService } = await import('../notifications/notifications.service');
         const signed = await DraftsService.generateSignedUrl(createdDraft.id, 60 * 60 * 24 * 3);
         // Build a user-facing invoice preview URL on the frontend. Fall back to frontend base env var.
@@ -675,7 +682,7 @@ export class AdminService {
         // Generate a magic link token so recipients can open the preview without manual login
         try {
           const { JWTUtils } = await import('../../utils/jwt');
-          const apiBase = (process.env.API_BASE_URL || (`http://localhost:${process.env.APP_PORT || 3000}`)).replace(/\/$/, '');
+          const apiBase = (process.env.API_BASE_URL || 'https://mkc-backend-kqov.onrender.com').replace(/\/$/, '');
           const magic = JWTUtils.generateMagicToken({ sub: request.user_id, email: request.customer_email || '', redirect: previewPath });
           const invoicePreviewUrl = `${apiBase}/auth/magic/redirect?token=${encodeURIComponent(magic)}`;
 
@@ -775,7 +782,7 @@ export class AdminService {
           const invoiceNumber = invoice?.invoice_number || opts.invoiceNumber || '';
 
           const { JWTUtils } = await import('../../utils/jwt');
-          const apiBase = (process.env.API_BASE_URL || (`http://localhost:${process.env.APP_PORT || 3000}`)).replace(/\/$/, '');
+          const apiBase = (process.env.API_BASE_URL || 'https://mkc-backend-kqov.onrender.com').replace(/\/$/, '');
           const previewPath = `/Facture_.html?invoice_id=${encodeURIComponent(invoiceId)}`;
           const magic = JWTUtils.generateMagicToken({ sub: request.user_id, email: request.customer_email || '', redirect: previewPath });
           const invoicePreviewUrl = `${apiBase}/auth/magic/redirect?token=${encodeURIComponent(magic)}`;

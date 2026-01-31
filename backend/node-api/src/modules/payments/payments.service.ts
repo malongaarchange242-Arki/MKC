@@ -5,6 +5,34 @@ import { logger } from '../../utils/logger';
 export class PaymentsService {
 
   // ---------------------------------------------------------------------------
+  // Generate next invoice number (shared)
+  // ---------------------------------------------------------------------------
+  async generateNextInvoiceNumber(): Promise<string> {
+    const { data: allInvs, error: allErr } = await supabaseAdmin
+      .from('invoices')
+      .select('invoice_number')
+      .ilike('invoice_number', `MKC-INV-%`);
+
+    if (allErr) {
+      throw allErr;
+    }
+
+    let maxSuffix = 0;
+    (allInvs || []).forEach((r: any) => {
+      const inv = String(r.invoice_number || '');
+      const m = inv.match(/(\d+)$/);
+      if (m) {
+        const num = parseInt(m[1], 10);
+        if (!Number.isNaN(num) && num > maxSuffix) maxSuffix = num;
+      }
+    });
+
+    const next = maxSuffix + 1;
+    return `MKC-INV-${String(next).padStart(3, '0')}`;
+  }
+
+
+  // ---------------------------------------------------------------------------
   // LIST INVOICES (Dashboard)
   // ---------------------------------------------------------------------------
   async getInvoices(filters: {
@@ -163,6 +191,7 @@ export class PaymentsService {
         id: uuidv4(),
         request_id,
         client_id,
+        source: 'REQUEST',
         total_amount: Number(amount),
         client_name: client_name || null,
         objet: objet || null,
@@ -181,30 +210,20 @@ export class PaymentsService {
       const maxAttempts = 5;
       let inserted: any = null;
 
+      // compute a base candidate and allow incremental retries
+      let baseCandidateNum = null as number | null;
+      try {
+        const baseStr = await this.generateNextInvoiceNumber();
+        const m = String(baseStr).match(/(\d+)$/);
+        baseCandidateNum = m ? parseInt(m[1], 10) : null;
+      } catch (e) {
+        logger.error('Failed to compute base invoice number', { error: e });
+        return { data: null, error: e };
+      }
+
       for (let attempt = 0; attempt < maxAttempts; attempt++) {
-        // Compute a global sequential-ish counter by looking at existing invoice suffixes
-        const { data: allInvs, error: allErr } = await supabaseAdmin
-          .from('invoices')
-          .select('invoice_number')
-          .ilike('invoice_number', `MKC-INV-%`);
-
-        if (allErr) {
-          logger.error('Failed to list existing invoices for numbering', { error: allErr });
-          return { data: null, error: allErr };
-        }
-
-        let maxSuffix = 0;
-        (allInvs || []).forEach((r: any) => {
-          const inv = String(r.invoice_number || '');
-          const m = inv.match(/(\d+)$/);
-          if (m) {
-            const num = parseInt(m[1], 10);
-            if (!Number.isNaN(num) && num > maxSuffix) maxSuffix = num;
-          }
-        });
-
-        const next = maxSuffix + attempt + 1;
-        const candidateInvoiceNumber = `MKC-INV-${String(next).padStart(3, '0')}`;
+        const nextNum = (baseCandidateNum ?? 0) + attempt;
+        const candidateInvoiceNumber = `MKC-INV-${String(nextNum).padStart(3, '0')}`;
 
         const insertObj = { ...baseInsertObj, invoice_number: candidateInvoiceNumber };
 
@@ -338,6 +357,95 @@ export class PaymentsService {
       return { data, error: null };
     } catch (err: any) {
       logger.error('Unexpected error updating invoice', { invoiceId, updates, error: err });
+      return { data: null, error: err };
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // CREATE MANUAL INVOICE (ADMIN manual flow)
+  // ---------------------------------------------------------------------------
+  async createManualInvoice(input: {
+    created_by?: string | null;
+    client_name?: string | null;
+    objet?: string | null;
+    origin?: string | null;
+    subtotal_amount?: number | null;
+    service_fee_amount?: number | null;
+    currency?: string;
+  }) {
+    try {
+      const { created_by = null, client_name = null, objet = null, origin = null, subtotal_amount = null, service_fee_amount = null, currency = 'XAF' } = input || {};
+
+      const baseInsertObj: any = {
+        id: uuidv4(),
+        request_id: null,
+        client_id: null,
+        source: 'MANUAL',
+        total_amount: 0,
+        client_name: client_name || null,
+        objet: objet || null,
+        origin: origin || null,
+        subtotal_amount: subtotal_amount !== null && subtotal_amount !== undefined ? Number(subtotal_amount) : null,
+        service_fee_amount: service_fee_amount !== null && service_fee_amount !== undefined ? Number(service_fee_amount) : null,
+        currency: currency || 'XAF',
+        cargo_route: null,
+        bill_of_lading: null,
+        customer_reference: null,
+        status: 'DRAFT',
+        created_by: created_by || null,
+        created_at: new Date().toISOString()
+      };
+
+      const maxAttempts = 5;
+      let inserted: any = null;
+
+      // compute base candidate and allow incremental retries
+      let baseCandidateNum = null as number | null;
+      try {
+        const baseStr = await this.generateNextInvoiceNumber();
+        const m = String(baseStr).match(/(\d+)$/);
+        baseCandidateNum = m ? parseInt(m[1], 10) : null;
+      } catch (e) {
+        logger.error('Failed to compute base invoice number for manual invoice', { error: e });
+        return { data: null, error: e };
+      }
+
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        const nextNum = (baseCandidateNum ?? 0) + attempt;
+        const candidateInvoiceNumber = `MKC-INV-${String(nextNum).padStart(3, '0')}`;
+
+        const insertObj = { ...baseInsertObj, invoice_number: candidateInvoiceNumber };
+
+        const { data: insData, error: insertErr } = await supabaseAdmin
+          .from('invoices')
+          .insert(insertObj)
+          .select()
+          .single();
+
+        if (!insertErr && insData) {
+          inserted = insData;
+          break;
+        }
+
+        const isUniqueViolation = insertErr && (String(insertErr.code) === '23505' || String(insertErr.message || '').toLowerCase().includes('duplicate'));
+        if (!isUniqueViolation) {
+          logger.error('Failed to create manual invoice', { error: insertErr });
+          return { data: null, error: insertErr };
+        }
+
+        logger.warn('Manual invoice number collision, retrying', { candidateInvoiceNumber, attempt });
+        await new Promise(r => setTimeout(r, 120 * (attempt + 1)));
+      }
+
+      if (!inserted) {
+        const err = new Error('Failed to create manual invoice after retries');
+        logger.error('Failed to create manual invoice after retries', { error: (err as any).message });
+        return { data: null, error: err };
+      }
+
+      return { data: { id: inserted.id, invoice_number: inserted.invoice_number, status: inserted.status, source: inserted.source }, error: null };
+    } catch (err: any) {
+      logger.error('Error creating manual invoice:', err);
       return { data: null, error: err };
     }
   }

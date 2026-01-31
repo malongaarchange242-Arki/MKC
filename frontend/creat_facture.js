@@ -1,9 +1,15 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     const objetRefInput = document.getElementById('objetRef');
     const tableBody = document.getElementById('tableBody');
     const previewModal = document.getElementById('previewModal');
     const clientNameInput = document.getElementById('clientName');
     const origineInput = document.getElementById('origine');
+
+    // Basic guard: if core elements are missing, abort to avoid runtime errors
+    if (!objetRefInput || !tableBody || !previewModal) {
+        console.warn('creat_facture.js: required DOM elements missing, aborting initialization');
+        return;
+    }
 
     const DRAFT_KEY = 'creat_facture_draft_v1';
 
@@ -35,6 +41,26 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) { return null; }
     }
 
+    // Attach listeners on individual row BL inputs so edits in rows can update the top-level `objetRef`.
+    function attachBlListeners(root) {
+        const scope = root && root.querySelectorAll ? root : document;
+        const inputs = scope.querySelectorAll('.in-bl');
+        inputs.forEach(input => {
+            if (input.dataset.blListenerAttached) return;
+            input.addEventListener('input', () => {
+                // Pick the first non-empty BL from rows and write it to objetRef
+                const first = Array.from(document.querySelectorAll('.in-bl'))
+                    .map(i => (i.value || '').trim())
+                    .find(v => v && v.length > 0);
+                if (first && objetRefInput && objetRefInput.value !== first) {
+                    objetRefInput.value = first;
+                    try { saveDraft(); } catch (e) {}
+                }
+            });
+            input.dataset.blListenerAttached = '1';
+        });
+    }
+
     function applyDraftToDom(draft) {
         if (!draft) return;
         if (clientNameInput && draft.clientName) clientNameInput.value = draft.clientName;
@@ -57,6 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const pu = row.querySelector('.in-pu'); if (pu) pu.value = rData.pu || '';
                 const qty = row.querySelector('.in-qty'); if (qty) qty.value = rData.qty || '';
                 tableBody.appendChild(row);
+                attachBlListeners(row);
             });
         }
     }
@@ -67,8 +94,126 @@ document.addEventListener('DOMContentLoaded', () => {
     const urlRef = params.get('ref');
     const urlBl = params.get('bl');
 
-    // If opened from sidebar with ?blank=1, clear any saved draft and keep fields empty
-    const isBlank = params.has('blank');
+    // Detect if opened from admin sidebar/manual flow
+    let openedFromSidebar = false;
+    try {
+        openedFromSidebar = params.has('manual') || (document.referrer || '').toString().includes('dashboard_admin') || !!(window.opener && window.opener.location && String(window.opener.location).includes('dashboard_admin'));
+    } catch (e) {
+        openedFromSidebar = params.has('manual') || (document.referrer || '').toString().includes('dashboard_admin');
+    }
+
+    // public holders for manual invoice
+    window.currentInvoiceId = window.currentInvoiceId || null;
+    window.currentInvoiceNumber = window.currentInvoiceNumber || null;
+
+    async function createManualInvoiceIfNeeded() {
+    try {
+        // ❌ ON SUPPRIME params.has('manual')
+        if (window.currentInvoiceId) return;
+        if (params.has('request_id')) return; // pas manuel si lié à une demande
+
+        const API_BASE = document.querySelector('meta[name="api-base"]')?.content || 'https://mkc-backend-kqov.onrender.com';
+        const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+
+            const resp = await fetch(`${API_BASE.replace(/\/$/, '')}/api/client/invoices/manual`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token && { Authorization: `Bearer ${token}` })
+            },
+            body: JSON.stringify({})
+        });
+
+        if (!resp.ok) throw new Error("Erreur création facture manuelle");
+
+        const data = await resp.json();
+        const invoice = data.invoice || data;
+
+        window.currentInvoiceId = invoice.id || invoice.invoice_id || null;
+        window.currentInvoiceNumber = invoice.invoice_number || invoice.reference || null;
+
+        console.log("✅ Facture manuelle créée :", window.currentInvoiceNumber);
+
+    } catch (e) {
+        console.error("❌ createManualInvoiceIfNeeded", e);
+        alert("Impossible de générer le numéro de facture");
+    }
+    }
+
+    // Fetch admin request details and apply to form (client name, BLs)
+    async function fetchAndApplyRequestDetails(requestId) {
+        try {
+            if (!requestId) return;
+            const metaApi = document.querySelector('meta[name="api-base"]')?.content || '';
+            const API_BASE = metaApi || 'https://mkc-backend-kqov.onrender.com';
+            const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+
+            const resp = await fetch(`${API_BASE.replace(/\/$/, '')}/admin/requests/${encodeURIComponent(requestId)}`, {
+                method: 'GET',
+                headers: Object.assign({}, token ? { Authorization: `Bearer ${token}` } : {})
+            });
+
+            if (!resp.ok) return;
+            const json = await resp.json().catch(() => null);
+            const data = json && (json.data || json.request || json);
+            const req = data && (data.request || data) ? (data.request || data) : null;
+            if (!req) return;
+
+            // Apply BL values
+            const serverBl = req.manual_bl || req.bl_number || req.bl_saisi || req.bill_of_lading || '';
+            if (serverBl && serverBl.toString().trim()) {
+                const cleaned = serverBl.toString();
+                if (objetRefInput) objetRefInput.value = cleaned;
+                document.querySelectorAll('.in-bl').forEach(i => i.value = cleaned);
+                try { saveDraft(); } catch (e) {}
+            }
+
+            // Try to resolve client name via admin user endpoint if user_id present
+            const userId = req.user_id || req.client_id || null;
+            if (userId) {
+                try {
+                    const uResp = await fetch(`${API_BASE.replace(/\/$/, '')}/admin/users/${encodeURIComponent(userId)}`, {
+                        method: 'GET',
+                        headers: Object.assign({}, token ? { Authorization: `Bearer ${token}` } : {})
+                    });
+                    if (uResp.ok) {
+                        const uJson = await uResp.json().catch(() => null);
+                        const profile = uJson && (uJson.profile || uJson.data || uJson) ? (uJson.profile || uJson.data || uJson) : null;
+                        if (profile) {
+                            const fullname = [profile.prenom || profile.first_name || '', profile.nom || profile.last_name || ''].filter(Boolean).join(' ').trim();
+                            if (fullname && clientNameInput) clientNameInput.value = fullname;
+                        }
+                    }
+                } catch (e) {
+                    // non-fatal
+                }
+            }
+
+        } catch (e) {
+            console.warn('Failed to fetch request details', e);
+        }
+    }
+
+    function normalizeTypeForSelect(typeVal) {
+        if (!typeVal) return '';
+        const t = (typeVal || '').toString().toUpperCase();
+        const hasFERI = t.includes('FERI');
+        const hasAD = t.includes('AD');
+        if (hasFERI && hasAD) return 'FERI+AD';
+        if (hasFERI) return 'FERI';
+        if (hasAD) return 'AD';
+        return typeVal;
+    }
+
+
+    // If opened from sidebar/dashboard, or with ?blank=1, clear any saved draft and keep fields empty
+    const referrer = (document.referrer || '').toString();
+    let openerIsDashboard = false;
+    try {
+        openerIsDashboard = !!(window.opener && window.opener.location && String(window.opener.location).includes('dashboard_admin'));
+    } catch (e) { openerIsDashboard = false; }
+
+    const isBlank = params.has('blank') || referrer.includes('dashboard_admin') || openerIsDashboard;
     if (isBlank) {
         try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
         if (clientNameInput) clientNameInput.value = '';
@@ -86,8 +231,24 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.in-bl').forEach(i => i.value = cleaned);
             if (objetRefInput && !objetRefInput.value) objetRefInput.value = cleaned;
         }
+        // If URL contains a `type` param (e.g. FERI_ONLY), populate description fields
+        if (params.has('type')) {
+            const typeVal = (params.get('type') || '').toString();
+            const normalized = normalizeTypeForSelect(typeVal);
+            if (normalized) {
+                document.querySelectorAll('.in-desc').forEach(i => {
+                    if (!i.value || i.value.trim() === '') i.value = normalized;
+                });
+            }
+        }
+        // If opened for a request, fetch its details and apply client/BL data
+        if (params.has('request_id')) {
+            const rid = params.get('request_id');
+            try { await fetchAndApplyRequestDetails(rid); } catch (e) { /* non-fatal */ }
+        }
         // Save whatever initial state we have
         saveDraft();
+        // Manual invoice creation moved to preview button; do not auto-create on page load
     }
 
     // Save on user interactions
@@ -113,6 +274,7 @@ document.addEventListener('DOMContentLoaded', () => {
         row.querySelectorAll('input').forEach(i => i.value = "");
         row.querySelector('.in-bl').value = objetRefInput.value;
         tableBody.appendChild(row);
+        attachBlListeners(row);
         saveDraft();
     };
 
@@ -125,8 +287,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // Ensure listeners exist for existing DOM rows on load
+    attachBlListeners();
+
     // 3. Logique de génération de la facture (Preview)
     document.getElementById('previewBtn').onclick = async () => {
+        // Ensure a manual invoice is created only when admin clicks preview
+        await createManualInvoiceIfNeeded();
+
         const client = document.getElementById('clientName').value || "................................";
         const origine = document.getElementById('origine').value || "................";
         // Prefer the top `objetRef` if provided; otherwise use the first non-empty BL from table rows
@@ -171,6 +339,12 @@ document.addEventListener('DOMContentLoaded', () => {
                             } catch (e) { /* non-fatal */ }
                         }
                         const serverType = (reqData.type || '') + '';
+                        if (serverType) {
+                            const normalizedServerType = normalizeTypeForSelect(serverType);
+                            document.querySelectorAll('.in-desc').forEach(i => {
+                                if (!i.value || i.value.trim() === '') i.value = normalizedServerType;
+                            });
+                        }
                         if (serverType && serverType.toUpperCase().includes('FERI')) {
                             objetLabel = 'FERI';
                         } else if (serverType && serverType.toUpperCase().includes('AD')) {
@@ -338,7 +512,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
 
                 <div class="date-line">Date: ${dateNow}</div>
-                <div class="ref-line">REF: ${invoiceRef || ''}</div>
+                <div class="ref-line">REF: ${window.currentInvoiceNumber || invoiceRef || ''}</div>
                 <div class="invoice-title">FACTURE PROFOMA</div>
 
                 <div class="client-meta">
@@ -382,6 +556,14 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
 
+        // 🔁 Réinjecter la REF après rendu (sécurité si HTML réécrit)
+        if (window.currentInvoiceNumber) {
+            const refLine = document.querySelector('.ref-line');
+            if (refLine) {
+                refLine.textContent = 'REF: ' + window.currentInvoiceNumber;
+            }
+        }
+
         previewModal.style.display = 'block';
 
         // Ré-attachement des événements des boutons du modal car ils ont été ré-injectés
@@ -389,6 +571,12 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('printBtn').onclick = () => window.print();
         const _sendBtn = document.getElementById('sendBtn');
         if (_sendBtn) {
+            // If opened from admin sidebar (manual creation), keep Send button disabled/greyed initially
+            if (openedFromSidebar) {
+                _sendBtn.disabled = true;
+                _sendBtn.style.opacity = '0.5';
+                _sendBtn.style.cursor = 'not-allowed';
+            }
             _sendBtn.onclick = () => {
                 (async () => {
                     // disable / grey out to prevent duplicate submissions
