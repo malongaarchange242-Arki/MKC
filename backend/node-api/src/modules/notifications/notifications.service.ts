@@ -270,6 +270,7 @@ export class NotificationsService {
 				// Allow client notification when they upload payment proof
 				'PAYMENT_PROOF_UPLOADED',
 				'DRAFT_AVAILABLE',
+				'PROFORMA_AVAILABLE',
 				'REQUEST_COMPLETED',
 				'REQUEST_REJECTED',
 				'BL_AUTO_GENERATED',
@@ -289,6 +290,7 @@ export class NotificationsService {
 				'PAYMENT_PROOF_UPLOADED',
 				'PAYMENT_CONFIRMED',
 				'DRAFT_AVAILABLE',
+				'PROFORMA_AVAILABLE',
 				'REQUEST_STATUS_CHANGED',
 				'REQUEST_MESSAGE_ADMIN',
 				'REQUEST_DISPUTE_ADMIN',

@@ -467,7 +467,44 @@ ${otherLinks.length ? `<h3>${lang === 'en' ? 'Files' : 'Fichiers'}</h3>${otherHt
   <p style="margin-top:8px;color:#666;font-size:13px">${lang === 'en' ? 'Reference' : 'Référence'} : <strong>${ref}</strong></p>
   `, lang);
     return { subject, title, text, html };
-  }
+  },
+
+  PROFORMA_AVAILABLE: (lang, input) => {
+    const title = lang === 'en' ? 'Proforma available' : 'Proforma disponible';
+    const subject = title;
+    const ref = escapeHtml(input.requestRef || '');
+    const name = escapeHtml(input.prenom || '');
+
+    const text = lang === 'en'
+      ? `${greeting('en', name)}, the proforma invoice for request ${ref} is available for download.`
+      : `${greeting('fr', name)}, la facture proforma pour la demande ${ref} est disponible en téléchargement.`;
+
+    const linksHtml = renderLinks(input.links);
+
+    const html = brandedLayout(title, `
+  <p>${escapeHtml(text)}</p>
+  ${linksHtml}
+  <p style="margin-top:8px;color:#666;font-size:13px">${lang === 'en' ? 'You can preview the proforma before downloading.' : 'Vous pouvez prévisualiser la proforma avant de la télécharger.'}</p>
+  `, lang);
+
+    return { subject, title, text, html };
+  },
+
+  PROFORMA_AVAILABLE_ADMIN: (lang, input) => {
+    const ref = escapeHtml(input.requestRef || '');
+    const title = lang === 'en' ? `Proforma delivered – Request ${ref}` : `Proforma délivrée – Demande ${ref}`;
+    const subject = title;
+    const client = escapeHtml(input.client_name || input.prenom || '—');
+    const text = lang === 'en'
+      ? `${greeting('en')},\n\nThe proforma invoice for request ${ref} has been delivered to the client.\n\nClient: ${client}\n\nNo immediate action is required.`
+      : `${greeting('fr')},\n\nLa facture proforma pour la demande ${ref} a été délivrée au client.\n\nClient : ${client}\n\nAucune action immédiate n'est requise.`;
+
+    const html = brandedLayout(title, `
+  <p>${escapeHtml(text).replace(/\n/g, '<br>')}</p>
+  ${renderLinks(input.links)}
+  `, lang);
+    return { subject, title, text, html };
+  },
 };
 
 // Alias client-oriented event keys (emitted by RequestsService) to existing templates

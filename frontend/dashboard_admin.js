@@ -502,11 +502,12 @@ function renderAdminTable() {
   const rowsToShow = requests;
   tbody.innerHTML = rowsToShow.map(row => {
     const rowId = (row.id || row.request_id || row.bl_number || row.extracted_bl || row.bl || '').toString();
-    const status = row.status || '';
-    const displayStatus = String(status).replace(/_/g, ' ');
+    const rawStatus = row.status || '';
+    const status = String(rawStatus).toUpperCase().trim();
+    const displayStatus = status.replace(/_/g, ' ');
     const statusLabel = (window.i18n && typeof window.i18n.t === 'function') ? (window.i18n.t(status) || displayStatus) : displayStatus;
-    // Only allow issuing draft when status is CREATED or AWAITING_DOCUMENTS
-    const isInitiated = ['CREATED', 'AWAITING_DOCUMENTS', 'PROCESSING'].includes(status);
+    // Only allow issuing draft when status is CREATED, AWAITING_DOCUMENTS, PROCESSING or PROFORMAT_SENT
+    const isInitiated = ['CREATED', 'AWAITING_DOCUMENTS', 'PROCESSING', 'PROFORMAT_SENT'].includes(status);
 
     // Use same BL selection logic as client but prefer extracted BL when available
     let blValue = '';
@@ -540,7 +541,7 @@ function renderAdminTable() {
               <button class="icon-btn" title="View Docs" onclick="event.stopPropagation(); viewDocs('${escapeJs(((row.request && (row.request.id || row.request.request_id)) || row.request_id || row.id || blValue) || '')}')"><i class="fas fa-folder-open"></i></button>
             </td>
             <td>
-                ${String(status) === 'DRAFT_SENT' || String(status) === 'PROFORMAT_SENT'
+                ${String(status) === 'DRAFT_SENT'
       ? `<span class="pending-payment" style="color:#f59e0b; font-weight:600;">${escapeHtml(translateStatus('DRAFT_SENT'))}</span>`
       : (isInitiated ?
         (() => {
