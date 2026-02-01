@@ -83,6 +83,7 @@ const STATE_TRANSITIONS: Record<RequestStatus, TransitionRule[]> = {
 
   UNDER_REVIEW: [
     { to: 'DRAFT_SENT', allowedRoles: ['ADMIN'] },
+    { to: 'PROFORMAT_SENT', allowedRoles: ['ADMIN'] },
     { to: 'REJECTED', allowedRoles: ['ADMIN'] }
   ],
 

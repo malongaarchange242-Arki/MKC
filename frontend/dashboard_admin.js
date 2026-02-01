@@ -213,6 +213,34 @@ document.addEventListener('DOMContentLoaded', async () => {
           fd.append('documentType', 'PROFORMA');
           fd.append('files', proformaFileInput.files[0]);
 
+          // Ensure request is in UNDER_REVIEW state before upload (backend enforces this)
+          try {
+            const currentReq = requests.find(r => String(r.id || r.request_id) === String(requestId));
+            const currentStatus = currentReq ? (currentReq.status || '').toString() : '';
+            if (currentStatus !== 'UNDER_REVIEW') {
+              // attempt transition
+              proformaSend.innerText = 'Préparation...';
+              const transResp = await fetch(`${API_BASE.replace(/\/$/, '')}/requests/transition`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ requestId, to: 'UNDER_REVIEW' })
+              });
+              if (!transResp.ok) {
+                const t = await transResp.text().catch(() => '');
+                throw new Error(`Failed to transition request to UNDER_REVIEW: ${transResp.status} ${t}`);
+              }
+              // update local state optimistically
+              requests = requests.map(r => ((r.id || r.request_id) == requestId) ? Object.assign({}, r, { status: 'UNDER_REVIEW' }) : r);
+              renderAdminTable();
+            }
+          } catch (te) {
+            console.warn('Failed to set UNDER_REVIEW before upload', te);
+            // allow user to continue but surface warning
+            if (!confirm('Impossible de passer la demande en revue. Continuer l\u2019envoi peut échouer. Continuer ?')) {
+              proformaSend.disabled = false; proformaSend.innerText = origText; return;
+            }
+          }
+
           const origText = proformaSend.innerText;
           proformaSend.disabled = true; proformaSend.innerText = 'Envoi...';
 
@@ -1077,6 +1105,8 @@ function openSidePanelById(id) {
 function openSidePanel(req) {
   const panel = document.getElementById('side-panel');
   if (!panel) return;
+  // expose current request id on the side panel for other UI flows (proforma modal, etc.)
+  try { panel.dataset.requestId = req.id || req.request_id || ''; } catch (e) {}
   document.getElementById('side-bl').innerText = formatBLDisplayFromRow(req) || '—';
   // Render status as a styled badge with icon
   const sideStatusEl = document.getElementById('side-status');
