@@ -22,6 +22,7 @@ export interface CreateRequestInput {
   vehicle_registration?: string | null;
   manual_bl?: string | null;
   carrier_name?: string | null;
+  carte_chargeur?: string | null;
   transport_road_amount?: number | null;
   transport_river_amount?: number | null;
 }
@@ -70,6 +71,7 @@ export class RequestsService {
     if (typeof input.carrier_name !== 'undefined' && input.carrier_name !== null) insertObj.carrier_name = input.carrier_name;
     if (typeof input.transport_road_amount !== 'undefined' && input.transport_road_amount !== null) insertObj.transport_road_amount = input.transport_road_amount;
     if (typeof input.transport_river_amount !== 'undefined' && input.transport_river_amount !== null) insertObj.transport_river_amount = input.transport_river_amount;
+    if (typeof input.carte_chargeur !== 'undefined' && input.carte_chargeur !== null) insertObj.carte_chargeur = input.carte_chargeur;
     // For AD_ONLY requests, use the provided feri_number as the temporary BL display value
     if (input.type === 'AD_ONLY' && input.feri_number) {
       insertObj.bl_number = input.feri_number;
@@ -620,7 +622,7 @@ export class RequestsService {
 
         if (!clientIdLocal) return;
 
-        const important = ['DRAFT_SENT', 'PAYMENT_CONFIRMED', 'COMPLETED'];
+        const important = ['DRAFT_SENT', 'PROFORMAT_SENT', 'PAYMENT_CONFIRMED', 'COMPLETED'];
         if (!important.includes(String(to))) return;
 
         let title = '';
@@ -629,6 +631,7 @@ export class RequestsService {
 
         switch (String(to)) {
           case 'DRAFT_SENT':
+          case 'PROFORMAT_SENT':
             eventType = 'CLIENT_DRAFT_AVAILABLE';
             title = 'Draft et proforma disponibles';
             message = 'Le draft et la facture proforma relatifs à votre demande sont disponibles. Connectez‑vous à votre espace client pour les consulter et les télécharger.';

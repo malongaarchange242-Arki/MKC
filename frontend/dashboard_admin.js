@@ -140,6 +140,148 @@ document.addEventListener('DOMContentLoaded', async () => {
   applyTranslations();
   // Start automatic refresh to keep admin UI in sync with client actions
   try { startAdminAutoRefresh(); } catch (e) {}
+
+  // Global handler: when clicking 'Envoyer la proforma' close side panel and open admin modal (DRAFT)
+  try {
+    const btnSendProforma = document.getElementById('btn-send-proforma');
+    if (btnSendProforma) {
+      btnSendProforma.addEventListener('click', (ev) => {
+        ev.preventDefault(); ev.stopPropagation();
+        try {
+          // Close side panel first
+          closeSidePanel();
+          // Open the dedicated proforma modal (uses same upload route as draft)
+          // Determine BL for display if present in side panel
+          const sideBlEl = document.getElementById('side-bl');
+          const blVal = sideBlEl ? sideBlEl.innerText.trim() : '';
+          const proformaModal = document.getElementById('proforma-modal');
+          if (proformaModal) {
+            // store current request id if available on panel, otherwise leave blank
+            try { proformaModal.dataset.requestId = document.getElementById('side-panel')?.dataset?.requestId || '';} catch(e){}
+            const target = document.getElementById('proforma-target-bl');
+            if (target) target.innerText = blVal && blVal !== '—' ? blVal : '';
+            proformaModal.style.display = 'flex';
+          } else {
+            // fallback to admin modal if proforma modal missing
+            const blArg = blVal && blVal !== '—' ? blVal : '';
+            openAdminModal(blArg, 'DRAFT');
+          }
+        } catch (e) {
+          console.warn('btn-send-proforma click error', e);
+          alert('Impossible d\u00e9marrer l\u2019envoi de la proforma. Voir la console.');
+        }
+      });
+    }
+  } catch (e) {}
+
+  // Proforma modal wiring: file input label, cancel and send handlers
+  try {
+    const proformaModal = document.getElementById('proforma-modal');
+    const proformaFileInput = document.getElementById('proforma-file-input');
+    const proformaFileLabel = document.getElementById('proforma-file-label');
+    const proformaCancel = document.getElementById('proforma-cancel-btn');
+    const proformaSend = document.getElementById('proforma-send-btn');
+
+    if (proformaFileInput && proformaFileLabel) {
+      proformaFileInput.addEventListener('change', function () {
+        const f = this.files && this.files[0];
+        proformaFileLabel.innerText = f ? f.name : 'Click to attach proforma (PDF)';
+      });
+    }
+
+    if (proformaCancel && proformaModal) {
+      proformaCancel.addEventListener('click', (ev) => { ev.preventDefault(); proformaModal.style.display = 'none'; });
+    }
+
+    if (proformaSend) {
+      proformaSend.addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        try {
+          // determine request id: prefer dataset on modal, fallback to side-panel dataset
+          const requestId = (proformaModal && proformaModal.dataset && proformaModal.dataset.requestId) || (document.getElementById('side-panel')?.dataset?.requestId) || '';
+          if (!requestId) return alert('Identifiant de la demande introuvable. Ouvrez d\u2019abord le panneau pour choisir une demande.');
+          if (!proformaFileInput || !proformaFileInput.files || proformaFileInput.files.length === 0) return alert('Veuillez sélectionner un fichier proforma (PDF).');
+
+          const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+          if (!token) return alert('Authentification requise.');
+
+          const metaApi = document.querySelector('meta[name="api-base"]')?.content || '';
+          const defaultLocal = 'https://mkc-backend-kqov.onrender.com';
+          const API_BASE = metaApi || defaultLocal;
+
+          const fd = new FormData();
+          fd.append('documentType', 'PROFORMA');
+          fd.append('files', proformaFileInput.files[0]);
+
+          const origText = proformaSend.innerText;
+          proformaSend.disabled = true; proformaSend.innerText = 'Envoi...';
+
+          const resp = await fetch(`${API_BASE.replace(/\/$/, '')}/admin/requests/${requestId}/upload-draft`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+            body: fd
+          });
+
+          if (!resp.ok) {
+            const txt = await resp.text().catch(() => '');
+            throw new Error(`Upload failed: ${resp.status} ${txt}`);
+          }
+
+          const json = await resp.json().catch(() => null);
+          if (!json || !json.success) throw new Error((json && json.message) || 'Upload failed');
+
+          // Determine created draft IDs returned by upload
+          const createdDrafts = Array.isArray(json.drafts) ? json.drafts : [];
+          const draftIds = createdDrafts.map(d => d.id).filter(Boolean);
+
+          // If we have draft ids, call notify-proforma to inform client
+          let notifyOk = false;
+          if (draftIds.length > 0) {
+            try {
+              proformaSend.innerText = 'Notification...';
+              const notifyResp = await fetch(`${API_BASE.replace(/\/$/, '')}/admin/requests/${requestId}/notify-proforma`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fileIds: draftIds })
+              });
+
+              if (!notifyResp.ok) {
+                const txt = await notifyResp.text().catch(() => '');
+                throw new Error(`Notify failed: ${notifyResp.status} ${txt}`);
+              }
+
+              const notifyJson = await notifyResp.json().catch(() => null);
+              if (!notifyJson || !notifyJson.success) throw new Error((notifyJson && notifyJson.message) || 'Notify failed');
+
+              notifyOk = true;
+            } catch (ne) {
+              console.warn('proforma notify error', ne);
+              alert('La proforma a été téléversée, mais la notification au client a échoué. Réessayez via le panneau ou contactez support.\n\nErreur: ' + String(ne.message || ne));
+            }
+          }
+
+          // success: close modal and show toast (notify preferred, otherwise upload-only)
+          if (proformaModal) proformaModal.style.display = 'none';
+          if (notifyOk) showAdminToast('Proforma envoyée et notification déclenchée au client.');
+          else showAdminToast('Proforma téléversée (notification en échec).');
+
+          // update local state and UI
+          try {
+            const isProforma = Array.isArray(json.drafts) && json.drafts.some(d => (d.type || '').toString().toLowerCase().includes('proforma'));
+            const newStatus = isProforma ? 'PROFORMAT_SENT' : 'DRAFT_SENT';
+            requests = requests.map(r => ((r.id || r.request_id) == requestId) ? Object.assign({}, r, { status: newStatus }) : r);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(requests)); renderAdminTable();
+          } catch (e) {}
+
+          proformaSend.disabled = false; proformaSend.innerText = origText;
+        } catch (e) {
+          console.warn('proforma send error', e);
+          alert(String(e.message || e));
+          proformaSend.disabled = false; proformaSend.innerText = 'Envoyer la proforma';
+        }
+      });
+    }
+  } catch (e) { console.warn('proforma modal wiring failed', e); }
 });
 
 // --- Auto-refresh (polling) for admin UI ---
@@ -370,7 +512,7 @@ function renderAdminTable() {
               <button class="icon-btn" title="View Docs" onclick="event.stopPropagation(); viewDocs('${escapeJs(((row.request && (row.request.id || row.request.request_id)) || row.request_id || row.id || blValue) || '')}')"><i class="fas fa-folder-open"></i></button>
             </td>
             <td>
-                ${String(status) === 'DRAFT_SENT'
+                ${String(status) === 'DRAFT_SENT' || String(status) === 'PROFORMAT_SENT'
       ? `<span class="pending-payment" style="color:#f59e0b; font-weight:600;">${escapeHtml(translateStatus('DRAFT_SENT'))}</span>`
       : (isInitiated ?
         (() => {
@@ -598,13 +740,21 @@ async function handleAdminSubmit() {
     const json2 = await resp2.json();
     if (!json2.success) throw new Error('Failed to upload draft');
 
-    // Update local state to reflect DRAFT_SENT (server already transitioned)
-    requests = requests.map(req => {
-      if ((req.id || req.request_id) === requestId || [req.extracted_bl, req.bl_number, req.bl].some(x => x && String(x) === selectedBL)) {
-        return { ...req, status: 'DRAFT_SENT', updated: new Date().toLocaleString() };
-      }
-      return req;
-    });
+    // Update local state to reflect server transition (DRAFT_SENT or PROFORMAT_SENT)
+    try {
+      const drafts = Array.isArray(json2.drafts) ? json2.drafts : [];
+      const isProforma = drafts.some(d => (d.type || '').toString().toLowerCase().includes('proforma'));
+      const newStatus = isProforma ? 'PROFORMAT_SENT' : 'DRAFT_SENT';
+      requests = requests.map(req => {
+        if ((req.id || req.request_id) === requestId || [req.extracted_bl, req.bl_number, req.bl].some(x => x && String(x) === selectedBL)) {
+          return { ...req, status: newStatus, updated: new Date().toLocaleString() };
+        }
+        return req;
+      });
+    } catch (e) {
+      // fallback: mark draft sent
+      requests = requests.map(req => ((req.id || req.request_id) === requestId) ? Object.assign({}, req, { status: 'DRAFT_SENT', updated: new Date().toLocaleString() }) : req);
+    }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(requests));
     renderAdminTable();
     closeAdminModal();
@@ -978,6 +1128,9 @@ function openSidePanel(req) {
   // Populate AD fields (transporteur, immatriculation, montants transport, mode paiement)
   const carrierEl = document.getElementById('side-carrier');
   if (carrierEl) carrierEl.innerText = req.carrier_name || '—';
+
+  const carteEl = document.getElementById('side-carte-chargeur');
+  if (carteEl) carteEl.innerText = req.carte_chargeur || '—';
   
   const vehicleEl = document.getElementById('side-vehicle');
   if (vehicleEl) vehicleEl.innerText = req.vehicle_registration || '—';
@@ -1389,7 +1542,7 @@ function renderPendingPayments() {
   if (!tbody) return;
 
   // Consider these statuses as pending payments
-  const pendingStatuses = ['DRAFT_SENT', 'PAYMENT_PROOF_UPLOADED'];
+  const pendingStatuses = ['DRAFT_SENT', 'PROFORMAT_SENT', 'PAYMENT_PROOF_UPLOADED'];
 
   const rows = requests.filter(r => pendingStatuses.includes(r.status));
   if (rows.length === 0) {

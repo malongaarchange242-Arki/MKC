@@ -17,6 +17,7 @@ export type RequestStatus =
   | 'PROCESSING'
   | 'UNDER_REVIEW'
   | 'DRAFT_SENT'
+  | 'PROFORMAT_SENT'
   | 'PAYMENT_PROOF_UPLOADED'
   | 'PAYMENT_CONFIRMED'
   | 'VALIDATED'
@@ -31,6 +32,7 @@ export const REQUEST_STATUSES = [
   'PROCESSING',
   'UNDER_REVIEW',
   'DRAFT_SENT',
+  'PROFORMAT_SENT',
   'PAYMENT_PROOF_UPLOADED',
   'PAYMENT_CONFIRMED',
   'VALIDATED',
@@ -85,6 +87,11 @@ const STATE_TRANSITIONS: Record<RequestStatus, TransitionRule[]> = {
   ],
 
   DRAFT_SENT: [
+    { to: 'PAYMENT_PROOF_UPLOADED', allowedRoles: ['CLIENT'] },
+    { to: 'CANCELLED', allowedRoles: ['CLIENT'] }
+  ],
+
+  PROFORMAT_SENT: [
     { to: 'PAYMENT_PROOF_UPLOADED', allowedRoles: ['CLIENT'] },
     { to: 'CANCELLED', allowedRoles: ['CLIENT'] }
   ],

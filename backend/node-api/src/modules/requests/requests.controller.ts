@@ -24,6 +24,7 @@ const createRequestSchema = z.object({
   ref: z.string().optional(),
   fxi_number: z.string().optional(),
   feri_number: z.string().optional(),
+  carte_chargeur: z.string().optional(),
   vehicle_registration: z.string().optional(),
   manual_bl: z.string().optional(),
   carrier_name: z.string().optional(),
@@ -91,6 +92,7 @@ export class RequestsController {
         ref: body.ref,
         fxi_number: body.fxi_number,
         feri_number: body.feri_number,
+        carte_chargeur: body.carte_chargeur ?? null,
         vehicle_registration: body.vehicle_registration,
         manual_bl: body.manual_bl,
         carrier_name: body.carrier_name ?? null,
@@ -215,9 +217,9 @@ export class RequestsController {
       const request = await RequestsService.getRequestById(requestId);
       if (!request) return res.status(404).json({ message: 'Request not found' });
 
-      if (request.status !== 'DRAFT_SENT') {
+      if (request.status !== 'DRAFT_SENT' && request.status !== 'PROFORMAT_SENT') {
         return res.status(400).json({
-          message: 'Payment proof can only be uploaded after draft is sent'
+          message: 'Payment proof can only be uploaded after draft/proforma is sent'
         });
       }
 

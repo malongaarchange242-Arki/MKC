@@ -347,9 +347,10 @@ export class AdminController {
 				createdDrafts.push(draft);
 			}
 
-			// Transition to DRAFT_SENT (single transition). Do not send client notifications
+			// Transition to appropriate sent state (single transition). Do not send client notifications
 			// here — notifications should be explicit and triggered by the invoice send flow.
-			await RequestsService.transitionStatus({ requestId, to: 'DRAFT_SENT', actorRole: 'ADMIN', actorId: adminId, notifyClient: false });
+			const targetStatus = (docType || '').toString().toUpperCase().includes('PROFORMA') ? 'PROFORMAT_SENT' : 'DRAFT_SENT';
+			await RequestsService.transitionStatus({ requestId, to: targetStatus as any, actorRole: 'ADMIN', actorId: adminId, notifyClient: false });
 
 			// Audit
 			await AuditService.log({ actor_id: adminId, action: 'UPLOAD_DRAFT', entity: 'request', entity_id: requestId, metadata: { drafts: createdDrafts.map(d => d.id), type: docType } });
@@ -560,6 +561,27 @@ export class AdminController {
 			return res.status(200).json({ success: true, result });
 		} catch (error: unknown) {
 			return handleControllerError(res, error, 'Notify draft');
+		}
+	}
+
+	static async notifyProforma(req: AuthRequest, res: Response) {
+		try {
+			if (!ensureAdminOrSystem(req, res)) return;
+
+			const adminId = getAuthUserId(req);
+			if (!adminId) return res.status(401).json({ message: 'Unauthorized' });
+
+			const requestId = req.params.id;
+			const body: any = req.body || {};
+
+			// Accept optional fileIds array and optional message
+			const fileIds: string[] | undefined = Array.isArray(body.fileIds) ? body.fileIds : undefined;
+			const message: string | undefined = typeof body.message === 'string' ? body.message : undefined;
+
+			const result = await AdminService.notifyProforma(requestId, adminId, { fileIds, message });
+			return res.status(200).json({ success: true, result });
+		} catch (error: unknown) {
+			return handleControllerError(res, error, 'Notify proforma');
 		}
 	}
 }

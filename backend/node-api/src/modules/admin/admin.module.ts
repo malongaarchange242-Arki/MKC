@@ -52,6 +52,10 @@ export const adminModule = (): Router => {
 	// to client for an existing invoice/draft. Accepts JSON { invoice_id? invoice_number? })
 	router.post('/requests/:id/notify-draft', AdminController.notifyDraft);
 
+	// NOTIFY PROFORMA (notification-only: admin triggers sending notification for specific
+	// proforma file IDs returned by the upload endpoint. Accepts JSON { fileIds?: string[], message?: string })
+	router.post('/requests/:id/notify-proforma', AdminController.notifyProforma);
+
 	// ADMIN upload draft/proforma (legacy, keeps array flow)
 	router.post('/requests/:id/upload-draft', uploadMiddleware.array('files'), AdminController.uploadDraft);
 

@@ -23,6 +23,7 @@ const STATUS = {
     PROCESSING: 'PROCESSING',
     UNDER_REVIEW: 'UNDER_REVIEW',
     DRAFT_SENT: 'DRAFT_SENT',
+    PROFORMAT_SENT: 'PROFORMAT_SENT',
     PAYMENT_PROOF_UPLOADED: 'PAYMENT_PROOF_UPLOADED',
     PAYMENT_SUBMITTED: 'PAYMENT_SUBMITTED',
     PAYMENT_CONFIRMED: 'PAYMENT_CONFIRMED',
@@ -80,6 +81,7 @@ function formatStatusLabel(status) {
         [STATUS.PROCESSING]: "Processing",
         [STATUS.UNDER_REVIEW]: "Under Review",
         [STATUS.DRAFT_SENT]: "Awaiting Payment",
+        [STATUS.PROFORMAT_SENT]: "Awaiting Payment",
         [STATUS.PAYMENT_PROOF_UPLOADED]: "Proof Uploaded",
         [STATUS.PAYMENT_SUBMITTED]: "Proof Submitted",
         [STATUS.PAYMENT_CONFIRMED]: "Payment Confirmed",
@@ -172,9 +174,9 @@ function renderClientPayments() {
     const tbody = document.getElementById('client-payment-body');
     if (!tbody) return;
 
-    // Montrer uniquement les dossiers en attente de paiement (DRAFT_SENT).
+    // Montrer uniquement les dossiers en attente de paiement (DRAFT_SENT ou PROFORMAT_SENT).
     // Les lignes dont la preuve a été uploadée (PAYMENT_PROOF_UPLOADED) seront retirées immédiatement.
-    const unpaid = requests.filter(req => req.status === STATUS.DRAFT_SENT);
+    const unpaid = requests.filter(req => req.status === STATUS.DRAFT_SENT || req.status === STATUS.PROFORMAT_SENT);
 
     if (unpaid.length === 0) {
         tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:40px;">${escapeHtml(t('no_pending_payments','No pending payments. All set!'))}</td></tr>`;
@@ -568,7 +570,7 @@ async function handlePaymentModeChange(blValue, selectedMode) {
         if (AUTO_TRANSITION_MODES.includes(selectedMode)) {
             // Only attempt server-side transition when the request is in an allowed from-state.
             const currentStatus = (reqIndex >= 0 && requests[reqIndex]) ? requests[reqIndex].status : null;
-            const ALLOWED_AUTO_FROM = [STATUS.DRAFT_SENT, STATUS.PAYMENT_CONFIRMED];
+            const ALLOWED_AUTO_FROM = [STATUS.DRAFT_SENT, STATUS.PROFORMAT_SENT, STATUS.PAYMENT_CONFIRMED];
             if (!ALLOWED_AUTO_FROM.includes(currentStatus)) {
                 // Persist payment_mode only and inform the user that auto-transition
                 // could not be performed due to current workflow state.

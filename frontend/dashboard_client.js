@@ -352,7 +352,7 @@ function loadTable(data = null) {
     // Determine availability label based on status and request type
     // If in draft/payment stage, show 'Draft Sent', otherwise show type-based label
     let availabilityLabel = 'Available';
-    if (status === 'DRAFT_SENT' || status === 'PAYMENT_PROOF_UPLOADED' || status === 'AWAITING_PAYMENT') {
+    if (status === 'DRAFT_SENT' || status === 'PROFORMAT_SENT' || status === 'PAYMENT_PROOF_UPLOADED' || status === 'AWAITING_PAYMENT') {
       availabilityLabel = 'Draft Sent';
     } else {
       if (reqType === 'AD_ONLY') availabilityLabel = 'AD Available';
@@ -567,7 +567,7 @@ function renderRow(r) {
   
   // Determine availability label based on status and request type
   let availabilityLabelRow = 'Available';
-  if (statusRow === 'DRAFT_SENT' || statusRow === 'PAYMENT_PROOF_UPLOADED' || statusRow === 'AWAITING_PAYMENT') {
+  if (statusRow === 'DRAFT_SENT' || statusRow === 'PROFORMAT_SENT' || statusRow === 'PAYMENT_PROOF_UPLOADED' || statusRow === 'AWAITING_PAYMENT') {
     availabilityLabelRow = 'Draft Sent';
   } else {
       if (reqTypeRow === 'AD_ONLY') availabilityLabelRow = 'AD Available';
@@ -827,7 +827,7 @@ function bindUIEvents() {
             
             // Determine availability label based on status
             let availabilityText = 'Draft Available';
-            if (statusLabel === 'DRAFT_SENT' || statusLabel === 'PAYMENT_PROOF_UPLOADED' || statusLabel === 'AWAITING_PAYMENT') {
+            if (statusLabel === 'DRAFT_SENT' || statusLabel === 'PROFORMAT_SENT' || statusLabel === 'PAYMENT_PROOF_UPLOADED' || statusLabel === 'AWAITING_PAYMENT') {
               availabilityText = 'Draft Sent';
             } else {
               // only mark as FERI available if a FERI URL/reference exists on the request
@@ -1310,6 +1310,8 @@ function submitNewRequest() {
         const riverAmountInput = document.getElementById('input-river-amount');
         const roadAmount = roadAmountInput ? (roadAmountInput.value || '').trim() : '';
         const riverAmount = riverAmountInput ? (riverAmountInput.value || '').trim() : '';
+        const carteChargeurInput = document.getElementById('input-carte-chargeur');
+        const carteChargeur = carteChargeurInput ? (carteChargeurInput.value || '').trim() : '';
 
         const payload = { type: selectedRequestType, ref: ref };
         if (fxiNumber) payload.fxi_number = fxiNumber;
@@ -1317,6 +1319,7 @@ function submitNewRequest() {
         if (feriNumber) payload.feri_number = feriNumber;
         if (vehicleRegistration) payload.vehicle_registration = vehicleRegistration;
         if (carrierName) payload.carrier_name = carrierName;
+        if (carteChargeur) payload.carte_chargeur = carteChargeur;
         if (roadAmount) payload.transport_road_amount = roadAmount;
         if (riverAmount) payload.transport_river_amount = riverAmount;
 

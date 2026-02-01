@@ -13,6 +13,8 @@ export interface RequestDraft {
   issued_by?: string;
   file_name: string;
   file_path: string;
+  type?: string;
+  visibility?: string;
   invoice_id?: string | null;
   created_at: string;
 }

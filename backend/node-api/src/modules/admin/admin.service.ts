@@ -652,9 +652,9 @@ export class AdminService {
         invoiceId: invoice.id
       });
 
-      // 4. Transition request status to DRAFT_SENT (idempotent)
+      // 4. Transition request status to PROFORMAT_SENT (idempotent)
       try {
-        await RequestsService.transitionStatus({ requestId, to: 'DRAFT_SENT', actorRole: 'ADMIN', actorId: adminId });
+        await RequestsService.transitionStatus({ requestId, to: 'PROFORMAT_SENT', actorRole: 'ADMIN', actorId: adminId });
       } catch (e) {
         logger.warn('RequestsService.transitionStatus failed during sendDraft', { requestId, err: e });
       }
@@ -816,6 +816,82 @@ export class AdminService {
       throw err;
     }
   }
+
+    static async notifyProforma(requestId: string, adminId: string, opts: { fileIds?: string[]; message?: string } = {}) {
+      try {
+        logger.info('Admin: notify proforma', { requestId, adminId, opts });
+
+        const request = await RequestsService.getRequestById(requestId);
+        if (!request) throw new Error('Request not found');
+
+        const fileIds = Array.isArray(opts.fileIds) && opts.fileIds.length > 0 ? opts.fileIds : null;
+
+        const links: Array<{ name: string; url: string; expires_in?: number }> = [];
+        const metadataItems: any[] = [];
+
+        if (fileIds) {
+          for (const fid of fileIds) {
+            try {
+              const draft = await DraftsService.getDraftById(fid);
+              if (!draft) continue;
+              if (String(draft.request_id) !== String(requestId)) {
+                logger.warn('Draft does not belong to request, skipping', { draftId: fid, requestId });
+                continue;
+              }
+              const signed = await DraftsService.generateSignedUrl(draft.id, 60 * 60 * 24 * 3);
+              const linkName = draft.file_name || 'Proforma';
+              links.push({ name: linkName, url: signed, expires_in: 60 * 60 * 24 * 3 });
+              metadataItems.push({ draft_id: draft.id, file_name: draft.file_name, file_path: draft.file_path, type: draft.type });
+            } catch (e) {
+              logger.warn('Failed to include draft when notifying proforma', { draftId: fid, err: e });
+            }
+          }
+        } else {
+          // fallback to existing logic: pick proforma draft or latest
+          try {
+            const drafts = await DraftsService.getDraftsByRequestId(requestId);
+            let proformaDraft: any | null = null;
+            if (Array.isArray(drafts) && drafts.length > 0) {
+              proformaDraft = drafts.find((d: any) => (d.type || '').toString().toLowerCase().includes('proforma')) || drafts[drafts.length - 1];
+            }
+            if (proformaDraft) {
+              try {
+                const signed = await DraftsService.generateSignedUrl(proformaDraft.id, 60 * 60 * 24 * 3);
+                links.push({ name: proformaDraft.file_name || 'Proforma', url: signed, expires_in: 60 * 60 * 24 * 3 });
+                metadataItems.push({ draft_id: proformaDraft.id, file_name: proformaDraft.file_name, file_path: proformaDraft.file_path, type: proformaDraft.type });
+              } catch (e) {
+                logger.warn('Failed to sign proforma draft', { requestId, draftId: proformaDraft.id, err: e });
+              }
+            }
+          } catch (e) {
+            logger.warn('Failed to query drafts when notifying proforma', { requestId, err: e });
+          }
+        }
+
+        // Send notification via existing notifications service
+        try {
+          const { NotificationsService } = await import('../notifications/notifications.service');
+          await NotificationsService.send({
+            userId: request.user_id,
+            type: 'DRAFT_AVAILABLE',
+            title: 'Draft & Proforma disponibles',
+            message: opts.message || 'A proforma is available.',
+            entityType: 'request',
+            entityId: requestId,
+            channels: ['in_app', 'email'],
+            links,
+            metadata: { drafts: metadataItems }
+          });
+        } catch (e) {
+          logger.warn('Failed to send notify-proforma notification', { requestId, err: e });
+        }
+
+        return { notified: true, linksCount: links.length };
+      } catch (err) {
+        logger.error('AdminService.notifyProforma failed', { requestId, adminId, err: (err as any)?.message ?? err });
+        throw err;
+      }
+    }
 
   // Helper method to get the next invoice sequence number
   private static async getNextInvoiceSequenceNumber(): Promise<string> {
