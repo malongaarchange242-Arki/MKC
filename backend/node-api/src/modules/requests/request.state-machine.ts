@@ -97,8 +97,8 @@ const STATE_TRANSITIONS: Record<RequestStatus, TransitionRule[]> = {
   PROFORMAT_SENT: [
     { to: 'PAYMENT_PROOF_UPLOADED', allowedRoles: ['CLIENT'] },
     { to: 'CANCELLED', allowedRoles: ['CLIENT'] },
-    // Admin can mark the request as awaiting payment after issuing the proforma
-    { to: 'AWAITING_PAYMENT', allowedRoles: ['ADMIN'] }
+    // Admin or system can mark the request as awaiting payment after issuing the proforma
+    { to: 'AWAITING_PAYMENT', allowedRoles: ['ADMIN', 'SYSTEM'] }
   ],
 
   AWAITING_PAYMENT: [

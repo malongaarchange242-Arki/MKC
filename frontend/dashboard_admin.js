@@ -541,9 +541,9 @@ function renderAdminTable() {
               <button class="icon-btn" title="View Docs" onclick="event.stopPropagation(); viewDocs('${escapeJs(((row.request && (row.request.id || row.request.request_id)) || row.request_id || row.id || blValue) || '')}')"><i class="fas fa-folder-open"></i></button>
             </td>
             <td>
-                ${String(status) === 'DRAFT_SENT'
-      ? `<span class="pending-payment" style="color:#f59e0b; font-weight:600;">${escapeHtml(translateStatus('DRAFT_SENT'))}</span>`
-      : (isInitiated ?
+              ${String(status) === 'DRAFT_SENT' || String(status) === 'AWAITING_PAYMENT'
+          ? `<span class="pending-payment" style="color:#f59e0b; font-weight:600;">${escapeHtml(translateStatus(String(status) === 'AWAITING_PAYMENT' ? 'AWAITING_PAYMENT' : 'DRAFT_SENT'))}</span>`
+          : (isInitiated ?
         (() => {
           const _langBtn = (document.getElementById('lang-select') && document.getElementById('lang-select').value) ? document.getElementById('lang-select').value : 'en';
           const _label = (i18n.issue_draft_price && (i18n.issue_draft_price[_langBtn] || i18n.issue_draft_price.en)) || 'Issue Draft/Price';

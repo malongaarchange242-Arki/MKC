@@ -67,12 +67,23 @@ export const paymentsModule = () => {
         return res.status(500).json({ success: false, message: error.message || String(error) });
       }
 
+      // After creating the invoice, mark the related request as AWAITING_PAYMENT using SYSTEM actor.
+      try {
+        if (data && data.request_id) {
+          await RequestsService.transitionStatus({ requestId: String(data.request_id), to: 'AWAITING_PAYMENT', actorRole: 'SYSTEM', actorId: 'system' });
+        }
+      } catch (transErr) {
+        console.warn('Failed to transition request to AWAITING_PAYMENT after invoice creation', { requestId: data?.request_id, err: transErr });
+      }
+
       return res.json({ success: true, invoice: data });
     } catch (err: any) {
       console.error('POST /api/client/invoices exception', err);
       return res.status(500).json({ success: false, message: err.message || String(err) });
     }
   });
+
+  
 
   // POST /api/invoices/manual
   // Create a manual invoice (ADMIN manual flow). Body optional: { client_name, objet, origin }
