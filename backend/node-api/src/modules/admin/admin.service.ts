@@ -794,6 +794,12 @@ export class AdminService {
 
       // Send notification
       try {
+        // Transition request to AWAITING_PAYMENT so admin action and status reflect awaiting payment
+        try {
+          await RequestsService.transitionStatus({ requestId, to: 'AWAITING_PAYMENT', actorRole: 'ADMIN', actorId: adminId, notifyClient: false });
+        } catch (transErr) {
+          logger.warn('RequestsService.transitionStatus to AWAITING_PAYMENT failed during notifyDraft', { requestId, err: transErr });
+        }
         const { NotificationsService } = await import('../notifications/notifications.service');
         await NotificationsService.send({
           userId: request.user_id,
@@ -873,8 +879,8 @@ export class AdminService {
           const { NotificationsService } = await import('../notifications/notifications.service');
           await NotificationsService.send({
             userId: request.user_id,
-            type: 'DRAFT_AVAILABLE',
-            title: 'Draft & Proforma disponibles',
+            type: 'PROFORMA_AVAILABLE',
+            title: 'Proforma disponible',
             message: opts.message || 'A proforma is available.',
             entityType: 'request',
             entityId: requestId,

@@ -13,6 +13,7 @@ export type RequestType =
 export type RequestStatus =
   | 'CREATED'
   | 'AWAITING_DOCUMENTS'
+  | 'AWAITING_PAYMENT'
   | 'SUBMITTED'
   | 'PROCESSING'
   | 'UNDER_REVIEW'
@@ -28,6 +29,7 @@ export type RequestStatus =
 export const REQUEST_STATUSES = [
   'CREATED',
   'AWAITING_DOCUMENTS',
+  'AWAITING_PAYMENT',
   'SUBMITTED',
   'PROCESSING',
   'UNDER_REVIEW',
@@ -93,6 +95,13 @@ const STATE_TRANSITIONS: Record<RequestStatus, TransitionRule[]> = {
   ],
 
   PROFORMAT_SENT: [
+    { to: 'PAYMENT_PROOF_UPLOADED', allowedRoles: ['CLIENT'] },
+    { to: 'CANCELLED', allowedRoles: ['CLIENT'] },
+    // Admin can mark the request as awaiting payment after issuing the proforma
+    { to: 'AWAITING_PAYMENT', allowedRoles: ['ADMIN'] }
+  ],
+
+  AWAITING_PAYMENT: [
     { to: 'PAYMENT_PROOF_UPLOADED', allowedRoles: ['CLIENT'] },
     { to: 'CANCELLED', allowedRoles: ['CLIENT'] }
   ],
