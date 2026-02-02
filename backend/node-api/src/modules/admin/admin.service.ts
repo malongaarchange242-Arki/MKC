@@ -794,11 +794,11 @@ export class AdminService {
 
       // Send notification
       try {
-        // Transition request to AWAITING_PAYMENT so admin action and status reflect awaiting payment
+        // Transition request to DRAFT_SENT so admin action and status reflect draft/proforma sent
         try {
-          await RequestsService.transitionStatus({ requestId, to: 'AWAITING_PAYMENT', actorRole: 'ADMIN', actorId: adminId, notifyClient: false });
+          await RequestsService.transitionStatus({ requestId, to: 'DRAFT_SENT', actorRole: 'ADMIN', actorId: adminId, notifyClient: false });
         } catch (transErr) {
-          logger.warn('RequestsService.transitionStatus to AWAITING_PAYMENT failed during notifyDraft', { requestId, err: transErr });
+          logger.warn('RequestsService.transitionStatus to DRAFT_SENT failed during notifyDraft', { requestId, err: transErr });
         }
         const { NotificationsService } = await import('../notifications/notifications.service');
         await NotificationsService.send({
