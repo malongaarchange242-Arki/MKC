@@ -329,7 +329,10 @@ export class AdminController {
 			// Fetch request and ensure status is UNDER_REVIEW
 			const request = await RequestsService.getRequestById(requestId);
 			if (!request) return res.status(404).json({ message: 'Request not found' });
-			if (request.status !== 'UNDER_REVIEW') return res.status(400).json({ message: 'Cannot upload draft unless request is UNDER_REVIEW' });
+			// Allow uploads when request is under review or when a draft/proforma was already sent
+			if (!['UNDER_REVIEW', 'DRAFT_SENT', 'PROFORMAT_SENT','CREATED', 'PROCESSING'].includes(request.status)) {
+				return res.status(400).json({ message: 'Cannot upload draft unless request is UNDER_REVIEW, DRAFT_SENT or PROFORMAT_SENT' });
+			}
 
 			// Only ADMIN allowed (module guard exists but double-check)
 			const role = getAuthUserRole(req);

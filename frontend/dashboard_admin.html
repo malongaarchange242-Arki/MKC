@@ -177,21 +177,21 @@
     <div id="proforma-modal" class="modal-overlay" style="display:none;">
         <div class="modal-box">
             <div class="modal-header">
-                <h3>Envoyer la proforma: <span id="proforma-target-bl" class="text-blue"></span></h3>
+                <h3><span data-i18n="proforma_modal_title">Envoyer la proforma</span>: <span id="proforma-target-bl" class="text-blue"></span></h3>
             </div>
             <div class="modal-body">
                 <div class="upload-group">
-                    <p class="sub-text">Attach PDF proforma for client:</p>
+                    <p class="sub-text" data-i18n="proforma_attach_label">Attach PDF proforma for client:</p>
                     <label class="doc-upload-btn" for="proforma-file-input" id="proforma-upload-label">
                         <i class="fas fa-cloud-upload-alt"></i>
-                        <span id="proforma-file-label">Click to attach proforma (PDF)</span>
+                        <span id="proforma-file-label" data-i18n="proforma_file_label">Click to attach proforma (PDF)</span>
                         <input type="file" id="proforma-file-input" hidden accept=".pdf">
                     </label>
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn-close" id="proforma-cancel-btn">Cancel</button>
-                <button id="proforma-send-btn" class="btn-green" style="border:none;">Envoyer la proforma</button>
+                <button class="btn-close" id="proforma-cancel-btn" data-i18n="proforma_cancel">Cancel</button>
+                <button id="proforma-send-btn" class="btn-green" style="border:none;" data-i18n="proforma_send">Envoyer la proforma</button>
             </div>
         </div>
     </div>
@@ -224,7 +224,7 @@
                             <span data-i18n="btn_message">Message</span>
                         </button>
                         
-                        <button id="btn-send-proforma" class="btn" title="Envoyer la proforma" style="background:#f59e0b; color:#fff; border:1px solid #f59e0b; padding:6px 10px; border-radius:6px; font-weight:600;">
+                        <button id="btn-send-proforma" class="btn" title="Envoyer la proforma" data-i18n="btn_send_proforma" style="background:#f59e0b; color:#fff; border:1px solid #f59e0b; padding:6px 10px; border-radius:6px; font-weight:600;">
                             Envoyer la proforma
                         </button>
                         <!-- Invoice button removed -->

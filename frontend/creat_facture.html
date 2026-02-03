@@ -43,10 +43,14 @@
                 <option value="Antarctique">Antarctique</option>
                 <option value="Asie">Asie</option>
                 <option value="Europe">Europe</option>
-                <option value="Amérique du Nord">Amérique</option>
+                <option value="Amérique">Amérique</option>
                 <option value="Océanie">Océanie</option>
             </select>
             <input type="text" id="objetRef" placeholder="Référence BL Principal">
+            <div style="display:flex; flex-direction:column; gap:6px;">
+                <label for="serviceFixed" style="font-size:12px; font-weight:600; margin-bottom:4px;">Frais de service (XAF)</label>
+                <input type="number" id="serviceFixed" step="1" value="0" style="width:160px;" aria-label="Montant fixe des frais de service en XAF">
+            </div>
         </div>
 
         <table id="editTable">

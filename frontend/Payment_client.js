@@ -19,6 +19,7 @@ function t(key, fallback) {
 const STATUS = {
     CREATED: 'CREATED',
     AWAITING_DOCUMENTS: 'AWAITING_DOCUMENTS',
+    AWAITING_PAYMENT: 'AWAITING_PAYMENT',
     SUBMITTED: 'SUBMITTED',
     PROCESSING: 'PROCESSING',
     UNDER_REVIEW: 'UNDER_REVIEW',
@@ -82,6 +83,7 @@ function formatStatusLabel(status) {
         [STATUS.UNDER_REVIEW]: "Under Review",
         [STATUS.DRAFT_SENT]: "Awaiting Payment",
         [STATUS.PROFORMAT_SENT]: "Awaiting Payment",
+        [STATUS.AWAITING_PAYMENT]: "Awaiting Payment",
         [STATUS.PAYMENT_PROOF_UPLOADED]: "Proof Uploaded",
         [STATUS.PAYMENT_SUBMITTED]: "Proof Submitted",
         [STATUS.PAYMENT_CONFIRMED]: "Payment Confirmed",
@@ -174,9 +176,9 @@ function renderClientPayments() {
     const tbody = document.getElementById('client-payment-body');
     if (!tbody) return;
 
-    // Montrer uniquement les dossiers en attente de paiement (DRAFT_SENT ou PROFORMAT_SENT).
+    // Montrer uniquement les dossiers en attente de paiement (AWAITING_PAYMENT).
     // Les lignes dont la preuve a été uploadée (PAYMENT_PROOF_UPLOADED) seront retirées immédiatement.
-    const unpaid = requests.filter(req => req.status === STATUS.DRAFT_SENT || req.status === STATUS.PROFORMAT_SENT);
+    const unpaid = requests.filter(req => req.status === STATUS.AWAITING_PAYMENT || req.status === STATUS.DRAFT_SENT);
 
     if (unpaid.length === 0) {
         tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:40px;">${escapeHtml(t('no_pending_payments','No pending payments. All set!'))}</td></tr>`;
@@ -195,9 +197,10 @@ function renderClientPayments() {
                     invoicesMap.get(requestKey) ||
                     invoicesMap.get(String(req.bl_number || req.bl || req.extracted_bl || '')) ||
                     null;
+                // Force display in XAF regardless of invoice currency (per UI requirement)
                 const amountValue = (invoiceFromApi && invoiceFromApi.amount_due !== null && invoiceFromApi.amount_due !== undefined)
-                    ? escapeHtml(`${invoiceFromApi.amount_due} ${invoiceFromApi.currency || ''}`.trim())
-                    : (req.amount ? escapeHtml(String(req.amount)) : (req.inv ? escapeHtml(req.inv) : '1500 XAF'));
+                    ? escapeHtml(`${invoiceFromApi.amount_due} XAF`)
+                    : (req.amount ? escapeHtml(String(req.amount) + ' XAF') : (req.inv ? escapeHtml(req.inv) : '1500 XAF'));
 
                 // Determine action button label/class based on status (all labels use i18n)
                 let actionLabelKey = 'upload_proof';
@@ -570,7 +573,7 @@ async function handlePaymentModeChange(blValue, selectedMode) {
         if (AUTO_TRANSITION_MODES.includes(selectedMode)) {
             // Only attempt server-side transition when the request is in an allowed from-state.
             const currentStatus = (reqIndex >= 0 && requests[reqIndex]) ? requests[reqIndex].status : null;
-            const ALLOWED_AUTO_FROM = [STATUS.DRAFT_SENT, STATUS.PROFORMAT_SENT, STATUS.PAYMENT_CONFIRMED];
+            const ALLOWED_AUTO_FROM = [STATUS.DRAFT_SENT, STATUS.PROFORMAT_SENT, STATUS.AWAITING_PAYMENT, STATUS.PAYMENT_CONFIRMED];
             if (!ALLOWED_AUTO_FROM.includes(currentStatus)) {
                 // Persist payment_mode only and inform the user that auto-transition
                 // could not be performed due to current workflow state.

@@ -18,6 +18,7 @@
     const defaults = {
       en: {
         CREATED: 'Created',
+        AWAITING_PAYMENT: 'Awaiting Payment',
         AWAITING_DOCUMENTS: 'Awaiting Documents',
         SUBMITTED: 'Submitted',
         PROCESSING: 'Processing',
@@ -37,6 +38,7 @@
       },
       fr: {
         CREATED: 'Créé',
+        AWAITING_PAYMENT: 'En attente de paiement',
         AWAITING_DOCUMENTS: 'En attente de documents',
         SUBMITTED: 'Soumis',
         PROCESSING: 'En cours',

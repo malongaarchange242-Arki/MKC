@@ -455,6 +455,12 @@ Object.assign(i18n, {
   btn_dispute: { en: 'Dispute', fr: 'Contester' },
   btn_message: { en: 'Message', fr: 'Message' },
   btn_invoice: { en: 'Invoice', fr: 'Facture' }
+  ,btn_send_proforma: { en: 'Send proforma', fr: 'Envoyer la proforma' }
+  ,proforma_modal_title: { en: 'Send proforma', fr: 'Envoyer la proforma' }
+  ,proforma_attach_label: { en: 'Attach PDF proforma for client:', fr: 'Joindre la proforma (PDF) pour le client :' }
+  ,proforma_file_label: { en: 'Click to attach proforma (PDF)', fr: 'Cliquez pour joindre la proforma (PDF)' }
+  ,proforma_cancel: { en: 'Cancel', fr: 'Annuler' }
+  ,proforma_send: { en: 'Send proforma', fr: 'Envoyer la proforma' }
 });
 
 // Load requests from backend to ensure admin sees same data as client
@@ -1128,6 +1134,20 @@ function openSidePanel(req) {
     const iconHtml = cls === 'success' ? icons.success : (cls === 'rejected' ? icons.rejected : icons.pending);
     sideStatusEl.innerHTML = iconHtml + '<span>' + statusLabel + '</span>';
   }
+
+  // Disable the "Envoyer la proforma" button when the request is completed
+  try {
+    const btnSendProforma = document.getElementById('btn-send-proforma');
+    if (btnSendProforma) {
+      if (rawStatus === 'COMPLETED') {
+        btnSendProforma.disabled = true;
+        btnSendProforma.classList.add('disabled');
+      } else {
+        btnSendProforma.disabled = false;
+        btnSendProforma.classList.remove('disabled');
+      }
+    }
+  } catch (e) {}
 
   document.getElementById('side-date').innerText = 'Date: ' + (formatDateFromRow(req) || '—');
   document.getElementById('side-client').innerText = 'Client: ' + (getClientName(req) || '—');

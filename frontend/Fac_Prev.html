@@ -26,7 +26,8 @@
             width: 210mm;
             height: 297mm;
             background: #fff;
-            padding: 30mm 20mm 15mm 20mm;
+            /* keep comfortable bottom padding for footer */
+            padding: 30mm 20mm 28mm 20mm;
             position: relative;
             color: #000;
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
@@ -113,10 +114,14 @@
         }
 
         .payment-info {
-            margin-top: auto;
-            padding-bottom: 170px;
-            font-size: 12px;
-            line-height: 1.6;
+            /* Fixed block: no internal scrolling — content must fit the page */
+            margin-top: 12px;
+            padding-bottom: 0;
+            font-size: 11px;
+            line-height: 1.3;
+            /* allow the block to occupy remaining space but avoid scrollbars */
+            max-height: none;
+            overflow: visible;
         }
 
         .footer-line {
@@ -218,10 +223,24 @@
         </div>
 
         <div class="payment-info">
-            <strong>MODE DE PAIEMENT :</strong><br>
-            • Espèce ; MOMOPAY (Code marchand) : 459975 ;<br>
-            • Chèque au nom de Maritime Kargo Consulting ;<br>
-            • Compte Bancaire : 30012 00125 26893701101 30
+            <h3>Payment Options</h3>
+            <ul>
+                <li><strong>MOMOPAY MTN CONGO</strong>: Merchant code: 310902 (*105# then 6)</li>
+                <li><strong>AIRTEL CONGO</strong>: 04 415 99 45 (*128*3*3*044159945#)</li>
+                <li><strong>ORANGE MONEY CAMEROON</strong>: 65 863 49 34</li>
+                <li><strong>MPESA VODACOM RDC</strong>: 08 300 97 566</li>
+                <li><strong>BANK ACCOUNT (LCB)</strong>:<br>
+                    Account Name: MARITIME KARGO CONSULTING<br>
+                    RIB Key: 30012 00125 26893701101 30
+                </li>
+                <li><strong>CHECK</strong>: Payable to MARITIME KARGO CONSULTING</li>
+                <li><strong>CASH</strong>: Please visit our offices</li>
+            </ul>
+            <p><strong>Terms and Conditions</strong><br>
+            Payment Responsibility: All bank charges, including intermediary bank fees, are the responsibility of the billed account holder.<br>
+            The total invoice amount, without deductions, must be paid to us.<br>
+            Final Sale Policy: All sales are final. No refunds or cancellations will be accepted after validation of FERI or AD.<br>
+            Payment Terms: Payment must be received in full in our account before we proceed with submission for validation.</p>
         </div>
 
         <div class="footer-line">
