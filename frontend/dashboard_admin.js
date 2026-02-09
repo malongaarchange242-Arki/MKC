@@ -146,8 +146,60 @@ document.addEventListener('DOMContentLoaded', async () => {
     const btnSendProforma = document.getElementById('btn-send-proforma');
     if (btnSendProforma) {
       btnSendProforma.addEventListener('click', (ev) => {
-        ev.preventDefault(); ev.stopPropagation();
         try {
+          // If in view mode, open the proforma/invoice preview page with attached data
+          if (btnSendProforma.dataset && btnSendProforma.dataset.mode === 'view_invoice') {
+            ev.preventDefault(); ev.stopPropagation();
+            const requestId = document.getElementById('side-panel')?.dataset?.requestId || '';
+            if (!requestId) return alert('Identifiant de la demande introuvable. Ouvrez d\u2019abord le panneau pour choisir une demande.');
+
+            // Try to discover an invoice id associated with the request
+            const req = requests.find(r => String(r.id || r.request_id) === String(requestId));
+            const invoiceId = (req && (req.invoice_id || (req.invoice && req.invoice.id) || (req.invoices && req.invoices[0] && req.invoices[0].id))) || '';
+
+            // Build URL: prefer Fac_Prev.html with invoice_id so it fetches persisted invoice
+            let url = '';
+            if (invoiceId) {
+              url = `Fac_Prev.html?invoice_id=${encodeURIComponent(invoiceId)}`;
+              window.open(url, '_blank');
+            } else {
+              // Try to fetch invoices for this request from backend, then open Fac_Prev with invoice_id if found
+              (async () => {
+                try {
+                  const API_BASE = (() => { const meta = document.querySelector('meta[name="api-base"]')?.content || ''; return meta ? meta.replace(/\/$/, '') : 'https://mkc-backend-kqov.onrender.com'; })();
+                  const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+                  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+                  const base = API_BASE.replace(/\/api\/?$/,'').replace(/\/$/, '');
+                  const resp = await fetch(`${base}/api/client/invoices?request_id=${encodeURIComponent(requestId)}`, { headers });
+                  if (resp.ok) {
+                    const body = await resp.json().catch(() => null);
+                    const invs = body && (body.invoices || body.data || body) ? (body.invoices || body.data || body) : [];
+                    if (Array.isArray(invs) && invs.length > 0) {
+                      const found = invs[0];
+                      const foundId = found.id || found.invoice_id || found._id || null;
+                      if (foundId) {
+                        window.open(`Fac_Prev.html?invoice_id=${encodeURIComponent(foundId)}`, '_blank');
+                        return;
+                      }
+                    }
+                  }
+                } catch (e) {
+                  // ignore and fallback to params
+                }
+
+                // Fallback: include request-level data (ref, bl, client) so Fac_Prev can render from params
+                const bl = encodeURIComponent(req && (req.manual_bl || req.bl_number || req.bl || req.bill_of_lading) || '');
+                const ref = encodeURIComponent(req && (req.customer_reference || req.manual_bl || req.bl_number) || '');
+                const client = encodeURIComponent(getClientName(req) || '');
+                const fallbackUrl = `Fac_Prev.html?request_id=${encodeURIComponent(requestId)}${bl ? '&bl=' + bl : ''}${ref ? '&ref=' + ref : ''}${client ? '&nom=' + client : ''}`;
+                window.open(fallbackUrl, '_blank');
+              })();
+            }
+            closeSidePanel();
+            return;
+          }
+
+          ev.preventDefault(); ev.stopPropagation();
           // Close side panel first
           closeSidePanel();
           // Open the dedicated proforma modal (uses same upload route as draft)
@@ -305,7 +357,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (e) {
           console.warn('proforma send error', e);
           alert(String(e.message || e));
-          proformaSend.disabled = false; proformaSend.innerText = 'Envoyer la proforma';
+          proformaSend.disabled = false;
+          try {
+            const lang = (document.getElementById('lang-select') && document.getElementById('lang-select').value) || 'en';
+            const label = (window.i18n && typeof window.i18n.t === 'function') ? (window.i18n.t('proforma_send') || (i18n.proforma_send && i18n.proforma_send[lang])) : (i18n.proforma_send && i18n.proforma_send[lang]);
+            proformaSend.innerText = label || 'Envoyer la proforma';
+          } catch (e) { proformaSend.innerText = 'Envoyer la proforma'; }
         }
       });
     }
@@ -834,15 +891,26 @@ async function fetchAndRenderUser() {
     const roleEl = document.querySelector('.user-profile .user-info .role');
     const avatarEl = document.querySelector('.user-profile .avatar-placeholder');
 
-    const prenom = data?.prenom || data?.first_name || data?.user_metadata?.prenom || data?.prenom_fr || '';
-    const nom = data?.nom || data?.last_name || data?.user_metadata?.nom || data?.nom_fr || '';
-    const fullName = (prenom || nom) ? `${prenom} ${nom}`.trim() : (data?.email || 'Admin');
+    const prenom = data?.prenom || data?.first_name || data?.given_name || data?.user_metadata?.prenom || data?.prenom_fr || '';
+    const nom = data?.nom || data?.last_name || data?.family_name || data?.user_metadata?.nom || data?.nom_fr || '';
+    // Prefer explicit full-name fields when available
+    const explicitFull = data?.name || data?.full_name || data?.displayName || data?.user_metadata?.full_name || data?.user_metadata?.name || null;
+    let fullName = '';
+    if (prenom || nom) fullName = `${prenom} ${nom}`.trim();
+    else if (explicitFull) fullName = explicitFull;
+    else if (data?.email) {
+      // fallback: use email local-part capitalized
+      try { fullName = data.email.split('@')[0].replace(/[._\-]/g, ' ').split(' ').map(s=>s.charAt(0).toUpperCase()+s.slice(1)).join(' '); } catch(e){ fullName = data.email; }
+    } else {
+      fullName = 'Administrator';
+    }
     const role = (data?.role || data?.user_metadata?.role || 'ADMIN').toString();
 
     if (nameEl) nameEl.innerText = fullName;
     if (roleEl) roleEl.innerText = role === 'ADMIN' ? 'Administrator' : String(role);
     if (avatarEl) {
-      const initials = ((prenom || '').charAt(0) + (nom || '').charAt(0)).toUpperCase() || fullName.slice(0,2).toUpperCase();
+      const initialsSource = (prenom || nom) ? `${prenom} ${nom}`.trim() : fullName;
+      const initials = (initialsSource.split(' ').map(p=>p.charAt(0)).slice(0,2).join('') || fullName.slice(0,2)).toUpperCase();
       avatarEl.innerText = initials;
     }
   } catch (e) {
@@ -1140,11 +1208,25 @@ function openSidePanel(req) {
     const btnSendProforma = document.getElementById('btn-send-proforma');
     if (btnSendProforma) {
       if (rawStatus === 'COMPLETED') {
-        btnSendProforma.disabled = true;
-        btnSendProforma.classList.add('disabled');
-      } else {
+        // Switch to view mode: allow admin to view the generated invoice
         btnSendProforma.disabled = false;
         btnSendProforma.classList.remove('disabled');
+        btnSendProforma.dataset.mode = 'view_invoice';
+        try {
+          const lang = (document.getElementById('lang-select') && document.getElementById('lang-select').value) || 'en';
+          const label = (window.i18n && typeof window.i18n.t === 'function') ? (window.i18n.t('btn_view_invoice') || (i18n.btn_view_invoice && i18n.btn_view_invoice[lang])) : (i18n.btn_view_invoice && i18n.btn_view_invoice[lang]);
+          btnSendProforma.innerText = label || 'Voir la facture';
+        } catch (e) {}
+      } else {
+        // Restore original send behavior
+        btnSendProforma.disabled = false;
+        btnSendProforma.classList.remove('disabled');
+        btnSendProforma.dataset.mode = '';
+        try {
+          const lang = (document.getElementById('lang-select') && document.getElementById('lang-select').value) || 'en';
+          const label = (window.i18n && typeof window.i18n.t === 'function') ? (window.i18n.t('btn_send_proforma') || (i18n.btn_send_proforma && i18n.btn_send_proforma[lang])) : (i18n.btn_send_proforma && i18n.btn_send_proforma[lang]);
+          btnSendProforma.innerText = label || 'Envoyer la proforma';
+        } catch (e) {}
       }
     }
   } catch (e) {}

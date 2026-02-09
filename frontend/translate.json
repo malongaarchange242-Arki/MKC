@@ -133,6 +133,7 @@
     "OCR_PENDING": "OCR Pending",
     "UNKNOWN": "Unknown"
   ,
+    "btn_view_invoice": "View invoice",
     "messages.title": "My Messages",
     "messages.load": "Load",
     "messages.no_conversations": "No conversations at the moment.",
@@ -305,6 +306,7 @@
     "OCR_PENDING": "OCR en attente",
     "UNKNOWN": "Inconnu"
   ,
+    "btn_view_invoice": "Voir la facture",
     "messages.title": "Mes Messages",
     "messages.load": "Charger",
     "messages.no_conversations": "Aucune conversation pour le moment.",

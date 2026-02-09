@@ -6,17 +6,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const origineInput = document.getElementById('origine');
     const serviceFixedInput = document.getElementById('serviceFixed');
 
-    // i18n helper: use window.i18n.t when available, otherwise fallback
-    function t(key, fallback) {
-        try {
-            if (window.i18n && typeof window.i18n.t === 'function') {
-                const val = window.i18n.t(key);
-                if (val !== undefined && val !== null && String(val).trim() !== '') return val;
-            }
-        } catch (e) {}
-        return fallback || key;
-    }
-
     // Basic guard: if core elements are missing, abort to avoid runtime errors
     if (!objetRefInput || !tableBody || !previewModal) {
         console.warn('creat_facture.js: required DOM elements missing, aborting initialization');
@@ -401,7 +390,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Date du jour
         const d = new Date();
-        const dateNow = `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
+        const dd = String(d.getDate()).padStart(2, '0');
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const yyyy = d.getFullYear();
+        const dateNow = `${mm}/${dd}/${yyyy}`; // display format MM/DD/YYYY
+        const dateIso = `${yyyy}-${mm}-${dd}`; // backend-friendly ISO YYYY-MM-DD
 
         let rowsHtml = '';
         let sousTotalXaf = 0;
@@ -525,10 +518,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Injection du HTML dans le modal (Structure fixe A4)
         previewModal.innerHTML = `
             <div class="modal-nav no-print">
-                <button id="backBtn" class="btn-back">${t('back','← Éditer')}</button>
+                <button id="backBtn" class="btn-back">← Éditer</button>
                 <div class="nav-right">
-                    <button id="sendBtn" class="btn-send">${t('send','✉ Envoyer')}</button>
-                    <button id="printBtn" class="btn-print">${t('print','⎙ Imprimer')}</button>
+                    <button id="sendBtn" class="btn-send">✉ Envoyer</button>
+                    <button id="printBtn" class="btn-print">⎙ Imprimer</button>
                 </div>
             </div>
 
@@ -538,14 +531,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <img src="Capture_d_écran_2026-01-27_202504-removebg-preview.png" alt="Logo OGEFREM">
                 </div>
 
-                <div class="date-line">${t('date','Date')}: ${dateNow}</div>
-                <div class="ref-line">${t('ref','REF')}: ${window.currentInvoiceNumber || invoiceRef || ''}</div>
-                <div class="invoice-title">${t('invoice_title','FACTURE PROFORMA')}</div>
+                <div class="date-line">Date: ${dateNow}</div>
+                <div class="ref-line">REF: ${window.currentInvoiceNumber || invoiceRef || ''}</div>
+                <div class="invoice-title">FACTURE PROFOMA</div>
 
                 <div class="client-meta">
-                    <p>${t('client','Client')}: ${client}</p>
-                    <p>${t('object','Objet')}: ${t('subscription','Souscription')} ${objetLabel} BL: ${refBL}</p>
-                    <p>${t('origin','Origine')}: ${origine}</p>
+                    <p>Client: ${client}</p>
+                    <p>Objet: Souscription ${objetLabel} BL: ${refBL}</p>
+                    <p>Origine: ${origine}</p>
                 </div>
 
                 <table class="main-table">
@@ -570,7 +563,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </div>
 
                 <div class="payment-info">
-                    <h3>${t('payment_options','Payment Options')}</h3>
+                    <h3>Payment Options</h3>
                     <ul>
                         <li><strong>MOMOPAY MTN CONGO</strong>: Merchant code: 310902 (*105# then 6)</li>
                         <li><strong>AIRTEL CONGO</strong>: 04 415 99 45 (*128*3*3*044159945#)</li>
@@ -583,11 +576,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <li><strong>CHECK</strong>: Payable to MARITIME KARGO CONSULTING</li>
                         <li><strong>CASH</strong>: Please visit our offices</li>
                     </ul>
-                    <p><strong>${t('terms_conditions','Terms and Conditions')}</strong><br>
-                    ${t('payment_responsibility','Payment Responsibility')}: ${t('payment_responsibility_text','All bank charges, including intermediary bank fees, are the responsibility of the billed account holder.')}<br>
-                    ${t('total_invoice_must','The total invoice amount, without deductions, must be paid to us.')}<br>
-                    ${t('final_sale_policy','Final Sale Policy')}: ${t('final_sale_policy_text','All sales are final. No refunds or cancellations will be accepted after validation of FERI or AD.')}<br>
-                    ${t('payment_terms','Payment Terms')}: ${t('payment_terms_text','Payment must be received in full in our account before we proceed with submission for validation.')}</p>
+                    <p><strong>Terms and Conditions</strong><br>
+                    Payment Responsibility: All bank charges, including intermediary bank fees, are the responsibility of the billed account holder.<br>
+                    The total invoice amount, without deductions, must be paid to us.<br>
+                    Final Sale Policy: All sales are final. No refunds or cancellations will be accepted after validation of FERI or AD.<br>
+                    Payment Terms: Payment must be received in full in our account before we proceed with submission for validation.</p>
                 </div>
 
                 <div class="footer-line">
@@ -631,7 +624,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         client_name: client,
                         objet: `Souscription ${objetLabel}`,
                         origin: origine,
-                        invoice_date: dateNow.split('-').reverse().join('-') || dateNow,
+                        invoice_date: dateIso || dateNow,
                         subtotal_amount: Number(sousTotalXaf),
                         service_fee_amount: Number(fraisService),
                         service_fee_rate: null,
