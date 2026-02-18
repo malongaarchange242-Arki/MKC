@@ -5,12 +5,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     const clientNameInput = document.getElementById('clientName');
     const origineInput = document.getElementById('origine');
     const serviceFixedInput = document.getElementById('serviceFixed');
+    const validitySelect = document.getElementById('invoiceValidity');
+    const validityCustomInput = document.getElementById('invoiceValidityCustom');
 
     // Basic guard: if core elements are missing, abort to avoid runtime errors
     if (!objetRefInput || !tableBody || !previewModal) {
         console.warn('creat_facture.js: required DOM elements missing, aborting initialization');
         return;
     }
+
+    // Show/hide custom validity input and persist changes
+    try {
+        if (validitySelect && validityCustomInput) {
+            validitySelect.addEventListener('change', () => {
+                if (validitySelect.value === 'custom') validityCustomInput.style.display = '';
+                else validityCustomInput.style.display = 'none';
+                try { saveDraft(); } catch (e) {}
+            });
+            validityCustomInput.addEventListener('input', () => { try { saveDraft(); } catch (e) {} });
+        }
+    } catch (e) {}
 
     const DRAFT_KEY = 'creat_facture_draft_v1';
 
@@ -31,6 +45,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 serviceFixed: serviceFixedInput ? serviceFixedInput.value : undefined,
                 updated: Date.now()
             };
+            // include validity in draft
+            try {
+                if (validitySelect) {
+                    const v = validitySelect.value || '12m';
+                    let months = 12;
+                    if (v === 'custom') months = Number(validityCustomInput && validityCustomInput.value ? Number(validityCustomInput.value) : 0) || 0;
+                    else months = parseInt(String(v).replace(/m$/, ''), 10) || 12;
+                    payload.validityMonths = months;
+                }
+            } catch (e) {}
             localStorage.setItem(DRAFT_KEY, JSON.stringify(payload));
         } catch (e) { console.warn('saveDraft', e); }
     }
@@ -88,9 +112,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                 attachBlListeners(row);
             });
         }
-        // restore fixed service amount if present
+        // restore fixed service amount and validity if present
         try {
             if (draft.serviceFixed && serviceFixedInput) serviceFixedInput.value = String(draft.serviceFixed);
+            if (draft.validityMonths && validitySelect) {
+                const v = String(draft.validityMonths);
+                if (v === '1') validitySelect.value = '1m';
+                else if (v === '3') validitySelect.value = '3m';
+                else if (v === '6') validitySelect.value = '6m';
+                else if (v === '12') validitySelect.value = '12m';
+                else if (v === '24') validitySelect.value = '24m';
+                else {
+                    validitySelect.value = 'custom';
+                    if (validityCustomInput) validityCustomInput.value = v;
+                }
+            }
         } catch (e) {}
     }
 
@@ -393,7 +429,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const dd = String(d.getDate()).padStart(2, '0');
         const mm = String(d.getMonth() + 1).padStart(2, '0');
         const yyyy = d.getFullYear();
-        const dateNow = `${mm}/${dd}/${yyyy}`; // display format MM/DD/YYYY
+        const dateNow = `${dd}/${mm}/${yyyy}`; // display format DD/MM/YYYY
         const dateIso = `${yyyy}-${mm}-${dd}`; // backend-friendly ISO YYYY-MM-DD
 
         let rowsHtml = '';
@@ -515,6 +551,32 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <td>${fraisService.toLocaleString('fr-FR')}</td>
             </tr>`;
 
+        // Compute validity (months and expiry) for display and payload
+        let validityMonths = 12;
+        let validUntilIso = null;
+        let validUntilDisplay = null;
+        try {
+            if (validitySelect) {
+                const v = validitySelect.value || '12m';
+                if (v === 'custom') {
+                    validityMonths = Number(validityCustomInput && validityCustomInput.value ? Number(validityCustomInput.value) : 0) || 0;
+                } else {
+                    validityMonths = parseInt(String(v).replace(/m$/, ''), 10) || 12;
+                }
+            }
+            if (dateIso && typeof validityMonths === 'number') {
+                const d = new Date(dateIso + 'T00:00:00');
+                d.setMonth(d.getMonth() + validityMonths);
+                const y = d.getFullYear();
+                const m2 = String(d.getMonth() + 1).padStart(2, '0');
+                const dd2 = String(d.getDate()).padStart(2, '0');
+                validUntilIso = `${y}-${m2}-${dd2}`;
+                validUntilDisplay = `${dd2}/${m2}/${y}`;
+            }
+        } catch (e) {
+            validityMonths = 12;
+        }
+
         // Injection du HTML dans le modal (Structure fixe A4)
         previewModal.innerHTML = `
             <div class="modal-nav no-print">
@@ -532,6 +594,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </div>
 
                 <div class="date-line">Date: ${dateNow}</div>
+                <div class="validity-line">Validité: ${validityMonths > 0 ? validityMonths + ' mois' : '—'}${validUntilDisplay ? ' (Jusqu\'au: ' + validUntilDisplay + ')' : ''}</div>
                 <div class="ref-line">REF: ${window.currentInvoiceNumber || invoiceRef || ''}</div>
                 <div class="invoice-title">FACTURE PROFOMA</div>
 
@@ -625,6 +688,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                         objet: `Souscription ${objetLabel}`,
                         origin: origine,
                         invoice_date: dateIso || dateNow,
+                        valid_until: validUntilIso || null,
+                        validity_months: Number(validityMonths || 0),
                         subtotal_amount: Number(sousTotalXaf),
                         service_fee_amount: Number(fraisService),
                         service_fee_rate: null,

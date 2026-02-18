@@ -38,7 +38,7 @@ export const paymentsModule = () => {
   router.post('/invoices', async (req: Request, res: Response) => {
     try {
       const authUserId = (req as any).authUserId ?? null;
-      const { request_id, amount, currency, bill_of_lading, customer_reference, client_name, objet, origin, subtotal_amount, service_fee_amount, invoice_date, items } = req.body || {};
+      const { request_id, amount, currency, bill_of_lading, customer_reference, client_name, objet, origin, subtotal_amount, service_fee_amount, invoice_date, valid_until, validity_months, items } = req.body || {};
 
       if (!request_id || (amount === undefined || amount === null)) return res.status(400).json({ success: false, message: 'request_id and amount are required' });
 
@@ -54,6 +54,8 @@ export const paymentsModule = () => {
         subtotal_amount: subtotal_amount !== undefined ? Number(subtotal_amount) : null,
         service_fee_amount: service_fee_amount !== undefined ? Number(service_fee_amount) : null,
         invoice_date: invoice_date || null,
+        valid_until: valid_until || null,
+        validity_months: validity_months !== undefined ? Number(validity_months) : undefined,
         items: Array.isArray(items) ? items : undefined
       });
 

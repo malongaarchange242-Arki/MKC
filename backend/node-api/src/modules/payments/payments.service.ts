@@ -98,10 +98,12 @@ export class PaymentsService {
     subtotal_amount?: number | null;
     service_fee_amount?: number | null;
     invoice_date?: string | null;
+    valid_until?: string | null;
+    validity_months?: number | null;
     items?: Array<any>;
   }) {
     try {
-      const { request_id, amount, currency = 'USD', customer_reference, cargo_route = null, created_by, client_name = null, objet = null, origin = null, subtotal_amount = null, service_fee_amount = null, invoice_date = null, items = undefined } = input;
+      const { request_id, amount, currency = 'USD', customer_reference, cargo_route = null, created_by, client_name = null, objet = null, origin = null, subtotal_amount = null, service_fee_amount = null, invoice_date = null, valid_until = null, validity_months = null, items = undefined } = input as any;
 
       // Log input for debugging
       logger.info('Creating invoice with input:', input);
@@ -144,6 +146,8 @@ export class PaymentsService {
         if (subtotal_amount !== null && subtotal_amount !== undefined) updatePayload.subtotal_amount = Number(subtotal_amount);
         if (service_fee_amount !== null && service_fee_amount !== undefined) updatePayload.service_fee_amount = Number(service_fee_amount);
         if (invoice_date) updatePayload.invoice_date = invoice_date;
+        if (valid_until) updatePayload.valid_until = valid_until;
+        if (validity_months !== null && validity_months !== undefined) updatePayload.validity_months = Number(validity_months);
 
         const { data: updated, error: updErr } = await supabaseAdmin
           .from('invoices')
@@ -200,9 +204,11 @@ export class PaymentsService {
         service_fee_amount: service_fee_amount !== null && service_fee_amount !== undefined ? Number(service_fee_amount) : null,
         currency,
         cargo_route: cargo_route || null,
-        bill_of_lading,              
+        bill_of_lading,             
         customer_reference: customer_reference || null,
         status: 'DRAFT',
+        valid_until: valid_until || null,
+        validity_months: validity_months !== null && validity_months !== undefined ? Number(validity_months) : null,
         created_by: created_by || null,
         created_at: new Date().toISOString()
       } as any;

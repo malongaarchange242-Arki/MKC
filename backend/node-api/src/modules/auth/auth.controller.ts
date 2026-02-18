@@ -82,6 +82,19 @@ export class AuthController {
 
       const result = await AuthService.register(body);
 
+      // Notify admins about new user registration (non-blocking)
+      try {
+        NotificationsService.send({
+          userId: result.user.id,
+          type: 'USER_REGISTERED',
+          title: 'Nouvelle inscription',
+          message: `Nouvel utilisateur inscrit: ${result.user.email || ''}`,
+          channels: ['email']
+        }).catch(e => logger.warn('Admin registration notification failed', { e }));
+      } catch (e) {
+        logger.warn('Failed to trigger registration notification', { e });
+      }
+
       return res.status(201).json({
         success: true,
         user: result.user
