@@ -1,0 +1,276 @@
+/* =========================================
+   1. BASE ET RÉINITIALISATION
+   ========================================= */
+   * {
+    box-sizing: border-box;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+}
+
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    background-color: #f0f2f5;
+    color: #000;
+}
+
+/* =========================================
+   2. INTERFACE D'ÉDITION (ADMIN PANEL)
+   ========================================= */
+.admin-panel {
+    max-width: 1000px;
+    margin: 20px auto;
+    background: #fff;
+    padding: 25px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #002060;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.input-group label {
+    font-size: 12px;
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: #555;
+}
+
+.input-group input {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+/* TABLEAU D'ÉDITION */
+#editTable {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 15px;
+}
+
+#editTable th {
+    background: #f8f9fa;
+    padding: 12px;
+    text-align: left;
+    font-size: 13px;
+    border-bottom: 2px solid #ddd;
+}
+
+#editTable td {
+    padding: 10px;
+    vertical-align: top;
+}
+
+#editTable input, #editTable select {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    width: 100%;
+}
+
+/* BOUTONS */
+button { cursor: pointer; border: none; border-radius: 4px; font-weight: bold; transition: 0.2s; }
+.btn-primary { background: #002060; color: #fff; padding: 12px 25px; }
+.btn-secondary { background: #6c757d; color: #fff; padding: 10px 15px; margin-top: 10px; }
+.btn-del { background: #dc3545; color: #fff; padding: 5px 10px; }
+button:hover { opacity: 0.9; }
+
+/* =========================================
+   3. MODAL DE PREVIEW
+   ========================================= */
+.modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 9999;
+    overflow-y: auto;
+    padding: 20px 0;
+}
+
+.no-print { display: block; }
+
+/* =========================================
+   4. DESIGN DE LA PAGE FACTURE (STRICT)
+   ========================================= */
+.page {
+    width: 210mm;
+    min-height: 297mm;
+    padding: 15mm 20mm;
+    margin: auto;
+    background-color: white;
+    position: relative;
+    box-sizing: border-box;
+    box-shadow: 0 0 20px rgba(0,0,0,0.5);
+}
+
+/* LOGO CENTRÉ */
+.logo-center {
+    position: absolute;
+    top: 15mm;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1;
+}
+
+.logo-center img {
+    width: 115px;
+    height: auto;
+}
+
+/* EN-TÊTE GAUCHE */
+.header-left {
+    font-size: 14.5px;
+    line-height: 1.5;
+    position: relative;
+    z-index: 2;
+    text-align: left;
+}
+
+.header-left .title {
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.dashed {
+    letter-spacing: 2px;
+    margin: 2px 0;
+}
+
+.tel-second {
+    margin-left: 95px;
+}
+
+.location {
+    margin-top: 25px;
+    font-weight: bold;
+    text-decoration: underline;
+    font-size: 16px;
+}
+
+/* INFOS CLIENT */
+.invoice-info {
+    margin-top: 50px;
+    font-size: 18px;
+    line-height: 2.2;
+    text-align: left;
+}
+
+/* TABLEAU FACTURE FINAL */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 30px;
+    font-size: 16px;
+}
+
+th {
+    background: linear-gradient(to bottom, #d7edf3, #b8dce6) !important;
+    border: 1px solid black;
+    padding: 12px;
+    text-align: center;
+}
+
+td {
+    border: 1px solid black;
+    padding: 14px;
+}
+
+.text-center { text-align: center; }
+.text-right { text-align: right; font-weight: bold; }
+
+/* PIED DE PAGE */
+.footer {
+    margin-top: 150px;
+    font-size: 16px;
+    line-height: 1.6;
+    text-align: left;
+}
+
+.bank-box {
+    background-color: #e2e2e2 !important;
+    padding: 6px 12px;
+    font-weight: bold;
+    margin: 20px 0;
+    display: inline-block;
+    border: 1px solid #ccc;
+}
+
+.contact-line {
+    margin-top: 30px;
+    font-size: 14px;
+    border-top: 1px solid #eee;
+    padding-top: 10px;
+}
+
+/* =========================================
+   5. OPTIMISATION IMPRESSION (MISE À JOUR)
+   ========================================= */
+   @media print {
+    @page {
+        size: A4;
+        margin: 0;
+    }
+
+    html, body {
+        height: 297mm;
+        overflow: hidden !important; /* Bloque le scroll à l'impression */
+    }
+
+    body { background: none; }
+    .no-print { display: none !important; }
+    
+    .modal {
+        position: absolute !important;
+        inset: 0 !important;
+        background: white !important;
+        padding: 0 !important;
+        display: block !important;
+        overflow: hidden !important; /* Empêche le scroll de la modal */
+    }
+
+    .page {
+        margin: 0 !important;
+        box-shadow: none !important;
+        width: 210mm;
+        height: 296mm; /* 1mm de sécurité pour éviter une page blanche */
+        overflow: hidden !important;
+        page-break-after: avoid;
+    }
+
+    /* Force le rendu des couleurs/fonds sur Chrome/Safari/Edge */
+    th { 
+        background: #d7edf3 !important; 
+        -webkit-print-color-adjust: exact; 
+        print-color-adjust: exact;
+    }
+    .bank-box { 
+        background-color: #e2e2e2 !important; 
+        -webkit-print-color-adjust: exact; 
+        print-color-adjust: exact;
+    }
+}

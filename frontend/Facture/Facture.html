@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Facture CCC - Logo Centré</title>
+    <style>
+        body {
+            background-color: #f4f4f4;
+            font-family: Arial, Helvetica, sans-serif;
+            margin: 0;
+            padding: 20px;
+            color: #000;
+        }
+
+        .page {
+            width: 210mm;
+            min-height: 297mm;
+            padding: 15mm 20mm;
+            margin: auto;
+            background-color: white;
+            box-sizing: border-box;
+            position: relative; /* Nécessaire pour le positionnement absolu du logo */
+        }
+
+        /* --- EN-TÊTE GAUCHE --- */
+        /* Le bloc de texte reste dans le flux normal */
+        .header-left {
+            font-size: 14.5px;
+            line-height: 1.5;
+            position: relative;
+            z-index: 2; /* S'assure que le texte passe devant si nécessaire */
+        }
+
+        .bold { font-weight: bold; }
+        
+        .title {
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .dashed {
+            letter-spacing: 2px;
+            margin: 2px 0;
+        }
+
+        .tel-second {
+            margin-left: 95px; /* Alignement précis sous le numéro du dessus */
+        }
+
+        .location {
+            margin-top: 25px;
+            font-weight: bold;
+            text-decoration: underline;
+            font-size: 16px;
+        }
+
+        /* --- LOGO CENTRÉ --- */
+        /* Positionnement absolu pour le centrer par rapport à la page */
+        .logo-center {
+            position: absolute;
+            top: 15mm; /* Alignė avec le haut du padding de la page */
+            left: 50%;
+            transform: translateX(-50%); /* Technique pour centrer parfaitement */
+            z-index: 1;
+        }
+
+        .logo-center img {
+            width: 115px; /* Taille ajustée selon le document original */
+            height: auto;
+        }
+
+        /* --- INFOS CLIENT --- */
+        .invoice-info {
+            margin-top: 50px; /* Espace augmenté pour éviter le chevauchement */
+            font-size: 18px;
+            line-height: 2.2;
+            clear: both;
+        }
+
+        /* --- TABLEAU --- */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 30px;
+            font-size: 16px;
+        }
+
+        th {
+            background: linear-gradient(to bottom, #d7edf3, #b8dce6);
+            border: 1px solid black;
+            padding: 12px;
+            text-align: center;
+        }
+
+        td {
+            border: 1px solid black;
+            padding: 14px;
+        }
+
+        .text-center { text-align: center; }
+        .text-right { text-align: right; font-weight: bold; }
+
+        /* --- PIED DE PAGE --- */
+        .footer {
+            margin-top: 180px;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        .bank-box {
+            background-color: #e2e2e2;
+            padding: 4px 10px;
+            font-weight: bold;
+            margin: 20px 0;
+            display: inline-block;
+        }
+
+        .contact-line {
+            margin-top: 30px;
+            font-size: 14px;
+        }
+
+        @media print {
+            body { background: none; padding: 0; }
+            .page { box-shadow: none; margin: 0; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="page">
+
+    <div class="logo-center">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/World_map_blank_without_borders.svg/512px-World_map_blank_without_borders.svg.png" alt="Logo CCC">
+    </div>
+
+    <div class="header-left">
+        <div class="title">CONSEIL CONGOLAIS</div>
+        <div class="title">DES CHARGEURS</div>
+        <div class="dashed">--------------------</div>
+        <div>DIRECTION GENERALE</div>
+        <div class="dashed">--------------------</div>
+        <div>BP:741</div>
+        <div>NIU:M2006110000069140</div>
+        <div>TEL:(242) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 06852 2444</div>
+        <div class="tel-second">056591118</div>
+        <div class="location">Pointe-Noire</div>
+    </div>
+
+    <div class="invoice-info">
+        <div><strong>Facture N° :</strong> 009/02/MKC</div>
+        <div><strong>Doit :</strong> BAO SHI</div>
+        <div><strong>Date :</strong> 10/02/2026</div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 50%;">Designation</th>
+                <th style="width: 25%;">Validité</th>
+                <th style="width: 25%;">Montant</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Contribution annuelle</td>
+                <td class="text-center">2026</td>
+                <td class="text-center">150 000</td>
+            </tr>
+            <tr>
+                <td>Achat carte de chargeur</td>
+                <td class="text-center">10 Février 2027</td>
+                <td class="text-center">12 000</td>
+            </tr>
+            <tr>
+                <td colspan="2" class="text-right">Total (XAF)</td>
+                <td class="text-center" style="font-weight: bold;">162 000</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="footer">
+        <div>Encaissé par Maritime Kargo Consulting</div>
+        <div>Pour le compte du Conseil Congolais des Chargeurs</div>
+        
+        <div class="bank-box">
+            MARITIME KARGO CONSULTING/LCB BANK N°:300120012526893701101/30
+        </div>
+
+        <div class="contact-line">
+            Des questions? Nous sommes là pour vous aider .Courriel : <strong>support@cccbesc.cg</strong> &nbsp;&nbsp; Tél: <strong>+242068770156</strong>
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>

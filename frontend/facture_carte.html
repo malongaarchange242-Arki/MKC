@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>MKC - Générateur Facture CCC</title>
+    <link rel="stylesheet" href="facture_carte.css">
+</head>
+<body>
+    <div class="admin-panel no-print">
+            <div class="admin-header">
+            <h2>Générateur de Carte de Chargeur</h2>
+            <div style="display:flex; gap:8px; align-items:center; margin-left:auto;">
+                <button id="btn-back-page" class="btn-back-page" onclick="window.location.href='dashboard_admin.html'">← Retour</button>
+                <button id="previewBtn" class="btn-primary">Aperçu Facture CCC</button>
+                <button id="saveBtn" class="btn-primary" style="background:#10b981; border-color:#10b981;">Enregistrer</button>
+            </div>
+        </div>
+
+        <div class="form-grid">
+            <div class="input-group">
+                <label>Nom du Client (Doit)</label>
+                <input type="text" id="clientName" placeholder="Ex: BAO SHI">
+            </div>
+            <div class="input-group">
+                <label>Date de Facturation</label>
+                <input type="date" id="invoiceDate">
+            </div>
+            <div class="input-group">
+                <label>Référence Facture</label>
+                <input type="text" id="objetRef" placeholder="Ex: 009/02/MKC">
+            </div>
+        </div>
+
+        <table id="editTable">
+            <thead>
+                <tr>
+                    <th style="width: 40%;">Désignation</th>
+                    <th style="width: 35%;">Validité (Type & Valeur)</th>
+                    <th style="width: 20%;">Montant (XAF)</th>
+                    <th style="width: 50px;"></th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                </tbody>
+        </table>
+        <button id="addBtn" class="btn-secondary">+ Ajouter une prestation</button>
+    </div>
+
+    <div id="previewModal" class="modal"></div>
+
+    <script src="facture_carte.js"></script>
+</body>
+</html>

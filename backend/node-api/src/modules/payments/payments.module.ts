@@ -85,6 +85,61 @@ export const paymentsModule = () => {
     }
   });
 
+  // POST /api/client/carte
+  // Body: { clientName, invoiceDate, objetRef, items }
+  router.post('/carte', async (req: Request, res: Response) => {
+    try {
+      const authUserId = (req as any).authUserId ?? null;
+      const { clientName, invoiceDate, objetRef, items } = req.body || {};
+
+      if (!clientName) return res.status(400).json({ success: false, message: 'clientName is required' });
+
+      // Generate next sequential number using count (simple approach)
+      const { data: countData, error: countErr, count } = await supabaseAdmin
+        .from('carte_chargeur')
+        .select('id', { count: 'exact' });
+
+      if (countErr) {
+        console.error('Failed to count carte_chargeur rows', countErr);
+        return res.status(500).json({ success: false, message: 'Failed to generate reference' });
+      }
+
+      const nextNum = (typeof count === 'number' ? count : (Array.isArray(countData) ? countData.length : 0)) + 1;
+      const month = invoiceDate ? String(new Date(invoiceDate).getMonth() + 1).padStart(2, '0') : String(new Date().getMonth() + 1).padStart(2, '0');
+      const reference = `${String(nextNum).padStart(3, '0')}/${month}/mkc`;
+
+      const total = Array.isArray(items) ? items.reduce((s: number, it: any) => s + (Number(it.amount) || 0), 0) : 0;
+
+      const insertPayload: any = {
+        id: uuidv4(),
+        reference,
+        client_name: clientName,
+        invoice_date: invoiceDate || null,
+        objet_ref: objetRef || null,
+        items: Array.isArray(items) ? items : null,
+        total_amount: total || null,
+        created_by: authUserId || null,
+        created_at: new Date().toISOString()
+      };
+
+      const { data: inserted, error: insertErr } = await supabaseAdmin
+        .from('carte_chargeur')
+        .insert(insertPayload)
+        .select()
+        .single();
+
+      if (insertErr || !inserted) {
+        console.error('Failed to insert carte_chargeur', insertErr);
+        return res.status(500).json({ success: false, message: 'Failed to save carte chargeur' });
+      }
+
+      return res.json({ success: true, carte: inserted, reference: inserted.reference });
+    } catch (err: any) {
+      console.error('POST /api/client/carte exception', err);
+      return res.status(500).json({ success: false, message: err.message || String(err) });
+    }
+  });
+
   
 
   // POST /api/invoices/manual
