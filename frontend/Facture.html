@@ -131,7 +131,7 @@
 <div class="page">
 
     <div class="logo-center">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/World_map_blank_without_borders.svg/512px-World_map_blank_without_borders.svg.png" alt="Logo CCC">
+        <img src="carte de chargeur.jpeg" alt="Logo CCC">
     </div>
 
     <div class="header-left">
@@ -148,9 +148,9 @@
     </div>
 
     <div class="invoice-info">
-        <div><strong>Facture N° :</strong> 009/02/MKC</div>
-        <div><strong>Doit :</strong> BAO SHI</div>
-        <div><strong>Date :</strong> 10/02/2026</div>
+        <div><strong>Facture N° :</strong> <span id="invoiceRef">................</span></div>
+        <div><strong>Doit :</strong> <span id="invoiceClient">................</span></div>
+        <div><strong>Date :</strong> <span id="invoiceDate">................</span></div>
     </div>
 
     <table>
@@ -193,6 +193,31 @@
     </div>
 
 </div>
+
+<script>
+// Populate invoice fields from URL params, window vars or localStorage
+(function(){
+    function param(name){ try{ return new URLSearchParams(window.location.search).get(name); }catch(e){return null;} }
+    const rawRef = param('ref') || window.currentInvoiceNumber || localStorage.getItem('invoice_reference') || document.querySelector('meta[name="invoice-ref"]')?.content || '';
+    const rawClient = param('client') || window.invoiceClientName || localStorage.getItem('invoice_client') || '';
+    const rawDate = param('date') || window.invoiceDate || localStorage.getItem('invoice_date') || '';
+
+    const ref = rawRef && rawRef.trim() ? rawRef : '................';
+    const client = rawClient && rawClient.trim() ? rawClient : '................';
+    let dateDisplay = '................';
+    try {
+        if (rawDate && rawDate.trim()) {
+            const d = new Date(rawDate);
+            if (!isNaN(d.getTime())) dateDisplay = d.toLocaleDateString('fr-FR');
+            else dateDisplay = rawDate;
+        }
+    } catch (e) {}
+
+    const elRef = document.getElementById('invoiceRef'); if (elRef) elRef.textContent = ref;
+    const elClient = document.getElementById('invoiceClient'); if (elClient) elClient.textContent = client;
+    const elDate = document.getElementById('invoiceDate'); if (elDate) elDate.textContent = dateDisplay;
+})();
+</script>
 
 </body>
 </html>

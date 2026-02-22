@@ -1,7 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- SÉLECTEURS ---
     const clientNameInput = document.getElementById('clientName');
-    const objetRefInput = document.getElementById('objetRef');
     const invoiceDateInput = document.getElementById('invoiceDate');
     const tableBody = document.getElementById('tableBody');
     const previewModal = document.getElementById('previewModal');
@@ -76,11 +75,80 @@ document.addEventListener('DOMContentLoaded', () => {
         return formatted.replace(/(\s)([a-z])/, (match, p1, p2) => p1 + p2.toUpperCase());
     }
 
+    // --- Helpers for reference management ---
+    function getCurrentRef() {
+        try {
+            const fromWindow = (window.currentInvoiceNumber || '').toString();
+            if (fromWindow && fromWindow.trim()) return fromWindow;
+        } catch (e) {}
+        try { return (localStorage.getItem('invoice_reference') || '').toString(); } catch (e) { return ''; }
+    }
+
+    function setCurrentRef(v) {
+        try { window.currentInvoiceNumber = v; } catch (e) {}
+        try { if (v) localStorage.setItem('invoice_reference', v); } catch (e) {}
+    }
+
     // --- 3. PREVIEW & IMPRESSION ---
-    previewBtn.onclick = () => {
-        const client = clientNameInput.value || "................";
-        const ref = objetRefInput.value || "................";
-        const dateInv = invoiceDateInput.value ? new Date(invoiceDateInput.value).toLocaleDateString('fr-FR') : "................";
+    async function ensureServerReference() {
+        try {
+            const current = getCurrentRef();
+            if (current && String(current).trim()) return;
+
+            const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+            const API_BASE = document.querySelector('meta[name="api-base"]')?.content || `${window.location.protocol}//${window.location.hostname}:3000`;
+
+            if (token) {
+                try {
+                    const resp = await fetch(`${API_BASE.replace(/\/$/, '')}/api/client/invoices/manual`, {
+                        method: 'POST',
+                        headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { Authorization: `Bearer ${token}` } : {}),
+                        body: JSON.stringify({})
+                    });
+                    if (resp.ok) {
+                        const data = await resp.json().catch(() => null);
+                        const invoice = data && (data.invoice || data) ? (data.invoice || data) : null;
+                        const ref = invoice && (invoice.reference || invoice.invoice_number || invoice.ref) ? (invoice.reference || invoice.invoice_number || invoice.ref) : null;
+                        if (ref) {
+                            setCurrentRef(ref);
+                            return;
+                        }
+                    }
+                } catch (e) {
+                    // ignore server failure
+                }
+            }
+
+            // Fallback: generate a provisional reference client-side
+            try {
+                const month = invoiceDateInput.value ? String(new Date(invoiceDateInput.value).getMonth() + 1).padStart(2, '0') : String(new Date().getMonth() + 1).padStart(2, '0');
+                const key = `local_ref_counter_${month}_${new Date().getFullYear()}`;
+                let counter = Number(localStorage.getItem(key) || '0') || 0;
+                counter += 1;
+                localStorage.setItem(key, String(counter));
+                const num = String(counter).padStart(3, '0');
+                const provisional = `${num}/${month}/mkc`;
+                setCurrentRef(provisional);
+            } catch (e) {}
+        } catch (e) {
+            // swallow
+        }
+    }
+
+    previewBtn.onclick = async () => {
+        await ensureServerReference();
+        const clientRaw = clientNameInput.value || localStorage.getItem('invoice_client') || window.invoiceClientName || "................";
+        const rawRef = getCurrentRef() || '';
+        const ref = rawRef && rawRef.toString().trim() ? rawRef : "................";
+        const rawDate = invoiceDateInput.value || localStorage.getItem('invoice_date') || window.invoiceDate || '';
+        const dateInv = rawDate ? new Date(rawDate).toLocaleDateString('fr-FR') : "................";
+
+        // persist preview values for Facture.html to read
+        try {
+            localStorage.setItem('invoice_reference', ref === '................' ? '' : ref);
+            localStorage.setItem('invoice_client', clientRaw === '................' ? '' : clientRaw);
+            if (rawDate) localStorage.setItem('invoice_date', rawDate);
+        } catch (e) {}
 
         let rowsHtml = '';
         let total = 0;
@@ -109,11 +177,11 @@ document.addEventListener('DOMContentLoaded', () => {
         previewModal.innerHTML = `
             <div class="no-print" style="width:210mm; margin: 10px auto; display:flex; gap:10px; justify-content: flex-end;">
                 <button onclick="document.getElementById('previewModal').style.display='none'" style="padding:10px 20px; cursor:pointer; background:#6c757d; color:white; border:none; border-radius:4px;">← Retour</button>
-                <button onclick="window.print()" style="padding:10px 20px; cursor:pointer; background:#ff8c00; color:white; border:none; border-radius:4px; font-weight:bold;">⎙ Imprimer la facture</button>
+                <button onclick="window.open('Facture.html?ref=${encodeURIComponent(ref)}&client=${encodeURIComponent(clientRaw)}&date=${encodeURIComponent(rawDate)}','_blank')" style="padding:10px 20px; cursor:pointer; background:#ff8c00; color:white; border:none; border-radius:4px; font-weight:bold;">⎙ Imprimer la facture</button>
             </div>
             <div class="page">
                 <div class="logo-center">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/World_map_blank_without_borders.svg/512px-World_map_blank_without_borders.svg.png" alt="Logo CCC">
+                    <img src="carte de chargeur.jpeg" alt="Logo CCC">
                 </div>
                 <div class="header-left">
                     <div class="title">CONSEIL CONGOLAIS</div>
@@ -129,7 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
                 <div class="invoice-info">
                     <div><strong>Facture N° :</strong> ${ref}</div>
-                    <div><strong>Doit :</strong> ${client}</div>
+                    <div><strong>Doit :</strong> ${clientRaw}</div>
                     <div><strong>Date :</strong> ${dateInv}</div>
                 </div>
                 <table>
@@ -166,7 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 4. SAVE (POST to backend) ---
     saveBtn.onclick = async () => {
         const client = clientNameInput.value || "";
-        const ref = objetRefInput.value || "";
+        const ref = getCurrentRef() || "";
         const dateInv = invoiceDateInput.value || null;
 
         const itemsArr = [];
@@ -182,22 +250,48 @@ document.addEventListener('DOMContentLoaded', () => {
         const payload = { clientName: client, invoiceDate: dateInv, objetRef: ref, items: itemsArr };
 
         try {
-            const resp = await fetch('/api/client/carte', {
+            const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+            const headers = Object.assign({ 'Content-Type': 'application/json' }, token ? { Authorization: `Bearer ${token}` } : {});
+
+            const API_BASE = document.querySelector('meta[name="api-base"]')?.content || `${window.location.protocol}//${window.location.hostname}:3000`;
+            const url = `${API_BASE.replace(/\/$/, '')}/api/client/carte`;
+
+            const resp = await fetch(url, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers,
                 body: JSON.stringify(payload)
             });
 
-            const body = await resp.json();
+            // Be defensive: only attempt JSON parse when content-type is JSON and body present
+            let body = null;
+            try {
+                const ct = resp.headers.get('content-type') || '';
+                if (ct.includes('application/json')) {
+                    body = await resp.json();
+                } else {
+                    const text = await resp.text();
+                    body = text ? { message: text } : null;
+                }
+            } catch (parseErr) {
+                body = null;
+            }
+
             if (!resp.ok) {
-                alert('Échec de l\'enregistrement: ' + (body.message || resp.statusText));
+                const msg = body && body.message ? body.message : resp.statusText || `HTTP ${resp.status}`;
+                alert('Échec de l\'enregistrement: ' + msg);
                 return;
             }
 
-            // show generated reference
-            if (body && body.reference) {
-                alert('Enregistré — Référence: ' + body.reference);
-            } else {
+            // show generated reference and persist it for preview
+            try {
+                const serverRef = body && (body.reference || (body.carte && body.carte.reference)) ? (body.reference || (body.carte && body.carte.reference)) : null;
+                if (serverRef) {
+                    try { setCurrentRef(serverRef); } catch (e) {}
+                    alert('Enregistré — Référence: ' + serverRef);
+                } else {
+                    alert('Enregistré');
+                }
+            } catch (e) {
                 alert('Enregistré');
             }
         } catch (e) {

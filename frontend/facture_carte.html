@@ -12,7 +12,7 @@
             <div style="display:flex; gap:8px; align-items:center; margin-left:auto;">
                 <button id="btn-back-page" class="btn-back-page" onclick="window.location.href='dashboard_admin.html'">← Retour</button>
                 <button id="previewBtn" class="btn-primary">Aperçu Facture CCC</button>
-                <button id="saveBtn" class="btn-primary" style="background:#10b981; border-color:#10b981;">Enregistrer</button>
+                <button id="saveBtn" class="btn-primary" style="background:#f59e0b; border-color:#f59e0b;">Enregistrer</button>
             </div>
         </div>
 
@@ -25,10 +25,7 @@
                 <label>Date de Facturation</label>
                 <input type="date" id="invoiceDate">
             </div>
-            <div class="input-group">
-                <label>Référence Facture</label>
-                <input type="text" id="objetRef" placeholder="Ex: 009/02/MKC">
-            </div>
+            <!-- Référence Facture removed (managed by server/local storage) -->
         </div>
 
         <table id="editTable">
