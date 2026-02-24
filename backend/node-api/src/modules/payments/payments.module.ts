@@ -90,7 +90,7 @@ export const paymentsModule = () => {
   router.post('/carte', async (req: Request, res: Response) => {
     try {
       const authUserId = (req as any).authUserId ?? null;
-      const { clientName, invoiceDate, objetRef, items } = req.body || {};
+      const { clientName, invoiceDate, objetRef, items, docType } = req.body || {};
 
       if (!clientName) return res.status(400).json({ success: false, message: 'clientName is required' });
 
@@ -116,6 +116,7 @@ export const paymentsModule = () => {
         client_name: clientName,
         invoice_date: invoiceDate || null,
         objet_ref: objetRef || null,
+        doc_type: docType || 'FACTURE',
         items: Array.isArray(items) ? items : null,
         total_amount: total || null,
         created_by: authUserId || null,
@@ -131,6 +132,35 @@ export const paymentsModule = () => {
       if (insertErr || !inserted) {
         console.error('Failed to insert carte_chargeur', insertErr);
         return res.status(500).json({ success: false, message: 'Failed to save carte chargeur' });
+      }
+
+      // Also persist individual items to carte_chargeur_items (normalized table)
+      try {
+        if (Array.isArray(items) && items.length > 0) {
+          const itemsToInsert = items.map((it: any) => ({
+            id: uuidv4(),
+            carte_id: inserted.id,
+            description: it.description || null,
+            validity_type: it.validity_type || null,
+            validity_value: it.validity_value || null,
+            quantity: (typeof it.quantity !== 'undefined' && it.quantity !== null) ? Number(it.quantity) : null,
+            unit_price: (typeof it.unit_price !== 'undefined' && it.unit_price !== null) ? Number(it.unit_price) : null,
+            amount: (typeof it.amount !== 'undefined' && it.amount !== null) ? Number(it.amount) : null,
+            created_at: new Date().toISOString()
+          }));
+
+          const { data: itemsInserted, error: itemsInsertErr } = await supabaseAdmin
+            .from('carte_chargeur_items')
+            .insert(itemsToInsert)
+            .select();
+
+          if (itemsInsertErr) {
+            console.error('Failed to insert carte_chargeur_items', itemsInsertErr);
+            // continue — the main carte_chargeur record exists; return success but log the issue
+          }
+        }
+      } catch (itemsErr) {
+        console.error('Exception while inserting carte_chargeur_items', itemsErr);
       }
 
       return res.json({ success: true, carte: inserted, reference: inserted.reference });

@@ -65,6 +65,16 @@ body {
     border-radius: 4px;
 }
 
+/* Match select styling to inputs for consistent UI */
+.input-group select {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: #fff;
+    width: 100%;
+    font-size: 14px;
+}
+
 /* TABLEAU D'ÉDITION */
 #editTable {
     width: 100%;
@@ -98,6 +108,30 @@ button { cursor: pointer; border: none; border-radius: 4px; font-weight: bold; t
 .btn-secondary { background: #6c757d; color: #fff; padding: 10px 15px; margin-top: 10px; }
 .btn-del { background: #dc3545; color: #fff; padding: 5px 10px; }
 button:hover { opacity: 0.9; }
+
+/* Loading button state */
+.btn-loading {
+    background: #cfcfcf !important;
+    color: #666 !important;
+    cursor: not-allowed !important;
+    position: relative;
+}
+.btn-loading::after {
+    content: '';
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(0,0,0,0.15);
+    border-top-color: rgba(0,0,0,0.6);
+    border-radius: 50%;
+    margin-left: 8px;
+    vertical-align: middle;
+    animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
 
 /* =========================================
    3. MODAL DE PREVIEW

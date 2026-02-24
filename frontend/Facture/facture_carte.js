@@ -12,34 +12,26 @@ document.addEventListener('DOMContentLoaded', () => {
     function addRow() {
         const tr = document.createElement('tr');
         tr.className = 'item-row';
+
         tr.innerHTML = `
             <td>
                 <select class="in-desc">
                     <option value="Contribution annuelle">Contribution annuelle</option>
                     <option value="Achat carte de chargeur">Achat carte de chargeur</option>
+                    <option value="Frais de dossier">Frais de dossier</option>
+                    <option value="custom">Autre (Saisir manuellement)...</option>
                 </select>
                 <input type="text" class="in-desc-custom" style="display: none; margin-top:5px;" placeholder="Désignation personnalisée">
             </td>
-            <td>
-                <div style="margin-bottom:5px;">
-                    <select class="in-date-type" style="font-size:11px; padding:2px; width:100%;">
-                        <option value="periode">Année (Période)</option>
-                        <option value="unique">Date Unique</option>
-                    </select>
-                </div>
-                <div class="group-periode" style="display:flex; gap:5px; align-items:center;">
-                    <input type="number" class="in-val-debut" value="2026" style="width:45%;">
-                    <span>-</span>
-                    <input type="number" class="in-val-fin" value="2026" style="width:45%;">
-                </div>
-                <div class="group-unique" style="display:none;">
-                    <input type="date" class="in-date-seule" style="width:100%;">
-                </div>
+            <td style="display:flex; gap:5px;">
+                <select class="in-validity-type" style="width:40%;">
+                    <option value="year">Année</option>
+                    <option value="date">Date</option>
+                </select>
+                <input type="number" class="in-val-year" style="width:60%;" value="2026">
+                <input type="date" class="in-val-date" style="width:60%; display:none;">
             </td>
-            <td><input type="number" class="in-qty" value="1" min="1" style="width:100%;"></td>
-            <td><input type="number" class="in-pu" placeholder="0" step="0.01" style="width:100%;"></td>
-            <td class="row-montant-text" style="font-weight:bold; text-align:center; vertical-align:middle;">0</td>
-            <input type="hidden" class="in-montant" value="0">
+            <td><input type="number" class="in-amount" placeholder="0"></td>
             <td><button class="btn-del">×</button></td>
         `;
         tableBody.appendChild(tr);
@@ -52,40 +44,12 @@ document.addEventListener('DOMContentLoaded', () => {
             row.querySelector('.in-desc-custom').style.display = e.target.value === 'custom' ? 'block' : 'none';
         });
 
-        // Toggle Période vs Date Unique
-        row.querySelector('.in-date-type').addEventListener('change', (e) => {
-            const isUnique = e.target.value === 'unique';
-            row.querySelector('.group-periode').style.display = isUnique ? 'none' : 'flex';
-            row.querySelector('.group-unique').style.display = isUnique ? 'block' : 'none';
-            if (isUnique) row.querySelector('.in-qty').value = 1;
-            calculateRow(row);
+        // Gérer l'affichage Switch entre Année et Date
+        row.querySelector('.in-validity-type').addEventListener('change', (e) => {
+            const isYear = e.target.value === 'year';
+            row.querySelector('.in-val-year').style.display = isYear ? 'block' : 'none';
+            row.querySelector('.in-val-date').style.display = isYear ? 'none' : 'block';
         });
-
-        // Recalcul when qty or pu or date inputs change
-        const inputsToWatch = row.querySelectorAll('.in-val-debut, .in-val-fin, .in-date-seule, .in-qty, .in-pu');
-        inputsToWatch.forEach(input => {
-            input.addEventListener('input', () => calculateRow(row));
-        });
-    }
-
-    function calculateRow(row) {
-        const dateType = row.querySelector('.in-date-type').value;
-        const qtyInput = row.querySelector('.in-qty');
-        const puInput = row.querySelector('.in-pu');
-
-        // calculate quantity for period type
-        if (dateType === 'periode') {
-            const debut = parseInt(row.querySelector('.in-val-debut').value) || 0;
-            const fin = parseInt(row.querySelector('.in-val-fin').value) || 0;
-            if (debut > 0 && fin > 0 && fin >= debut) qtyInput.value = (fin - debut) + 1;
-            else qtyInput.value = 0;
-        }
-
-        const qty = Number(qtyInput.value) || 0;
-        const pu = Number(puInput.value) || 0;
-        const montant = qty * pu;
-        row.querySelector('.row-montant-text').textContent = montant.toLocaleString('fr-FR');
-        row.querySelector('.in-montant').value = montant;
     }
 
     // Ajouter une ligne au clic
@@ -132,7 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (current && String(current).trim()) return;
 
             const token = localStorage.getItem('token') || localStorage.getItem('access_token');
-            const API_BASE = "http://localhost:3000";
+            const API_BASE = "https://mkc-backend-kqov.onrender.com";
 
             if (token) {
                 try {
@@ -173,12 +137,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     previewBtn.onclick = async () => {
         await ensureServerReference();
-        // document type (FACTURE or PROFORMA) — used for label and print
-        const docTypeSelect = document.getElementById('docType');
-        const docType = (docTypeSelect && docTypeSelect.value) ? docTypeSelect.value : (localStorage.getItem('invoice_docType') || 'FACTURE');
-        const docLabel = (String(docType).toUpperCase() === 'PROFORMA') ? 'Proforma N°' : 'Facture N°';
-        try { localStorage.setItem('invoice_docType', docType); } catch (e) {}
-
         const clientRaw = clientNameInput.value || localStorage.getItem('invoice_client') || window.invoiceClientName || "................";
         const rawRef = getCurrentRef() || '';
         const ref = rawRef && rawRef.toString().trim() ? rawRef : "................";
@@ -201,28 +159,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const desc = descSelect === 'custom' ? row.querySelector('.in-desc-custom').value : descSelect;
             
             // Récupération validité
-            const dateType = row.querySelector('.in-date-type').value;
-            let validity = "";
-            if (dateType === 'periode') {
-                const debut = row.querySelector('.in-val-debut').value;
-                const fin = row.querySelector('.in-val-fin').value;
-                validity = (debut === fin) ? debut : `${debut} - ${fin}`;
-            } else {
-                const dateSeule = row.querySelector('.in-date-seule').value;
-                validity = dateSeule ? formatLongDate(dateSeule) : "................";
-            }
-
-            const qty = Number(row.querySelector('.in-qty').value) || 0;
-            const pu = Number(row.querySelector('.in-pu').value) || 0;
-            const amount = Number(row.querySelector('.in-montant').value) || (qty * pu) || 0;
+            const type = row.querySelector('.in-validity-type').value;
+            const validity = type === 'year' ? row.querySelector('.in-val-year').value : formatLongDate(row.querySelector('.in-val-date').value);
+            
+            // Récupération montant
+            const amount = parseFloat(row.querySelector('.in-amount').value) || 0;
             
             total += amount;
             rowsHtml += `
                 <tr>
                     <td>${desc || "................"}</td>
                     <td class="text-center">${validity}</td>
-                    <td class="text-center">${qty}</td>
-                    <td class="text-center">${pu.toLocaleString('fr-FR')}</td>
                     <td class="text-center">${amount.toLocaleString('fr-FR')}</td>
                 </tr>`;
         });
@@ -230,7 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
         previewModal.innerHTML = `
             <div class="no-print" style="width:210mm; margin: 10px auto; display:flex; gap:10px; justify-content: flex-end;">
                 <button onclick="document.getElementById('previewModal').style.display='none'" style="padding:10px 20px; cursor:pointer; background:#6c757d; color:white; border:none; border-radius:4px;">← Retour</button>
-                <button onclick="window.open('Facture.html?ref=${encodeURIComponent(ref)}&client=${encodeURIComponent(clientRaw)}&date=${encodeURIComponent(rawDate)}&doctype=${encodeURIComponent(docType)}','_blank')" style="padding:10px 20px; cursor:pointer; background:#ff8c00; color:white; border:none; border-radius:4px; font-weight:bold;">⎙ Imprimer la facture</button>
+                <button onclick="window.open('Facture.html?ref=${encodeURIComponent(ref)}&client=${encodeURIComponent(clientRaw)}&date=${encodeURIComponent(rawDate)}','_blank')" style="padding:10px 20px; cursor:pointer; background:#ff8c00; color:white; border:none; border-radius:4px; font-weight:bold;">⎙ Imprimer la facture</button>
             </div>
             <div class="page">
                 <div class="logo-center">
@@ -249,24 +196,22 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="location">Pointe-Noire</div>
                 </div>
                 <div class="invoice-info">
-                    <div><strong>${docLabel} :</strong> ${ref}</div>
+                    <div><strong>Facture N° :</strong> ${ref}</div>
                     <div><strong>Doit :</strong> ${clientRaw}</div>
                     <div><strong>Date :</strong> ${dateInv}</div>
                 </div>
                 <table>
                     <thead>
                         <tr>
-                            <th style="width: 40%;">Designation</th>
-                            <th style="width: 20%;">Validité</th>
-                            <th style="width: 12%;">Quantité</th>
-                            <th style="width: 14%;">Prix Unitaire</th>
-                            <th style="width: 14%;">Montant</th>
+                            <th style="width: 50%;">Designation</th>
+                            <th style="width: 25%;">Validité</th>
+                            <th style="width: 25%;">Montant</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${rowsHtml}
                         <tr>
-                            <td colspan="4" class="text-right">Total (XAF)</td>
+                            <td colspan="2" class="text-right">Total (XAF)</td>
                             <td class="text-center" style="font-weight: bold;">${total.toLocaleString('fr-FR')}</td>
                         </tr>
                     </tbody>
@@ -288,97 +233,70 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 4. SAVE (POST to backend) ---
     saveBtn.onclick = async () => {
-        const originalText = saveBtn.textContent;
+        const client = clientNameInput.value || "";
+        const ref = getCurrentRef() || "";
+        const dateInv = invoiceDateInput.value || null;
+
+        const itemsArr = [];
+        document.querySelectorAll('.item-row').forEach(row => {
+            const descSelect = row.querySelector('.in-desc').value;
+            const desc = descSelect === 'custom' ? row.querySelector('.in-desc-custom').value : descSelect;
+            const type = row.querySelector('.in-validity-type').value;
+            const validity = type === 'year' ? row.querySelector('.in-val-year').value : row.querySelector('.in-val-date').value;
+            const amount = parseFloat(row.querySelector('.in-amount').value) || 0;
+            itemsArr.push({ description: desc, validity_type: type, validity_value: validity, amount });
+        });
+
+        const payload = { clientName: client, invoiceDate: dateInv, objetRef: ref, items: itemsArr };
+
         try {
-            // set loading state
-            saveBtn.disabled = true;
-            saveBtn.classList.add('btn-loading');
-            saveBtn.textContent = 'En cours...';
+            const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+            const headers = Object.assign({ 'Content-Type': 'application/json' }, token ? { Authorization: `Bearer ${token}` } : {});
 
-            const client = clientNameInput.value || "";
-            const ref = getCurrentRef() || "";
-            const dateInv = invoiceDateInput.value || null;
+            const API_BASE = "https://mkc-backend-kqov.onrender.com";
+            const url = `${API_BASE.replace(/\/$/, '')}/api/client/carte`;
 
-            const itemsArr = [];
-            document.querySelectorAll('.item-row').forEach(row => {
-                const descSelect = row.querySelector('.in-desc').value;
-                const desc = descSelect === 'custom' ? (row.querySelector('.in-desc-custom').value || '') : descSelect;
-                const dateType = row.querySelector('.in-date-type').value;
-                let validity = '';
-                if (dateType === 'periode') {
-                    const debut = row.querySelector('.in-val-debut').value || '';
-                    const fin = row.querySelector('.in-val-fin').value || '';
-                    validity = debut && fin ? (debut === fin ? debut : `${debut}-${fin}`) : '';
-                } else {
-                    validity = row.querySelector('.in-date-seule').value || '';
-                }
-                const quantity = Number(row.querySelector('.in-qty').value) || 0;
-                const unit_price = Number(row.querySelector('.in-pu').value) || 0;
-                const amount = Number(row.querySelector('.in-montant').value) || (quantity * unit_price) || 0;
-
-                itemsArr.push({ description: desc, validity_type: dateType === 'periode' ? 'period' : 'date', validity_value: validity, quantity, unit_price, amount });
+            const resp = await fetch(url, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify(payload)
             });
 
-            // include document type (FACTURE / PROFORMA) in payload
-            const docTypeVal = (document.getElementById('docType') && document.getElementById('docType').value) ? document.getElementById('docType').value : (localStorage.getItem('invoice_docType') || 'FACTURE');
-            const payload = { clientName: client, invoiceDate: dateInv, objetRef: ref, items: itemsArr, docType: docTypeVal };
-
+            // Be defensive: only attempt JSON parse when content-type is JSON and body present
+            let body = null;
             try {
-                const token = localStorage.getItem('token') || localStorage.getItem('access_token');
-                const headers = Object.assign({ 'Content-Type': 'application/json' }, token ? { Authorization: `Bearer ${token}` } : {});
-
-                const API_BASE = "http://localhost:3000";
-                const url = `${API_BASE.replace(/\/$/, '')}/api/client/carte`;
-
-                const resp = await fetch(url, {
-                    method: 'POST',
-                    headers,
-                    body: JSON.stringify(payload)
-                });
-
-                // Be defensive: only attempt JSON parse when content-type is JSON and body present
-                let body = null;
-                try {
-                    const ct = resp.headers.get('content-type') || '';
-                    if (ct.includes('application/json')) {
-                        body = await resp.json();
-                    } else {
-                        const text = await resp.text();
-                        body = text ? { message: text } : null;
-                    }
-                } catch (parseErr) {
-                    body = null;
+                const ct = resp.headers.get('content-type') || '';
+                if (ct.includes('application/json')) {
+                    body = await resp.json();
+                } else {
+                    const text = await resp.text();
+                    body = text ? { message: text } : null;
                 }
+            } catch (parseErr) {
+                body = null;
+            }
 
-                if (!resp.ok) {
-                    const msg = body && body.message ? body.message : resp.statusText || `HTTP ${resp.status}`;
-                    alert('Échec de l\'enregistrement: ' + msg);
-                    return;
-                }
+            if (!resp.ok) {
+                const msg = body && body.message ? body.message : resp.statusText || `HTTP ${resp.status}`;
+                alert('Échec de l\'enregistrement: ' + msg);
+                return;
+            }
 
-                // show generated reference and persist it for preview
-                try {
-                    const serverRef = body && (body.reference || (body.carte && body.carte.reference)) ? (body.reference || (body.carte && body.carte.reference)) : null;
-                    if (serverRef) {
-                        try { setCurrentRef(serverRef); } catch (e) {}
-                        alert('Enregistré — Référence: ' + serverRef);
-                    } else {
-                        alert('Enregistré');
-                    }
-                } catch (e) {
+            // show generated reference and persist it for preview
+            try {
+                const serverRef = body && (body.reference || (body.carte && body.carte.reference)) ? (body.reference || (body.carte && body.carte.reference)) : null;
+                if (serverRef) {
+                    try { setCurrentRef(serverRef); } catch (e) {}
+                    alert('Enregistré — Référence: ' + serverRef);
+                } else {
                     alert('Enregistré');
                 }
             } catch (e) {
-                console.error('Save failed', e);
-                alert('Erreur réseau lors de l\'enregistrement');
+                alert('Enregistré');
             }
-        } finally {
-            // restore button state
-            try {
-                saveBtn.disabled = false;
-                saveBtn.classList.remove('btn-loading');
-                saveBtn.textContent = originalText;
-            } catch (e) {}
+        } catch (e) {
+            console.error('Save failed', e);
+            alert('Erreur réseau lors de l\'enregistrement');
         }
     };
 

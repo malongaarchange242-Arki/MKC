@@ -148,7 +148,7 @@
     </div>
 
     <div class="invoice-info">
-        <div><strong>Facture N° :</strong> <span id="invoiceRef">................</span></div>
+        <div><strong id="docLabel">Facture N° :</strong> <span id="invoiceRef">................</span></div>
         <div><strong>Doit :</strong> <span id="invoiceClient">................</span></div>
         <div><strong>Date :</strong> <span id="invoiceDate">................</span></div>
     </div>
@@ -216,6 +216,14 @@
     const elRef = document.getElementById('invoiceRef'); if (elRef) elRef.textContent = ref;
     const elClient = document.getElementById('invoiceClient'); if (elClient) elClient.textContent = client;
     const elDate = document.getElementById('invoiceDate'); if (elDate) elDate.textContent = dateDisplay;
+    try {
+        const rawDocType = param('doctype') || window.invoiceDocType || localStorage.getItem('invoice_docType') || '';
+        const labelEl = document.getElementById('docLabel');
+        if (labelEl) {
+            const txt = (rawDocType && String(rawDocType).toUpperCase() === 'PROFORMA') ? 'Proforma N° :' : 'Facture N° :';
+            labelEl.textContent = txt;
+        }
+    } catch (e) {}
 })();
 </script>
 

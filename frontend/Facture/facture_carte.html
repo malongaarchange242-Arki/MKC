@@ -2,16 +2,16 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>MKC - Générateur Facture CCC</title>
+    <title>MKC - Générateur Facture/Proforma</title>
     <link rel="stylesheet" href="facture_carte.css">
 </head>
 <body>
     <div class="admin-panel no-print">
-            <div class="admin-header">
-            <h2>Générateur de Carte de Chargeur</h2>
+        <div class="admin-header">
+            <h2>Générateur Facture/Proforma</h2>
             <div style="display:flex; gap:8px; align-items:center; margin-left:auto;">
                 <button id="btn-back-page" class="btn-back-page" onclick="window.location.href='dashboard_admin.html'">← Retour</button>
-                <button id="previewBtn" class="btn-primary">Aperçu Facture CCC</button>
+                <button id="previewBtn" class="btn-primary">Aperçu du document</button>
                 <button id="saveBtn" class="btn-primary" style="background:#f59e0b; border-color:#f59e0b;">Enregistrer</button>
             </div>
         </div>
@@ -20,8 +20,8 @@
             <div class="input-group">
                 <label>Type de document</label>
                 <select id="docType">
-                    <option value="FACTURE">Facture</option>
-                    <option value="PROFORMA">Proforma</option>
+                    <option value="FACTURE">FACTURE</option>
+                    <option value="PROFORMA">PROFORMA</option>
                 </select>
             </div>
             <div class="input-group">
@@ -29,27 +29,26 @@
                 <input type="text" id="clientName" placeholder="Ex: BAO SHI">
             </div>
             <div class="input-group">
-                <label>Date de Facturation</label>
+                <label>Date</label>
                 <input type="date" id="invoiceDate">
             </div>
-            <!-- Référence Facture removed (managed by server/local storage) -->
         </div>
 
         <table id="editTable">
             <thead>
                 <tr>
-                    <th style="width: 35%;">Désignation</th>
-                    <th style="width: 30%;">Validité (Type & Valeur)</th>
-                    <th style="width: 10%;">Quantité</th>
-                    <th style="width: 12%;">Prix Unitaire</th>
-                    <th style="width: 13%;">Montant (XAF)</th>
-                    <th style="width: 50px;"></th>
+                    <th style="width: 30%;">Désignation</th>
+                    <th style="width: 25%;">Validité (Début - Fin)</th>
+                    <th style="width: 10%;">Qté</th>
+                    <th style="width: 15%;">Prix Unitaire</th>
+                    <th style="width: 15%;">Montant</th>
+                    <th style="width: 5%;"></th>
                 </tr>
             </thead>
             <tbody id="tableBody">
                 </tbody>
         </table>
-        <button id="addBtn" class="btn-secondary">+ Ajouter une prestation</button>
+        <button id="addBtn" class="btn-secondary">+ Ajouter une ligne</button>
     </div>
 
     <div id="previewModal" class="modal"></div>
