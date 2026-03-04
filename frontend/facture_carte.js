@@ -17,6 +17,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 <select class="in-desc">
                     <option value="Contribution annuelle">Contribution annuelle</option>
                     <option value="Achat carte de chargeur">Achat carte de chargeur</option>
+                    <option value="Validation carte de chargeur">Validation carte de chargeur</option>
+                    <option value="custom">Autre (Saisir manuellement)...</option>
                 </select>
                 <input type="text" class="in-desc-custom" style="display: none; margin-top:5px;" placeholder="Désignation personnalisée">
             </td>
@@ -132,7 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (current && String(current).trim()) return;
 
             const token = localStorage.getItem('token') || localStorage.getItem('access_token');
-            const API_BASE = "http://localhost:3000";
+            const API_BASE = "https://mkc-backend-kqov.onrender.com";
 
             if (token) {
                 try {
@@ -327,7 +329,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const token = localStorage.getItem('token') || localStorage.getItem('access_token');
                 const headers = Object.assign({ 'Content-Type': 'application/json' }, token ? { Authorization: `Bearer ${token}` } : {});
 
-                const API_BASE = "http://localhost:3000";
+                const API_BASE = "https://mkc-backend-kqov.onrender.com";
                 const url = `${API_BASE.replace(/\/$/, '')}/api/client/carte`;
 
                 const resp = await fetch(url, {
