@@ -46,7 +46,20 @@ export class PaymentsService {
       // Read authoritative invoices table and join requests to get BL and owner
       const { data, error } = await supabaseAdmin
         .from('invoices')
-        .select(`id, invoice_number, total_amount, subtotal_amount, service_fee_amount, currency, cargo_route, status, created_at, request_id, requests ( bl_number, user_id )`)
+        .select(`
+          id,
+          invoice_number,
+          total_amount,
+          currency,
+          bill_of_lading,
+          status,
+          created_at,
+          request_id,
+          requests (
+            bl_number,
+            user_id
+          )
+        `)
         .order('created_at', { ascending: false });
 
       if (error) return { data: null, error };
@@ -55,12 +68,13 @@ export class PaymentsService {
         .map((row: any) => {
           const bl = row.requests?.bl_number ?? null;
           const owner = row.requests?.user_id ?? null;
+
           return {
             id: row.id,
             request_id: row.request_id,
             invoice_number: row.invoice_number,
             bl_number: bl,
-            cargo_route: row.cargo_route || null,
+            cargo_route: null,
             client_id: owner,
             amount_due: row.total_amount,
             currency: row.currency,

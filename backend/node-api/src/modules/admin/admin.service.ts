@@ -494,7 +494,7 @@ export class AdminService {
       }
     }
 
-    const pythonUrlBase = process.env.PYTHON_SERVICE_URL || 'https://mkc-5slv.onrender.com/api/v1';
+    const pythonUrlBase = process.env.PYTHON_SERVICE_URL || 'https://mkc-8s1l.onrender.com';
     const endpoint = kind === 'FERI'
       ? (pythonUrlBase.includes('/api/') ? `${pythonUrlBase.replace(/\/$/, '')}/generate/feri` : `${pythonUrlBase.replace(/\/$/, '')}/api/v1/generate/feri`)
       : (pythonUrlBase.includes('/api/') ? `${pythonUrlBase.replace(/\/$/, '')}/generate/ad` : `${pythonUrlBase.replace(/\/$/, '')}/api/v1/generate/ad`);
@@ -682,7 +682,7 @@ export class AdminService {
         // Generate a magic link token so recipients can open the preview without manual login
         try {
           const { JWTUtils } = await import('../../utils/jwt');
-          const apiBase = (process.env.API_BASE_URL || 'https://mkc-backend-kqov.onrender.com').replace(/\/$/, '');
+          const apiBase = (process.env.API_BASE_URL || 'https://mkc-backend-cs7a.onrender.com').replace(/\/$/, '');
           const magic = JWTUtils.generateMagicToken({ sub: request.user_id, email: request.customer_email || '', redirect: previewPath });
           const invoicePreviewUrl = `${apiBase}/auth/magic/redirect?token=${encodeURIComponent(magic)}`;
 
@@ -782,7 +782,7 @@ export class AdminService {
           const invoiceNumber = invoice?.invoice_number || opts.invoiceNumber || '';
 
           const { JWTUtils } = await import('../../utils/jwt');
-          const apiBase = (process.env.API_BASE_URL || 'https://mkc-backend-kqov.onrender.com').replace(/\/$/, '');
+          const apiBase = (process.env.API_BASE_URL || 'https://mkc-backend-cs7a.onrender.com').replace(/\/$/, '');
           const previewPath = `/Facture_.html?invoice_id=${encodeURIComponent(invoiceId)}`;
           const magic = JWTUtils.generateMagicToken({ sub: request.user_id, email: request.customer_email || '', redirect: previewPath });
           const invoicePreviewUrl = `${apiBase}/auth/magic/redirect?token=${encodeURIComponent(magic)}`;

@@ -73,7 +73,7 @@ app.get('/health', async (_req: Request, res: Response) => {
 
 // Verify Python parse endpoint by making a short call using configured API key
 app.get('/services/python/verify', async (_req: Request, res: Response) => {
-  const pythonCfg = process.env.PYTHON_SERVICE_URL || 'https://mkc-5slv.onrender.com/api/v1';
+  const pythonCfg = process.env.PYTHON_SERVICE_URL || 'https://mkc-8s1l.onrender.com';
   // if the configured URL already points to a parsing endpoint, use it, otherwise append path
   const endpoint = pythonCfg.includes('/api/') ? pythonCfg : `${pythonCfg.replace(/\/$/, '')}/api/v1/parse/document`;
   const apiKey = process.env.PYTHON_SERVICE_API_KEY || '';

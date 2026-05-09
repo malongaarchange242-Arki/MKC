@@ -203,7 +203,7 @@ export class AuthController {
       // generate magic token
       const token = JWTUtils.generateMagicToken({ sub: profile.id, email, redirect });
 
-      const apiBase = (process.env.API_BASE_URL || 'https://mkc-backend-kqov.onrender.com').replace(/\/$/, '');
+      const apiBase = (process.env.API_BASE_URL || 'https://mkc-backend-cs7a.onrender.com').replace(/\/$/, '');
       const link = `${apiBase}/auth/magic/redirect?token=${encodeURIComponent(token)}`;
 
       // send notification email with link

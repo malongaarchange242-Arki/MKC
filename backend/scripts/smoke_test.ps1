@@ -2,9 +2,9 @@ $specPath = Join-Path $PSScriptRoot '..\docs\openapi_endpoints.json'
 $spec = Get-Content $specPath -Raw | ConvertFrom-Json
 
 $nodeBase = $env:NODE_API_URL
-if (-not $nodeBase) { $nodeBase = 'https://mkc-backend-kqov.onrender.com' }
+if (-not $nodeBase) { $nodeBase = 'https://mkc-backend-cs7a.onrender.com' }
 $pyBase = $env:PYTHON_API_URL
-if (-not $pyBase) { $pyBase = 'https://mkc-5slv.onrender.com/api/v1' }
+if (-not $pyBase) { $pyBase = 'https://mkc-8s1l.onrender.com' }
 $out = @()
 
 foreach ($p in $spec.paths.PSObject.Properties) {

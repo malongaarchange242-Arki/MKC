@@ -36,27 +36,31 @@ def looks_like_bl(text: str) -> bool:
 # BL EXTRACTION
 # =========================
 
+BL_LABEL_TOKEN_RE = r"(?:B\s*[/\\|I1L]?\s*L|BL|BIL|BILL\s+OF\s+LADING|BILLOFLADING)"
+BL_LABEL_QUALIFIER_RE = r"(?:NO|N[O0]|N°|NUMBER|NUM|REF|REFERENCE)"
+BL_VALUE_RE = r"([A-Z0-9][A-Z0-9\-_/\.]{5,24})"
+
 BL_REGEXES = [
     # ========================================
     # PATTERNS EXPLICITES (avec labels) - PRIORITÉ HAUTE
     # ========================================
     # B/L NO., BL NO., B/L NUMBER, etc. (avec tous les séparateurs possibles)
-    r"B[/\-]?L\s*(?:NO|NUMBER|NUM|REF|REFERENCE)[:\-\.\s]*([A-Z0-9\-_/]{6,25})",
+    r"B\s*[/\\|\-]?\s*L\s*\.?\s*(?:NO|N[O0]|N°|NUMBER|NUM|REF|REFERENCE)[:#,\-\.\s]*([A-Z0-9\-_/\.]{6,25})",
     
     # BILL OF LADING NO., NUMBER, etc.
-    r"BILL\s+OF\s+LADING\s*(?:NO|NUMBER|NUM|REF|REFERENCE)[:\-\.\s]*([A-Z0-9\-_/]{6,25})",
-    r"BILLOFLADING\s*(?:NO|NUMBER|NUM|REF|REFERENCE)[:\-\.\s]*([A-Z0-9\-_/]{6,25})",  # Compacted
+    r"BILL\s+OF\s+LADING\s*(?:NO|N[O0]|N°|NUMBER|NUM|REF|REFERENCE)[:#,\-\.\s]*([A-Z0-9\-_/\.]{6,25})",
+    r"BILLOFLADING\s*(?:NO|N[O0]|N°|NUMBER|NUM|REF|REFERENCE)[:#,\-\.\s]*([A-Z0-9\-_/\.]{6,25})",  # Compacted
     
     # OCEAN BILL, HOUSE BILL, MASTER BILL
-    r"(?:OCEAN|HOUSE|MASTER)\s+BILL\s*(?:NO|NUMBER|NUM)[:\-\.\s]*([A-Z0-9\-_/]{6,25})",
-    r"(?:OCEAN|HOUSE|MASTER)BILL\s*(?:NO|NUMBER|NUM)[:\-\.\s]*([A-Z0-9\-_/]{6,25})",  # Compacted
+    r"(?:OCEAN|HOUSE|MASTER)\s+BILL\s*(?:NO|N[O0]|N°|NUMBER|NUM)[:#,\-\.\s]*([A-Z0-9\-_/\.]{6,25})",
+    r"(?:OCEAN|HOUSE|MASTER)BILL\s*(?:NO|N[O0]|N°|NUMBER|NUM)[:#,\-\.\s]*([A-Z0-9\-_/\.]{6,25})",  # Compacted
     
     # BL NO: (compacted variants)
-    r"BLNO[:\-\.\s]*([A-Z0-9\-_/]{6,25})",
-    r"BL\s*NO[:\-\.\s]*([A-Z0-9\-_/]{6,25})",
+    r"BL\s*N[O0][:#,\-\.\s]*([A-Z0-9\-_/\.]{6,25})",
+    r"BL\s*NO[:#,\-\.\s]*([A-Z0-9\-_/\.]{6,25})",
     
     # BL REF:, BL REFERENCE:
-    r"BL\s+REF(?:ERENCE)?[:\-\.\s]+([A-Z0-9\-_/]{6,25})",
+    r"BL\s+REF(?:ERENCE)?[:#,\-\.\s]+([A-Z0-9\-_/\.]{6,25})",
     
     # ========================================
     # PATTERNS DE FORMAT (sans label explicite) - PRIORITÉ MOYENNE
@@ -86,10 +90,51 @@ def _clean(c: str) -> str:
     return re.sub(r"[^A-Z0-9]", "", c.upper())
 
 
+def extract_explicit_bl_label_values(text: str) -> List[str]:
+    """Extract values that immediately follow an explicit BL label.
+
+    OCR often mutates "B/L No." into forms like "BIL No", "B|L N0,"
+    or "B / L No". This pass is intentionally narrow: it only returns
+    the token immediately after a BL label/qualifier pair.
+    """
+    found = []
+    seen = set()
+    if not text:
+        return found
+
+    patterns = [
+        rf"\b{BL_LABEL_TOKEN_RE}\s*\.?\s*{BL_LABEL_QUALIFIER_RE}\s*[:#,\-\.\s]*{BL_VALUE_RE}",
+        rf"\bBL\s*{BL_LABEL_QUALIFIER_RE}\s*[:#,\-\.\s]*{BL_VALUE_RE}",
+        rf"\b{BL_LABEL_TOKEN_RE}\s*[:#,\-\.\s]+{BL_VALUE_RE}",
+    ]
+
+    for rx in patterns:
+        for m in re.finditer(rx, text, flags=re.IGNORECASE):
+            value = m.group(1)
+            cleaned = _clean(value)
+            if (
+                6 <= len(cleaned) <= 20
+                and not is_structurally_invalid_bl(cleaned)
+                and not is_false_positive(cleaned)
+                and cleaned not in seen
+            ):
+                seen.add(cleaned)
+                found.append(cleaned)
+
+    log.info('extract_explicit_bl_label_values.found', extra={'count': len(found), 'samples': found[:5]})
+    return found
+
+
 def extract_bl_numbers(text: str, only_explicit: bool = False) -> List[str]:
     found = []
     seen = set()
     log.info('extract_bl_numbers.start', extra={'text_len': len(text or '')})
+
+    for v in extract_explicit_bl_label_values(text):
+        if v not in seen:
+            seen.add(v)
+            found.append(v)
+
     regexes = EXPLICIT_BL_REGEXES if only_explicit else BL_REGEXES
     for rx in regexes:
         for m in re.findall(rx, text or "", flags=re.IGNORECASE):
@@ -401,8 +446,12 @@ def has_explicit_bl_label_near(text: str, token: str, window: int = 80) -> bool:
     # ⚠️ UNIQUEMENT les labels BL légitimes
     labels = [
         "BILL OF LADING",
+        "BILLOFLADING",
         "B/L",
+        "BIL NO",
+        "BIL N0",
         "BL NO",
+        "BL N0",
         "BL NUMBER",
         "BLNO",
         "OCEAN BILL",
@@ -410,7 +459,10 @@ def has_explicit_bl_label_near(text: str, token: str, window: int = 80) -> bool:
         "MASTER BILL",
     ]
 
-    return any(lbl in context for lbl in labels)
+    if any(lbl in context for lbl in labels):
+        return True
+
+    return bool(re.search(rf"{BL_LABEL_TOKEN_RE}\s*\.?\s*(?:{BL_LABEL_QUALIFIER_RE})?", context, flags=re.IGNORECASE))
 
 
 def is_in_forbidden_bl_context(text: str, token: str, window: int = 80) -> bool:
@@ -558,7 +610,12 @@ BL_LABELS = [
     'BILL OF LADING NUMBER',
     'BILL OF LADING NO',
     'B/L NO',
+    'B|L NO',
+    'B|L N0',
+    'BIL NO',
+    'BIL N0',
     'BL NO',
+    'BL N0',
 ]
 
 BOOKING_LABELS = [
@@ -1062,10 +1119,13 @@ def pick_best_bl(text: str) -> Optional[str]:
         best_reasons.append('resolved_by_label')
         log.info('pick_best_bl.resolved_by_label', extra={'token': best_token, 'score': best_score})
 
-    # Golden rule: numeric-only BL without a detected SCAC in header -> reject
+    # Golden rule: numeric-only BL values are allowed when they are explicitly labeled.
     scac = detect_scac(text)
     if best_token.isdigit():
-        if scac:
+        if has_explicit_bl_label(best_token):
+            final_token = best_token
+            reason_text = 'numeric_explicit_label'
+        elif scac:
             final_token = scac + best_token
             best_reasons.append(f'prepended_scac:{scac}')
             reason_text = 'reconstructed_with_scac'
@@ -1154,9 +1214,7 @@ def candidate_near_bl_keyword(text: str, token: str, window: int = 60) -> bool:
     start = max(0, idx - window)
     end = min(len(T), idx + len(tok) + window)
     context = T[start:end]
-    # BL keyword patterns
-    keywords = ['bill of lading', 'billoflading', 'b/l', 'bl no', 'blno', 'b l', 'ocean bill', 'house bill', 'master bill']
-    return any(k in context for k in keywords)
-
-
-
+    keywords = ['bill of lading', 'billoflading', 'b/l', 'bil no', 'bil n0', 'bl no', 'bl n0', 'blno', 'b l', 'ocean bill', 'house bill', 'master bill']
+    if any(k in context for k in keywords):
+        return True
+    return bool(re.search(BL_LABEL_TOKEN_RE, context, flags=re.IGNORECASE))

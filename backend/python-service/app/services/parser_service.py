@@ -29,9 +29,13 @@ def is_valid_bl_number(value: str) -> bool:
     if len(v) < 6 or len(v) > 20:
         return False
 
-    # must contain at least one digit and one letter
+    # must contain at least one digit
     if not any(c.isdigit() for c in v):
         return False
+
+    # allow pure numeric BLs of realistic length, or mixed alphanumeric values
+    if v.isdigit():
+        return 8 <= len(v) <= 15
     if not any(c.isalpha() for c in v):
         return False
 
@@ -88,6 +92,9 @@ def parse_document_text(text: str, doc_type: str) -> List[Field]:
         # 1️⃣ BL NUMBER (CRITIQUE) - try primary engine
         bl_number = bl_parser.pick_best_bl(text)
         bl_status = None
+
+        if isinstance(bl_number, dict):
+            bl_number = bl_number.get('bl_number')
 
         if bl_number and is_valid_bl_number(bl_number):
             fields.append(Field(key="bl_number", value=bl_number, confidence=0.95))

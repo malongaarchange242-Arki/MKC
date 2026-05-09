@@ -6,7 +6,7 @@
 const axios = require('axios');
 
 // Configuration
-const BASE_URL = process.env.API_URL || 'https://mkc-backend-kqov.onrender.com';
+const BASE_URL = process.env.API_URL || 'https://mkc-backend-cs7a.onrender.com';
 const TEST_EMAIL = 'test@example.com';
 const TEST_PASSWORD = 'Test123456!';
 

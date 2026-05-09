@@ -18,6 +18,10 @@ def test_bl_cases():
         ("Bill of Lading No: MEDUH9024256", "MEDUH9024256"),
         ("BL NO: EU26752001", "EU26752001"),
         ("Seal No: EU26752001 / BL No: EU26752001", "EU26752001"),
+        ("SCAC MAEU\nB/L No: 262267475", "262267475"),
+        ("SCAC MAEU B/L No. 262267475 Booking No. 262267475", "262267475"),
+        ("SCAC MAEU\nBIL No, 262267475\nBooking No. 262267475", "262267475"),
+        ("SCAC MAEU\nB|L N0. 262267475\nBooking No. 262267475", "262267475"),
         ("MEDUH9024256 something else", "MEDUH9024256"),
         ("Containers: MEDU1234567", None),
     ]

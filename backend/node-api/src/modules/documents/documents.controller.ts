@@ -109,7 +109,7 @@ export class DocumentsController {
             // 2. Trigger parsing (Async)
           // Hoist variables so they are visible in the catch block for richer logging
           // Build a robust endpoint: always call the full parse route (/api/v1/parse/document)
-          const pythonHost = (process.env.PYTHON_SERVICE_URL || 'https://mkc-5slv.onrender.com/api/v1').replace(/\/$/, '');
+          const pythonHost = (process.env.PYTHON_SERVICE_URL || 'https://mkc-8s1l.onrender.com').replace(/\/$/, '');
           const pythonEndpoint = pythonHost.includes('/api/') ? `${pythonHost}/parse/document` : `${pythonHost}/api/v1/parse/document`;
           const pythonEndpointNormalized = pythonEndpoint;
           logger.info('Python endpoint resolved', { pythonEndpoint });
