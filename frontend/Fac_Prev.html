@@ -271,7 +271,7 @@
 
         async function downloadInvoice() {
             const params = parseQuery();
-            const API_BASE = (window && window.__API_BASE__) || 'https://mkc-backend-kqov.onrender.com';
+            const API_BASE = (window && window.__API_BASE__) || 'https://mkc-backend-cs7a.onrender.com';
             const token = localStorage.getItem('access_token') || localStorage.getItem('token') || null;
             const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
 
@@ -427,7 +427,7 @@
             // Prefer backend API if available
             if (invoiceId) {
                 try {
-                    const API_BASE = (window && window.__API_BASE__) || 'https://mkc-backend-kqov.onrender.com';
+                    const API_BASE = (window && window.__API_BASE__) || 'https://mkc-backend-cs7a.onrender.com';
                     const token = localStorage.getItem('access_token') || localStorage.getItem('token') || null;
                     const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
                     const res = await fetch(`${API_BASE}/api/client/invoices/${encodeURIComponent(invoiceId)}`, { headers });
@@ -468,7 +468,7 @@
             // If no invoice id provided but request_id is present, try to fetch invoice for that request
             if (!invoiceId && params.request_id) {
                 try {
-                    const API_BASE = (window && window.__API_BASE__) || 'https://mkc-backend-kqov.onrender.com';
+                    const API_BASE = (window && window.__API_BASE__) || 'https://mkc-backend-cs7a.onrender.com';
                     const token = localStorage.getItem('access_token') || localStorage.getItem('token') || null;
                     const headers = token ? { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
                     const listRes = await fetch(`${API_BASE}/api/client/invoices?request_id=${encodeURIComponent(params.request_id)}`, { headers });

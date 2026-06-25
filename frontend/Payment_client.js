@@ -269,7 +269,7 @@ async function fetchRequests() {
     try {
         const token = localStorage.getItem('access_token') || localStorage.getItem('token') || null;
         const metaApi = document.querySelector('meta[name="api-base"]')?.content || '';
-        const defaultLocal = 'https://mkc-backend-kqov.onrender.com';
+        const defaultLocal = 'https://mkc-backend-qx7r.onrender.com';
         const API_BASE = metaApi || defaultLocal;
 
         // The requests listing endpoint is mounted at `/requests/me` on the backend
@@ -323,7 +323,7 @@ async function fetchInvoices() {
     try {
         const token = localStorage.getItem('access_token') || localStorage.getItem('token') || null;
         const metaApi = document.querySelector('meta[name="api-base"]')?.content || '';
-            const defaultLocal = 'https://mkc-backend-kqov.onrender.com';
+            const defaultLocal = 'https://mkc-backend-qx7r.onrender.com';
             const API_BASE = metaApi || defaultLocal;
 
         const resp = await fetch(`${API_BASE.replace(/\/$/, '')}/api/client/invoices`, {
@@ -429,7 +429,7 @@ function handleSubmitProof() {
         try {
             const token = localStorage.getItem('access_token') || localStorage.getItem('token') || null;
             const metaApi = document.querySelector('meta[name="api-base"]')?.content || '';
-            const defaultLocal = 'https://mkc-backend-kqov.onrender.com';
+            const defaultLocal = 'https://mkc-backend-qx7r.onrender.com';
             const API_BASE = metaApi || defaultLocal;
 
             // resolve request id for this BL
@@ -505,7 +505,7 @@ async function handlePaymentModeChange(blValue, selectedMode) {
     try {
         const token = localStorage.getItem('access_token') || localStorage.getItem('token') || null;
         const metaApi = document.querySelector('meta[name="api-base"]')?.content || '';
-        const defaultLocal = 'https://mkc-backend-kqov.onrender.com';
+        const defaultLocal = 'https://mkc-backend-qx7r.onrender.com';
         const API_BASE = metaApi || defaultLocal;
 
         // Refresh server state to avoid stale local cache, then find the request
@@ -746,7 +746,7 @@ function populateHeaderFromSession() {
                 const hasName = Boolean(profile && (profile.prenom || profile.nom));
                 if (!hasName) {
                     const metaApi = document.querySelector('meta[name="api-base"]')?.content || '';
-                    const defaultLocal = 'https://mkc-backend-kqov.onrender.com';
+                    const defaultLocal = 'https://mkc-backend-qx7r.onrender.com';
                     const API_BASE = metaApi || defaultLocal;
                     const token = localStorage.getItem('access_token') || localStorage.getItem('token') || null;
                     if (token) {

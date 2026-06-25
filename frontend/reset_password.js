@@ -1,5 +1,5 @@
 (function(){
-  const API_BASE = (window && window.__API_BASE__) || 'https://mkc-backend-kqov.onrender.com/auth';
+  const API_BASE = (window && window.__API_BASE__) || 'https://mkc-backend-qx7r.onrender.com/auth';
   const submit = document.getElementById('submit');
   const msg = document.getElementById('msg');
   const newPass = document.getElementById('new-pass');

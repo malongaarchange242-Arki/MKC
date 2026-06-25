@@ -72,7 +72,7 @@
 
                 setLoading(true, 'Envoi du lien...');
                 try {
-                    const API_BASE = (window && window.__API_BASE__) || 'https://mkc-backend-kqov.onrender.com/auth';
+                    const API_BASE = (window && window.__API_BASE__) || 'https://mkc-backend-qx7r.onrender.com/auth';
                     const resp = await fetch(`${API_BASE}/magic/request`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },

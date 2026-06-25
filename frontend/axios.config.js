@@ -1,7 +1,7 @@
 import axios from 'https://cdn.jsdelivr.net/npm/axios@1.6.8/+esm';
 
-const API_BASE = 'https://mkc-backend-kqov.onrender.com';
-const PYTHON_BASE = 'https://mkc-5slv.onrender.com/api/v1';
+const API_BASE = 'https://mkc-backend-qx7r.onrender.com';
+const PYTHON_BASE = 'https://mkc-ijms.onrender.com';
 
 export const api = axios.create({
   baseURL: API_BASE,

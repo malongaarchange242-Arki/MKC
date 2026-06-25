@@ -9,6 +9,7 @@ supabase
 Pillow>=10.0.0
 pytesseract
 pdf2image
+requests
 
 # PDF
 PyPDF2

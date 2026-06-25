@@ -61,7 +61,7 @@
             const API_BASE = (() => {
             const meta = document.querySelector('meta[name="api-base"]')?.content || '';
             if (meta) return meta.replace(/\/$/, '');
-            return 'https://mkc-backend-kqov.onrender.com';
+            return 'https://mkc-backend-qx7r.onrender.com';
           })();
           const token = localStorage.getItem('token') || localStorage.getItem('access_token');
           if (!token) {
