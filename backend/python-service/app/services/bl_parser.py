@@ -787,9 +787,14 @@ def repair_broken_candidates(text: str) -> List[str]:
         return repaired
     lines = [l.strip() for l in text.split('\n') if l.strip()]
     KNOWN_SCACS = ['MAEU', 'MEDU', 'MSCU', 'CMAU', 'COSU', 'HLCU', 'ONEY', 'SEGU']
-    for i in range(len(lines) - 1):
+    bl_label_rx = re.compile(r'\bB\s*[/\\\-]?\s*L\b', flags=re.IGNORECASE)
+    scac_rx = re.compile(r'\b(' + '|'.join(KNOWN_SCACS) + r')\b', flags=re.IGNORECASE)
+
+    for i in range(len(lines)):
         current = lines[i].upper().strip()
-        next_line = lines[i + 1].upper().strip()
+        next_line = lines[i + 1].upper().strip() if i + 1 < len(lines) else ''
+        next_next_line = lines[i + 2].upper().strip() if i + 2 < len(lines) else ''
+
         # Case 1: Current line is exactly a SCAC, next line is 6-15 digits
         if current in KNOWN_SCACS and re.match(r'^\d{6,15}$', next_line):
             reconstructed = current + next_line
@@ -799,8 +804,8 @@ def repair_broken_candidates(text: str) -> List[str]:
                 'digits': next_line,
                 'result': reconstructed,
             })
-        
-        # 🆕 Case 2: SCAC and digits on SAME line but separated by spaces/tabs
+
+        # Case 2: SCAC and digits on the same line but separated by spaces/tabs
         # Example: "MAEU          262802788"
         tokens = re.split(r'\s{2,}', current)
         if len(tokens) >= 2:
@@ -813,20 +818,53 @@ def repair_broken_candidates(text: str) -> List[str]:
                         'digits': tokens[j+1],
                         'result': reconstructed,
                     })
-        # Case 2: Current line ends with SCAC, next line starts with digits
-        scac_match = re.search(r'([A-Z]{4})$', current)
+
+        # Case 3: Current line contains a SCAC and next line contains digits
+        scac_match = scac_rx.search(current)
         if scac_match:
             scac = scac_match.group(1)
-            if scac in KNOWN_SCACS:
-                digit_match = re.match(r'^(\d{6,15})', next_line)
-                if digit_match:
-                    reconstructed = scac + digit_match.group(1)
+            if re.match(r'^\d{6,15}$', next_line):
+                reconstructed = scac + next_line
+                repaired.append(reconstructed)
+                log.info('repair_broken_candidates.scac_followed_by_digits', extra={
+                    'scac': scac,
+                    'digits': next_line,
+                    'result': reconstructed,
+                })
+
+            # SCAC on one line, explicit B/L label on next line, digits on following line
+            if bl_label_rx.search(next_line) and re.match(r'^\d{6,15}$', next_next_line):
+                reconstructed = scac + next_next_line
+                repaired.append(reconstructed)
+                log.info('repair_broken_candidates.scac_bl_label_digits', extra={
+                    'scac': scac,
+                    'digits': next_next_line,
+                    'result': reconstructed,
+                })
+
+            # SCAC on one line, digits appear on a B/L label line
+            if bl_label_rx.search(next_line):
+                label_digit_match = re.search(r'(\d{6,15})', next_line)
+                if label_digit_match:
+                    reconstructed = scac + label_digit_match.group(1)
                     repaired.append(reconstructed)
-                    log.info('repair_broken_candidates.trailing_scac', extra={
+                    log.info('repair_broken_candidates.scac_bl_label_inline_digits', extra={
                         'scac': scac,
-                        'digits': digit_match.group(1),
+                        'digits': label_digit_match.group(1),
                         'result': reconstructed,
                     })
+
+        # Case 4: B/L label line followed by SCAC then digits
+        if bl_label_rx.search(current):
+            scac_match_2 = scac_rx.search(next_line)
+            if scac_match_2 and re.match(r'^\d{6,15}$', next_next_line):
+                reconstructed = scac_match_2.group(1) + next_next_line
+                repaired.append(reconstructed)
+                log.info('repair_broken_candidates.label_scac_digits', extra={
+                    'scac': scac_match_2.group(1),
+                    'digits': next_next_line,
+                    'result': reconstructed,
+                })
     # Deduplicate preserving order
     seen = set()
     out = []

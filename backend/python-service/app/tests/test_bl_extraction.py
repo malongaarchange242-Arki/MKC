@@ -3,6 +3,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from services import parser_service
+from services.bl_parser import pick_best_bl
 from utils.text_normalizer import normalize_text
 
 
@@ -31,3 +32,10 @@ def test_bl_cases():
         fields = parser_service.parse_document_text(norm, 'BL')
         found = _get_bl(fields)
         assert found == expected
+
+
+def test_bl_repair_scac_label_digits():
+    text = 'SCAC MAEU\nB/L No.\n262267475'
+    result = pick_best_bl(text)
+    assert isinstance(result, dict)
+    assert result.get('bl_number') == '262267475'
