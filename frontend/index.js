@@ -14,7 +14,9 @@
   const eyeOpen    = document.getElementById('eye-open');
   const eyeClosed  = document.getElementById('eye-closed');
 
-  const API_BASE = 'http://localhost:3000/auth';
+  const isLocalHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+  const configuredApiBase = document.querySelector('meta[name="api-base"]')?.content?.trim();
+  const API_BASE = `${(window.__API_BASE__ || (isLocalHost ? 'http://localhost:3000' : configuredApiBase || 'https://mkc-node-api.onrender.com')).replace(/\/+$/, '')}/auth`;
   let mode = 'login'; // 'login' | 'register'
 
   /* ═══════ PASSWORD TOGGLE ═══════ */

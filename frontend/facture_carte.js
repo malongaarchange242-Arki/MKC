@@ -9,6 +9,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const previewBtn = previewBtnBottom || document.getElementById('previewBtn');
     const saveBtnBottom = document.getElementById('saveBtnBottom');
     const saveBtn = saveBtnBottom || document.getElementById('saveBtn');
+    const isLocalHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+    const configuredApiBase = document.querySelector('meta[name="api-base"]')?.content?.trim();
+    const API_BASE = (window.__API_BASE__ || (isLocalHost ? 'http://localhost:3000' : configuredApiBase || 'https://mkc-node-api.onrender.com')).replace(/\/+$/, '');
 
     // --- 1. GESTION DU TABLEAU DYNAMIQUE ---
     function addRow() {
@@ -139,8 +142,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (current && String(current).trim()) return;
 
             const token = localStorage.getItem('token') || localStorage.getItem('access_token');
-            const API_BASE = "https://mkc-backend-qx7r.onrender.com";
-
             if (token) {
                 try {
                     const resp = await fetch(`${API_BASE.replace(/\/$/, '')}/api/client/invoices/manual`, {
@@ -340,7 +341,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const token = localStorage.getItem('token') || localStorage.getItem('access_token');
                 const headers = Object.assign({ 'Content-Type': 'application/json' }, token ? { Authorization: `Bearer ${token}` } : {});
 
-                const API_BASE = "https://mkc-backend-qx7r.onrender.com";
                 const url = `${API_BASE.replace(/\/$/, '')}/api/client/carte`;
 
                 const resp = await fetch(url, {

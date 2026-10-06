@@ -173,7 +173,7 @@ app.use(
  */
 const server = http.createServer(app);
 
-server.listen(PORT, async () => {
+server.listen(PORT, '0.0.0.0', async () => {
   logger.info(`Server started on port ${PORT} [${APP_ENV}]`);
 
   // Log Supabase URL and a short preview of the key (first 8 chars)

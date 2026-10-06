@@ -1,8 +1,9 @@
 import axios from 'https://cdn.jsdelivr.net/npm/axios@1.6.8/+esm';
 
-// Local development configuration.
-// The browser should call the local Node backend, and the backend should proxy to the local Python service.
-const API_BASE = 'http://localhost:3000';
+// Use the local API during development and the configured Render API in production.
+const isLocalHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+const configuredApiBase = document.querySelector('meta[name="api-base"]')?.content?.trim();
+const API_BASE = (window.__API_BASE__ || (isLocalHost ? 'http://localhost:3000' : configuredApiBase || 'https://mkc-node-api.onrender.com')).replace(/\/+$/, '');
 const PYTHON_BASE = 'http://localhost:8000';
 
 export const api = axios.create({

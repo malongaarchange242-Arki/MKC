@@ -7,7 +7,7 @@ import { z } from 'zod';
  */
 const envSchema = z.object({
   APP_ENV: z.enum(['development', 'staging', 'production']).default('development'),
-  APP_PORT: z.string().default('3000'),
+  APP_PORT: z.string().regex(/^\d+$/).optional(),
 
   // 🔐 JWT
   JWT_SECRET: z.string().min(32, 'JWT_SECRET is too short'),
@@ -46,5 +46,5 @@ if (!parsedEnv.success) {
  */
 export const env = {
   ...parsedEnv.data,
-  APP_PORT: Number(parsedEnv.data.APP_PORT)
+  APP_PORT: Number(process.env.PORT || parsedEnv.data.APP_PORT || '3000')
 };
