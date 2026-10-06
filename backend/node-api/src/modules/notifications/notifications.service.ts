@@ -77,21 +77,25 @@ export class NotificationsService {
 			/* -------------------- IN-APP -------------------- */
             if (channels.includes('in_app')) {
 				try {
-				await supabase.from('notifications').insert({
+				const { error } = await supabase.from('notifications').insert({
 					user_id: payload.userId,
-					type: payload.type,
+					channel: 'IN_APP',
 					title: payload.title,
-					message: payload.message,
-					entity_type: payload.entityType ?? null,
-					entity_id: payload.entityId ?? null,
-					data: {
+					body: payload.message,
+					metadata: {
+						type: payload.type,
+						entity_type: payload.entityType ?? null,
+						entity_id: payload.entityId ?? null,
+						requestRef: payload.requestRef ?? payload.request_id ?? null,
+						data: {
 						links: payload.links ?? [],
 						channels,
 						metadata: payload.metadata ?? null
+						}
 					},
-					is_read: false,
-					created_at: new Date().toISOString()
+					is_read: false
 				});
+				if (error) logger.warn('Failed to persist in-app notification', { error });
 				} catch (e) {
 					logger.warn('Failed to persist in-app notification', { e });
 				}

@@ -35,12 +35,11 @@ export class JWTUtils {
       role: payload.role
     };
 
-    // @ts-ignore - jsonwebtoken types overload mismatch in this TS setup
-    const token = jwt.sign(tokenPayload, this.JWT_SECRET as Secret, {
+    const token = jwt.sign(tokenPayload as object, this.JWT_SECRET as Secret, {
       expiresIn: this.JWT_EXPIRES_IN,
       issuer: 'feri-ad-backend',
       audience: 'feri-ad-client'
-    });
+    } as any);
 
     logger.info('JWT token generated', {
       userId: payload.sub,
@@ -59,7 +58,6 @@ export class JWTUtils {
       throw new Error('JWT_SECRET is not configured');
     }
 
-    // @ts-ignore - jsonwebtoken types overload mismatch in this TS setup
     const token = jwt.sign(
       { sub: payload.sub, email: payload.email, redirect: payload.redirect, type: 'magic', jti: payload.jti },
       this.JWT_SECRET as Secret,
@@ -67,7 +65,7 @@ export class JWTUtils {
         expiresIn,
         issuer: 'feri-ad-backend',
         audience: 'feri-ad-magic'
-      }
+      } as any
     );
 
     logger.info('Magic token generated', { userId: payload.sub, expiresIn });

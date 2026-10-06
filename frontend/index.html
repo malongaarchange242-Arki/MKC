@@ -1,108 +1,422 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html lang="fr">
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Connexion - Plateforme FERI AD</title>
-    <link rel="stylesheet" href="index.css" />
-    <link rel="icon" href="Logotype_mkc_bon-removebg-preview.png" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Connexion — Maritime Kargo Consulting</title>
+  <link rel="icon" href="Logotype_mkc_bon-removebg-preview.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="index.css" />
 </head>
-
 <body>
-    <!-- couche effet curseur -->
-    <div class="cursor-effect"></div>
 
-    <div class="page">
-        <div class="scene">
-            <!-- Logo flottant -->
-            <div class="floating-logo" aria-hidden="true">
-                <img src="Logotype_mkc_bon-removebg-preview.png" alt="Logo" class="logo-svg" />
-            </div>
+<!-- ╔══════════════════════════════════════════════╗
+     ║           PAGE LOGIN MARITIME                ║
+     ╚══════════════════════════════════════════════╝ -->
+<div class="login-page" id="loginPage">
 
-            <!-- Carte principale -->
-            <main class="card" role="main" aria-labelledby="title">
-                <header class="card-header">
-                    <h1 id="title" data-i18n="index_title">Sign in</h1>
-                        <p class="subtitle" data-i18n="index_subtitle">Access your FERI and AD requests</p>
-                </header>
+  <!-- ─── BACKGROUND PHOTO ─── -->
+  <div class="bg-photo" aria-hidden="true">
+    <div class="bg-overlay"></div>
+    <div class="bg-overlay-right"></div>
+  </div>
 
-                <form id="authForm" class="form" novalidate>
-                    <div class="input-group">
-                        <label for="email" data-i18n="email_label">Email</label>
-                        <input id="email" name="email" type="email" inputmode="email" autocomplete="email" required placeholder="" data-i18n-placeholder="email_hint" />
-                        <span class="hint" data-i18n="email_hint">ex: utilisateur@exemple.com</span>
-                    </div>
-
-                    <div class="input-group">
-                        <label for="password" data-i18n="password_label">Password</label>
-                        <div class="password-wrap">
-                            <input id="password" name="password" type="password" autocomplete="current-password"
-                                required />
-                            <button type="button" class="toggle-pass" aria-label="Afficher le mot de passe">👁️</button>
-                        </div>
-                    </div>
-
-                    
-
-                    <div class="actions">
-                        <button id="submitBtn" class="btn primary" type="submit" data-i18n="index_title">Sign in</button>
-                        <button id="switchBtn" class="btn ghost" type="button" data-i18n="create_account">Create account</button>
-                    </div>
-
-                    <div class="meta">
-                        <label class="remember">
-                            <input type="checkbox" id="remember" /> <span data-i18n="remember_me">Remember me</span>
-                        </label>
-                        <a class="link" href="forgot.html" id="forgot" data-i18n="forgot_password">Forgot password</a>
-                    </div>
-
-                    <div id="message" class="message" role="status" aria-live="polite"></div>
-                </form>
-            </main>
+  <!-- ─── HEADER ─── -->
+  <header class="site-header" role="banner">
+    <!-- Logo -->
+    <div class="logo-block">
+      <img
+        src="Logotype_mkc_bon-removebg-preview.png"
+        alt="Maritime Kargo Consulting"
+        class="logo-img"
+        width="52"
+        height="52"
+      />
+      <div class="logo-text">
+        <div class="logo-name">
+          <span class="logo-maritime">MARITIME </span><span class="logo-kargo">KARGO</span>
         </div>
-
-        <footer class="footer">
-            <small>&copy; 2026 FERI AD Platform </small>
-        </footer>
+        <div class="logo-consulting">CONSULTING</div>
+        <div class="logo-tagline">FERI · AD · INTERNATIONAL TRADE</div>
+      </div>
     </div>
 
-    <!-- Script principal -->
-    <script src="i18n.js"></script>
-    <script src="index.js"></script>
+    <!-- Lang switcher -->
+    <div class="lang-switch" role="group" aria-label="Sélection de la langue">
+      <button class="lang-btn active" data-lang="fr" aria-pressed="true">FR</button>
+      <button class="lang-btn" data-lang="en" aria-pressed="false">EN</button>
+    </div>
+  </header>
 
-    <!-- Floating FAQ above language switcher (visible over lang float) -->
-    <a id="faq-float" href="faq.html" target="_blank" rel="noopener" aria-label="FAQ" style="position:fixed; right:12px; bottom:72px; z-index:10001; background:#0b75f5; color:#fff; padding:10px 14px; border-radius:8px; text-decoration:none; font-weight:600; box-shadow:0 8px 20px rgba(11,117,245,0.24);">FAQ</a>
+  <!-- ─── MAIN LAYOUT ─── -->
+  <main class="layout">
 
-    <!-- Script effet curseur orange -->
-    <script>
-        const effectLayer = document.querySelector('.cursor-effect');
-        document.addEventListener('mousemove', e => {
-            const x = (e.clientX / window.innerWidth) * 100;
-            const y = (e.clientY / window.innerHeight) * 100;
-            effectLayer.style.setProperty('--x', x + '%');
-            effectLayer.style.setProperty('--y', y + '%');
-        });
-    </script>
-        <!-- Forgot-password modal -->
-        <div id="forgot-modal" class="modal-overlay" aria-hidden="true" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:10002; align-items:center; justify-content:center;">
-            <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="forgot-modal-title" style="background:#fff; padding:20px; border-radius:8px; width:360px; max-width:94%; box-shadow:0 20px 50px rgba(0,0,0,0.3);">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                    <h3 id="forgot-modal-title" data-i18n="forgot_modal_title" style="margin:0; font-size:1.05rem;">Reset your password</h3>
-                    <button id="forgot-close" aria-label="Close" style="background:transparent;border:0;font-size:18px;cursor:pointer;">×</button>
-                </div>
-                <p id="forgot-instructions" data-i18n="forgot_modal_instructions" style="margin:0 0 12px; color:#555;">Enter your account email and we'll send reset instructions.</p>
-                <form id="forgot-form">
-                    <label for="forgot-email" style="display:block; font-size:13px; color:#555; margin-bottom:6px;" data-i18n="email_label">Email</label>
-                    <input id="forgot-email" type="email" placeholder="" data-i18n-placeholder="forgot_modal_email_placeholder" required style="width:100%; padding:10px; border:1px solid #e5e7eb; border-radius:6px; margin-bottom:12px;" />
-                    <div style="display:flex; gap:8px; justify-content:flex-end;">
-                        <button type="button" id="forgot-cancel" class="btn ghost" data-i18n="forgot_modal_close">Close</button>
-                        <button type="submit" id="forgot-submit" class="btn primary" data-i18n="forgot_modal_submit">Send reset link</button>
-                    </div>
-                    <p id="forgot-feedback" style="margin-top:12px; color:var(--muted); font-size:13px; display:none;"></p>
-                </form>
-            </div>
+    <!-- ══ LEFT — HERO ══ -->
+    <section class="hero" aria-label="Présentation">
+
+      <!-- Title -->
+      <div class="hero-title-block anim-hero">
+        <h1 class="hero-title">
+          <span class="hero-white" data-i18n="hero_line1">Simplifions vos</span><br />
+          <span class="hero-orange" data-i18n="hero_line2">démarches FERI &amp; AD</span><br />
+          <span class="hero-white" data-i18n="hero_line3">à l'international</span>
+        </h1>
+        <p class="hero-desc" data-i18n="hero_desc">
+          Une plateforme moderne et sécurisée pour gérer<br />
+          vos demandes, suivre vos dossiers et optimiser<br />
+          vos opérations de commerce international.
+        </p>
+      </div>
+
+      <!-- Features -->
+      <div class="features anim-features" role="list">
+
+        <div class="feature-item" role="listitem">
+          <div class="feat-icon-wrap" aria-hidden="true">
+            <!-- Document icon -->
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+              <polyline points="10 9 9 9 8 9"/>
+            </svg>
+          </div>
+          <div class="feat-text">
+            <span class="feat-title" data-i18n="feat_feri">FERI</span>
+            <span class="feat-sub" data-i18n="feat_feri_sub">Demandes et suivi</span>
+          </div>
         </div>
-</body>
 
+        <div class="feat-sep" aria-hidden="true"></div>
+
+        <div class="feature-item" role="listitem">
+          <div class="feat-icon-wrap" aria-hidden="true">
+            <!-- Truck icon -->
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="1" y="3" width="15" height="13" rx="1"/>
+              <path d="M16 8h4l3 3v5h-7V8z"/>
+              <circle cx="5.5" cy="18.5" r="2.5"/>
+              <circle cx="18.5" cy="18.5" r="2.5"/>
+            </svg>
+          </div>
+          <div class="feat-text">
+            <span class="feat-title" data-i18n="feat_ad">AD</span>
+            <span class="feat-sub" data-i18n="feat_ad_sub">Autorisation de<br/>dédouanement</span>
+          </div>
+        </div>
+
+        <div class="feat-sep" aria-hidden="true"></div>
+
+        <div class="feature-item" role="listitem">
+          <div class="feat-icon-wrap" aria-hidden="true">
+            <!-- Shield check icon -->
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              <polyline points="9 12 11 14 15 10"/>
+            </svg>
+          </div>
+          <div class="feat-text">
+            <span class="feat-title" data-i18n="feat_secure">Sécurisé</span>
+            <span class="feat-sub" data-i18n="feat_secure_sub">Vos données<br/>protégées</span>
+          </div>
+        </div>
+
+        <div class="feat-sep" aria-hidden="true"></div>
+
+        <div class="feature-item" role="listitem">
+          <div class="feat-icon-wrap" aria-hidden="true">
+            <!-- Globe icon -->
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="2" y1="12" x2="22" y2="12"/>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+            </svg>
+          </div>
+          <div class="feat-text">
+            <span class="feat-title" data-i18n="feat_intl">International</span>
+            <span class="feat-sub" data-i18n="feat_intl_sub">Connectés aux<br/>marchés mondiaux</span>
+          </div>
+        </div>
+
+      </div><!-- /features -->
+
+      <!-- World Map SVG -->
+      <div class="world-map-wrap" aria-hidden="true">
+        <svg class="world-map-svg" viewBox="0 0 900 400" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+          <!-- World map silhouette — simplified continents -->
+          <g class="continents" opacity="0.22">
+            <!-- North America -->
+            <path d="M60 90 L80 70 L130 65 L170 70 L200 85 L220 110 L210 145 L195 170 L180 190 L160 210 L140 230 L120 240 L100 235 L80 220 L65 200 L55 175 L50 150 L55 120 Z" fill="#1B4F72"/>
+            <!-- Central America -->
+            <path d="M150 240 L170 245 L175 265 L160 275 L145 265 L140 250 Z" fill="#1B4F72"/>
+            <!-- South America -->
+            <path d="M145 290 L170 280 L200 285 L220 305 L230 335 L225 365 L210 385 L190 395 L165 390 L145 375 L130 350 L125 320 L130 300 Z" fill="#1B4F72"/>
+            <!-- Europe -->
+            <path d="M410 65 L430 55 L460 58 L480 70 L490 90 L480 105 L460 115 L445 120 L430 115 L415 105 L405 90 Z" fill="#1B4F72"/>
+            <!-- Africa -->
+            <path d="M415 125 L450 120 L480 130 L500 155 L510 190 L510 230 L500 265 L480 290 L455 305 L430 300 L410 280 L395 250 L390 215 L395 180 L405 155 Z" fill="#1B4F72"/>
+            <!-- Asia -->
+            <path d="M490 50 L540 40 L600 45 L660 55 L710 65 L740 80 L750 105 L730 125 L700 135 L660 140 L620 145 L580 140 L545 130 L515 115 L495 95 Z" fill="#1B4F72"/>
+            <!-- Southeast Asia -->
+            <path d="M670 145 L700 150 L720 170 L710 195 L685 200 L665 185 L655 165 Z" fill="#1B4F72"/>
+            <!-- Australia -->
+            <path d="M680 255 L720 245 L760 250 L790 270 L800 300 L790 330 L760 345 L720 340 L690 320 L670 295 L670 270 Z" fill="#1B4F72"/>
+            <!-- Greenland -->
+            <path d="M290 30 L320 25 L345 35 L350 55 L335 70 L310 72 L290 60 Z" fill="#1B4F72"/>
+          </g>
+
+          <!-- Maritime routes — glowing lines -->
+          <g class="routes" opacity="0.7">
+            <!-- Atlantic route Europe - Americas -->
+            <path d="M460 95 Q 330 180 185 175" stroke="rgba(255,255,255,0.45)" stroke-width="1" fill="none" stroke-dasharray="4 3"/>
+            <!-- Indian Ocean / Suez route -->
+            <path d="M490 120 Q 560 155 640 160 Q 700 170 730 200" stroke="rgba(255,255,255,0.35)" stroke-width="1" fill="none" stroke-dasharray="4 3"/>
+            <!-- Pacific route Asia - Americas -->
+            <path d="M730 120 Q 760 160 780 200 Q 790 250 750 300" stroke="rgba(255,255,255,0.3)" stroke-width="1" fill="none" stroke-dasharray="4 3"/>
+            <!-- Africa - Europe -->
+            <path d="M450 150 Q 445 130 445 115" stroke="rgba(255,255,255,0.35)" stroke-width="1" fill="none" stroke-dasharray="4 3"/>
+            <!-- Africa - Americas -->
+            <path d="M420 200 Q 310 240 190 220" stroke="rgba(255,255,255,0.25)" stroke-width="1" fill="none" stroke-dasharray="4 3"/>
+          </g>
+
+          <!-- Route nodes (dots) -->
+          <g class="route-nodes">
+            <circle cx="460" cy="95" r="3.5" fill="#F58220" opacity="0.9"/>
+            <circle cx="185" cy="175" r="3.5" fill="#F58220" opacity="0.9"/>
+            <circle cx="490" cy="120" r="3.5" fill="#F58220" opacity="0.9"/>
+            <circle cx="640" cy="160" r="3.5" fill="#F58220" opacity="0.9"/>
+            <circle cx="730" cy="200" r="3" fill="#F58220" opacity="0.7"/>
+            <circle cx="190" cy="220" r="3" fill="#F58220" opacity="0.7"/>
+            <circle cx="420" cy="200" r="3" fill="#F58220" opacity="0.7"/>
+            <circle cx="750" cy="300" r="3" fill="#F58220" opacity="0.7"/>
+            <circle cx="330" cy="195" r="2.5" fill="rgba(255,255,255,0.6)" opacity="0.8"/>
+            <circle cx="560" cy="155" r="2.5" fill="rgba(255,255,255,0.6)" opacity="0.8"/>
+          </g>
+        </svg>
+      </div>
+
+    </section><!-- /hero -->
+
+    <!-- ══ RIGHT — LOGIN CARD ══ -->
+    <aside class="card-col" aria-label="Connexion">
+      <div class="login-card anim-card" role="main" aria-labelledby="card-heading">
+
+        <!-- Orange accent bar -->
+        <div class="card-accent-bar" aria-hidden="true"></div>
+
+        <!-- Card header -->
+        <div class="card-header">
+          <h2 id="card-heading" class="card-title" data-i18n="index_title">Se connecter</h2>
+          <p class="card-subtitle" data-i18n="index_subtitle">Accédez à votre espace FERI et AD</p>
+        </div>
+
+        <!-- Form -->
+        <form id="authForm" class="auth-form" novalidate autocomplete="on">
+
+          <!-- Email -->
+          <div class="form-field" id="nameField-wrap">
+            <label for="email" class="field-label" data-i18n="email_label">Email</label>
+            <div class="input-wrap">
+              <span class="input-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                  <polyline points="22,6 12,13 2,6"/>
+                </svg>
+              </span>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                inputmode="email"
+                autocomplete="email"
+                class="form-input"
+                placeholder="exemple@domaine.com"
+                data-i18n-placeholder="email_hint"
+                required
+                aria-describedby="email-hint"
+              />
+            </div>
+          </div>
+
+          <!-- Password -->
+          <div class="form-field">
+            <label for="password" class="field-label" data-i18n="password_label">Mot de passe</label>
+            <div class="input-wrap">
+              <span class="input-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+              </span>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                autocomplete="current-password"
+                class="form-input"
+                placeholder="Votre mot de passe"
+                data-i18n-placeholder="password_hint"
+                required
+                aria-describedby="pass-hint"
+              />
+              <button
+                type="button"
+                class="toggle-pass"
+                aria-label="Afficher le mot de passe"
+              >
+                <!-- Eye open -->
+                <svg id="eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+                <!-- Eye closed -->
+                <svg id="eye-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                  <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                  <line x1="1" y1="1" x2="23" y2="23"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Options row -->
+          <div class="options-row">
+            <label class="remember-wrap">
+              <input type="checkbox" id="remember" class="remember-checkbox" />
+              <span class="remember-box" aria-hidden="true"></span>
+              <span class="remember-label" data-i18n="remember_me">Se souvenir de moi</span>
+            </label>
+            <a href="forgot.html" id="forgot" class="forgot-link" data-i18n="forgot_password">Mot de passe oublié ?</a>
+          </div>
+
+          <!-- Feedback message -->
+          <div id="message" class="form-message" role="status" aria-live="polite"></div>
+
+          <!-- Submit button -->
+          <button id="submitBtn" type="submit" class="btn-submit">
+            <svg class="btn-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="5" y1="12" x2="19" y2="12"/>
+              <polyline points="12 5 19 12 12 19"/>
+            </svg>
+            <span data-i18n="index_title">Se connecter</span>
+          </button>
+
+          <!-- Divider -->
+          <div class="card-divider" aria-hidden="true"></div>
+
+          <!-- Create account -->
+          <div class="create-row">
+            <p class="create-text" data-i18n="no_account">Vous n'avez pas de compte ?</p>
+            <button
+              id="switchBtn"
+              type="button"
+              class="create-link"
+              data-i18n="create_account"
+            >Créer un compte</button>
+          </div>
+
+        </form>
+      </div><!-- /login-card -->
+    </aside>
+
+  </main><!-- /layout -->
+
+  <!-- ─── FOOTER ─── -->
+  <footer class="site-footer" role="contentinfo">
+    <div class="footer-left">
+      <div class="footer-bar" aria-hidden="true"></div>
+      <span class="footer-tagline" data-i18n="hero_footer">
+        PLUS QU'UNE PLATEFORME,<br/>UN PARTENAIRE DE CONFIANCE
+      </span>
+    </div>
+    <div class="footer-right">
+      <small class="footer-copy">© 2026 Maritime Kargo Consulting. Tous droits réservés.</small>
+    </div>
+  </footer>
+
+</div><!-- /login-page -->
+
+<!-- ─── FORGOT PASSWORD MODAL ─── -->
+<div
+  id="forgot-modal"
+  class="modal-overlay"
+  aria-hidden="true"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="forgot-modal-title"
+>
+  <div class="modal-panel">
+    <div class="modal-head">
+      <h3 id="forgot-modal-title" class="modal-title" data-i18n="forgot_modal_title">Réinitialiser le mot de passe</h3>
+      <button id="forgot-close" class="modal-close-btn" aria-label="Fermer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+    <p id="forgot-instructions" class="modal-desc" data-i18n="forgot_modal_instructions">
+      Entrez votre adresse email. Nous vous enverrons les instructions de réinitialisation.
+    </p>
+    <form id="forgot-form" novalidate>
+      <label for="forgot-email" class="field-label" data-i18n="email_label">Email</label>
+      <div class="input-wrap" style="margin-top:6px; margin-bottom:16px;">
+        <span class="input-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+            <polyline points="22,6 12,13 2,6"/>
+          </svg>
+        </span>
+        <input id="forgot-email" type="email" class="form-input" placeholder="exemple@domaine.com" required />
+      </div>
+      <div class="modal-actions">
+        <button type="button" id="forgot-cancel" class="btn-modal-ghost" data-i18n="forgot_modal_close">Fermer</button>
+        <button type="submit" id="forgot-submit" class="btn-modal-primary" data-i18n="forgot_modal_submit">Envoyer</button>
+      </div>
+      <p id="forgot-feedback" class="modal-feedback" style="display:none;"></p>
+    </form>
+  </div>
+</div>
+
+<!-- ─── SCRIPTS ─── -->
+<script src="i18n.js"></script>
+<script src="index.js"></script>
+
+<script>
+  /* ── Lang toggle custom ── */
+  (function () {
+    var btns = document.querySelectorAll('.lang-btn');
+    var saved = localStorage.getItem('lang') || 'fr';
+    btns.forEach(function (b) {
+      var active = b.dataset.lang === saved;
+      b.classList.toggle('active', active);
+      b.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+    btns.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        localStorage.setItem('lang', btn.dataset.lang);
+        btns.forEach(function (b) {
+          var a = b === btn;
+          b.classList.toggle('active', a);
+          b.setAttribute('aria-pressed', a ? 'true' : 'false');
+        });
+        if (window.i18n) window.i18n.setLang(btn.dataset.lang);
+      });
+    });
+  })();
+
+  /* ── Page-load entrance animations ── */
+  document.addEventListener('DOMContentLoaded', function () {
+    var hero   = document.querySelector('.anim-hero');
+    var card   = document.querySelector('.anim-card');
+    var feats  = document.querySelector('.anim-features');
+    setTimeout(function () { if (hero)  hero.classList.add('visible');  }, 80);
+    setTimeout(function () { if (card)  card.classList.add('visible');  }, 180);
+    setTimeout(function () { if (feats) feats.classList.add('visible'); }, 320);
+  });
+</script>
+
+</body>
 </html>

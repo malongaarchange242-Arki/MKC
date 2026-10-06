@@ -1,277 +1,305 @@
-// index.js
+// index.js — Maritime Kargo Consulting
+// Auth logic : login / register + forgot-password modal
+// Selectors aligned with the redesigned index.html
 (() => {
-    const form = document.getElementById('authForm');
-    const email = document.getElementById('email');
-    const password = document.getElementById('password');
-    const toggle = document.querySelector('.toggle-pass');
-    const switchBtn = document.getElementById('switchBtn');
-    const submitBtn = document.getElementById('submitBtn');
-    const message = document.getElementById('message');
-    const floatingLogo = document.querySelector('.floating-logo');
-    const card = document.querySelector('.card');
-    const effectLayer = document.querySelector('.cursor-effect');
+  /* ═══════ ELEMENTS ═══════ */
+  const form       = document.getElementById('authForm');
+  const emailInput = document.getElementById('email');
+  const passInput  = document.getElementById('password');
+  const toggleBtn  = document.querySelector('.toggle-pass');
+  const submitBtn  = document.getElementById('submitBtn');
+  const switchBtn  = document.getElementById('switchBtn');
+  const msgEl      = document.getElementById('message');
+  const loginCard  = document.querySelector('.login-card');
+  const eyeOpen    = document.getElementById('eye-open');
+  const eyeClosed  = document.getElementById('eye-closed');
 
-    let mode = 'login'; // ou 'register'
+  const API_BASE = 'http://localhost:3000/auth';
+  let mode = 'login'; // 'login' | 'register'
 
-    // Toggle mot de passe
-    toggle.addEventListener('click', () => {
-        const t = password.getAttribute('type') === 'password' ? 'text' : 'password';
-        password.setAttribute('type', t);
-        toggle.textContent = t === 'text' ? '🙈' : '👁️';
+  /* ═══════ PASSWORD TOGGLE ═══════ */
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', () => {
+      const isPass = passInput.getAttribute('type') === 'password';
+      passInput.setAttribute('type', isPass ? 'text' : 'password');
+      toggleBtn.setAttribute('aria-label', isPass ? 'Cacher le mot de passe' : 'Afficher le mot de passe');
+      if (eyeOpen)   eyeOpen.style.display   = isPass ? 'none' : '';
+      if (eyeClosed) eyeClosed.style.display = isPass ? '' : 'none';
     });
+  }
 
-    // Switch login/register
+  /* ═══════ MODE SWITCH (login ↔ register) ═══════ */
+  if (switchBtn) {
     switchBtn.addEventListener('click', () => {
-        if (mode === 'login') {
-            mode = 'register';
-            submitBtn.textContent = window.i18n ? window.i18n.t('sign_up') : "S'inscrire";
-            switchBtn.textContent = window.i18n ? window.i18n.t('already_registered') : "Déjà inscrit ? Se connecter";
-            const sub = document.querySelector('.subtitle');
-            if (sub) sub.textContent = window.i18n ? window.i18n.t('register_subtitle') : "Créez un compte en quelques secondes";
-            if (!document.getElementById('nameField')) {
-                const group = document.createElement('div');
-                group.className = 'input-group';
-                group.id = 'nameField';
-                group.innerHTML = `<label for="fullname">Nom complet</label>
-          <input id="fullname" name="fullname" type="text" autocomplete="name" required />`;
-                form.insertBefore(group, form.firstElementChild.nextSibling);
-            }
-        } else {
-            mode = 'login';
-            submitBtn.textContent = window.i18n ? window.i18n.t('index_title') : "Se connecter";
-            switchBtn.textContent = window.i18n ? window.i18n.t('create_account') : "Créer un compte";
-            const sub = document.querySelector('.subtitle');
-            if (sub) sub.textContent = window.i18n ? window.i18n.t('index_subtitle') : "Accédez à vos demandes FERI et AD";
-            const nf = document.getElementById('nameField');
-            if (nf) nf.remove();
+      if (mode === 'login') {
+        mode = 'register';
+
+        // Update button text
+        const btnSpan = submitBtn.querySelector('span');
+        if (btnSpan) btnSpan.textContent = window.i18n ? window.i18n.t('sign_up') : "S'inscrire";
+        switchBtn.textContent = window.i18n ? window.i18n.t('already_registered') : 'Déjà inscrit ? Se connecter';
+
+        // Update subtitle
+        const subtitle = document.querySelector('.card-subtitle');
+        if (subtitle) subtitle.textContent = window.i18n ? window.i18n.t('register_subtitle') : 'Créez un compte en quelques secondes';
+
+        // Inject name field if not present
+        if (!document.getElementById('nameField')) {
+          const group = document.createElement('div');
+          group.className = 'form-field';
+          group.id = 'nameField';
+          group.innerHTML = `
+            <label for="fullname" class="field-label">Nom complet</label>
+            <div class="input-wrap">
+              <span class="input-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" width="17" height="17">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                  <circle cx="12" cy="7" r="4"/>
+                </svg>
+              </span>
+              <input id="fullname" name="fullname" type="text" autocomplete="name" class="form-input" placeholder="Prénom Nom" required />
+            </div>`;
+          // Insert before email field
+          const emailField = document.getElementById('nameField-wrap') || form.querySelector('.form-field');
+          form.insertBefore(group, emailField);
         }
-        message.textContent = '';
+
+      } else {
+        mode = 'login';
+
+        const btnSpan = submitBtn.querySelector('span');
+        if (btnSpan) btnSpan.textContent = window.i18n ? window.i18n.t('index_title') : 'Se connecter';
+        switchBtn.textContent = window.i18n ? window.i18n.t('create_account') : 'Créer un compte';
+
+        const subtitle = document.querySelector('.card-subtitle');
+        if (subtitle) subtitle.textContent = window.i18n ? window.i18n.t('index_subtitle') : 'Accédez à votre espace FERI et AD';
+
+        const nf = document.getElementById('nameField');
+        if (nf) nf.remove();
+      }
+
+      clearMessage();
     });
+  }
 
-    // Soumission — envoi vers le backend (login / register)
-    // Backend API base (Node backend handles auth)
-    const API_BASE = 'https://mkc-backend-qx7r.onrender.com/auth';
+  /* ═══════ HELPERS ═══════ */
+  function setMessage(text, type = 'muted') {
+    if (!msgEl) return;
+    const colors = { muted: '#6B7280', danger: '#EF4444', success: '#10B981' };
+    msgEl.style.color = colors[type] || colors.muted;
+    msgEl.textContent = text;
+  }
 
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        message.style.color = 'var(--muted)';
-        message.textContent = 'Vérification...';
+  function clearMessage() {
+    if (msgEl) { msgEl.style.color = ''; msgEl.textContent = ''; }
+  }
 
-        if (!email.value || !password.value) {
-            message.style.color = 'var(--danger)';
-            message.textContent = window.i18n ? window.i18n.t('validation_fill_required') : 'Veuillez remplir tous les champs requis.';
-            return;
-        }
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value)) {
-            message.style.color = 'var(--danger)';
-            message.textContent = window.i18n ? window.i18n.t('validation_invalid_email') : 'Adresse email invalide.';
-            return;
-        }
-        if (password.value.length < 8) {
-            message.style.color = 'var(--danger)';
-            message.textContent = window.i18n ? window.i18n.t('validation_password_length') : 'Le mot de passe doit contenir au moins 8 caractères.';
-            return;
-        }
+  function setLoading(loading) {
+    submitBtn.disabled = loading;
+    submitBtn.style.opacity = loading ? '0.75' : '1';
+    const span = submitBtn.querySelector('span');
+    if (span) {
+      if (loading) {
+        span.textContent = mode === 'login'
+          ? (window.i18n ? window.i18n.t('signing_in') : 'Connexion…')
+          : (window.i18n ? window.i18n.t('registering') : 'Inscription…');
+      } else {
+        span.textContent = mode === 'login'
+          ? (window.i18n ? window.i18n.t('index_title') : 'Se connecter')
+          : (window.i18n ? window.i18n.t('sign_up') : "S'inscrire");
+      }
+    }
+  }
 
-        submitBtn.disabled = true;
-        submitBtn.style.opacity = 0.8;
-        submitBtn.textContent = mode === 'login' ? (window.i18n ? window.i18n.t('signing_in') : 'Connexion…') : (window.i18n ? window.i18n.t('registering') : 'Inscription…');
+  /* ═══════ FORM SUBMIT ═══════ */
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearMessage();
 
-        floatingLogo.style.transition = 'transform 0.6s cubic-bezier(.2,.9,.3,1)';
-        floatingLogo.style.transform = 'translateZ(40px) rotateY(-18deg) scale(1.03)';
+    // Validate
+    const emailVal = emailInput.value.trim();
+    const passVal  = passInput.value;
 
-        try {
-            const payload = { email: email.value.trim(), password: password.value };
-            if (mode === 'register') {
-                const full = (document.getElementById('fullname')?.value || '').trim();
-                if (!full || full.length < 2) {
-                    throw new Error('Veuillez renseigner votre nom et prénom.');
-                }
-                // simple split: premier mot -> prenom, reste -> nom
-                const parts = full.split(/\s+/);
-                const prenom = parts.shift();
-                const nom = parts.join(' ') || '';
-                payload.prenom = prenom;
-                payload.nom = nom || prenom;
-            }
-
-            const endpoint = mode === 'login' ? `${API_BASE}/login` : `${API_BASE}/register`;
-            const resp = await fetch(endpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            // Essayer de parser JSON, sinon lire texte brut pour obtenir un message d'erreur utile
-            let data = {};
-            const text = await resp.text();
-            try {
-                data = text ? JSON.parse(text) : {};
-            } catch (e) {
-                data = { _text: text };
-            }
-
-            if (!resp.ok) {
-                console.error('Auth error response:', data);
-                const err = data?.message || data?.error || data?._text || 'Erreur d’authentification.';
-                throw new Error(err);
-            }
-
-            // Attendre un court instant pour l'animation
-            await new Promise(r => setTimeout(r, 400));
-
-            // Si on vient de s'inscrire, faire automatiquement un login pour récupérer le token
-            if (mode === 'register') {
-                try {
-                    const loginResp = await fetch(`${API_BASE}/login`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ email: email.value.trim(), password: password.value })
-                    });
-                    const loginText = await loginResp.text();
-                    let loginData = {};
-                    try { loginData = loginText ? JSON.parse(loginText) : {}; } catch (e) { loginData = { _text: loginText }; }
-                    if (!loginResp.ok) {
-                        console.error('Login after register failed:', loginData);
-                        throw new Error(loginData?.message || loginData?.error || loginData?._text || 'Login failed');
-                    }
-                    const session = loginData.session || loginData?.data?.session;
-                    const token = session?.access_token || session?.accessToken || loginData.token || loginData.access_token;
-                    if (token) {
-                        localStorage.setItem('token', token);
-                        localStorage.setItem('access_token', token);
-                    }
-                } catch (e) {
-                    console.error('Auto-login failed', e);
-                }
-            } else {
-                // login direct: stocker token si présent
-                const token = data.session?.access_token || data.token || data.access_token || data.jwt || data.accessToken;
-                if (token) {
-                    localStorage.setItem('token', token);
-                    localStorage.setItem('access_token', token);
-                }
-            }
-
-            message.style.color = 'var(--success)';
-            message.textContent = mode === 'login' ? (window.i18n ? window.i18n.t('sign_in_success') : 'Connexion réussie. Redirection…') : (window.i18n ? window.i18n.t('register_success') : 'Inscription réussie. Redirection…');
-
-            // Déterminer le rôle utilisateur et rediriger en conséquence
-            const extractRole = (obj) => {
-                try {
-                    return obj?.user?.user_metadata?.role || obj?.user_metadata?.role || obj?.role || null;
-                } catch (e) { return null; }
-            };
-
-            const roleCandidates = [];
-            // cas login
-            roleCandidates.push(extractRole(data));
-            // si insription -> loginData peut exister
-            if (typeof loginData !== 'undefined') roleCandidates.push(extractRole(loginData));
-            // essayer aussi user object top-level
-            roleCandidates.push(data?.user?.user_metadata?.role);
-
-            const role = roleCandidates.find(r => typeof r === 'string' && r.length) || 'CLIENT';
-
-            setTimeout(() => {
-                if (role.toUpperCase() === 'ADMIN') {
-                    window.location.href = 'dashboard_admin.html';
-                } else {
-                    window.location.href = 'dashboard_client.html';
-                }
-            }, 700);
-
-        } catch (err) {
-            message.style.color = 'var(--danger)';
-            message.textContent = err?.message || (window.i18n ? window.i18n.t('validation_fill_required') : 'Erreur serveur. Réessayez plus tard.');
-            submitBtn.disabled = false;
-            submitBtn.style.opacity = 1;
-            submitBtn.textContent = mode === 'login' ? (window.i18n ? window.i18n.t('index_title') : 'Se connecter') : (window.i18n ? window.i18n.t('sign_up') : "S'inscrire");
-            floatingLogo.style.transform = '';
-        }
-    });
-
-    // Effet parallax + halo orange
-    document.addEventListener('mousemove', (e) => {
-        const cx = window.innerWidth / 2;
-        const cy = window.innerHeight / 2;
-        const dx = (e.clientX - cx) / cx;
-        const dy = (e.clientY - cy) / cy;
-
-        card.style.transform = `translateZ(40px) rotateY(${dx * 6}deg) rotateX(${dy * -4}deg)`;
-        floatingLogo.style.transform = `translateZ(${60 + Math.abs(dx * 20)}px) rotateY(${dx * -12}deg) translateY(${dy * -6}px)`;
-
-        // mise à jour halo orange
-        const x = (e.clientX / window.innerWidth) * 100;
-        const y = (e.clientY / window.innerHeight) * 100;
-        effectLayer.style.setProperty('--x', x + '%');
-        effectLayer.style.setProperty('--y', y + '%');
-    });
-
-    // Reset quand la souris sort
-    document.addEventListener('mouseleave', () => {
-        card.style.transform = '';
-        floatingLogo.style.transform = '';
-    });
-
-    // Forgot-password modal behavior
-    const forgotLink = document.getElementById('forgot');
-    const forgotModal = document.getElementById('forgot-modal');
-    const forgotClose = document.getElementById('forgot-close');
-    const forgotCancel = document.getElementById('forgot-cancel');
-    const forgotForm = document.getElementById('forgot-form');
-    const forgotEmail = document.getElementById('forgot-email');
-    const forgotFeedback = document.getElementById('forgot-feedback');
-
-    function openForgot() {
-        if (!forgotModal) return;
-        forgotModal.style.display = 'flex';
-        forgotModal.setAttribute('aria-hidden', 'false');
-        forgotEmail && forgotEmail.focus();
-        forgotFeedback.style.display = 'none';
-        forgotFeedback.textContent = '';
+    if (!emailVal || !passVal) {
+      setMessage(window.i18n ? window.i18n.t('validation_fill_required') : 'Veuillez remplir tous les champs requis.', 'danger');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
+      setMessage(window.i18n ? window.i18n.t('validation_invalid_email') : 'Adresse email invalide.', 'danger');
+      return;
+    }
+    if (passVal.length < 8) {
+      setMessage(window.i18n ? window.i18n.t('validation_password_length') : 'Le mot de passe doit contenir au moins 8 caractères.', 'danger');
+      return;
     }
 
-    function closeForgot() {
-        if (!forgotModal) return;
-        forgotModal.style.display = 'none';
-        forgotModal.setAttribute('aria-hidden', 'true');
-    }
+    setLoading(true);
+    setMessage('Vérification…', 'muted');
 
-    // Allow the default link navigation to `forgot.html` instead of opening the modal.
-    // (Previously the click was intercepted to open an inline modal.)
-    if (forgotClose) forgotClose.addEventListener('click', closeForgot);
-    if (forgotCancel) forgotCancel.addEventListener('click', closeForgot);
+    try {
+      const payload = { email: emailVal, password: passVal };
 
-    forgotForm && forgotForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        forgotFeedback.style.display = 'none';
-        const emailVal = forgotEmail.value && forgotEmail.value.trim();
-        if (!emailVal || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
-            forgotFeedback.style.display = 'block';
-            forgotFeedback.style.color = 'var(--danger)';
-            forgotFeedback.textContent = window.i18n ? window.i18n.t('validation_invalid_email') : 'Adresse email invalide.';
-            return;
-        }
+      if (mode === 'register') {
+        const full = (document.getElementById('fullname')?.value || '').trim();
+        if (!full || full.length < 2) throw new Error('Veuillez renseigner votre nom et prénom.');
+        const parts  = full.split(/\s+/);
+        const prenom = parts.shift();
+        payload.prenom = prenom;
+        payload.nom    = parts.join(' ') || prenom;
+      }
 
-        // Best-effort send to backend; do not reveal existence — show generic success message.
+      const endpoint = mode === 'login' ? `${API_BASE}/login` : `${API_BASE}/register`;
+      const resp     = await fetch(endpoint, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(payload),
+      });
+
+      let data = {};
+      const raw = await resp.text();
+      try { data = raw ? JSON.parse(raw) : {}; } catch { data = { _text: raw }; }
+
+      if (!resp.ok) {
+        const errMsg = data?.message || data?.error || data?._text || "Erreur d'authentification.";
+        throw new Error(errMsg);
+      }
+
+      await new Promise(r => setTimeout(r, 400));
+
+      // Auto-login after register to get token
+      let loginData = {};
+      if (mode === 'register') {
         try {
-            const resetEndpoint = `${API_BASE}/forgot`;
-            await fetch(resetEndpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: emailVal })
-            }).catch(() => null);
-        } catch (e) {
-            // ignore
+          const loginResp = await fetch(`${API_BASE}/login`, {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ email: emailVal, password: passVal }),
+          });
+          const loginRaw = await loginResp.text();
+          try { loginData = loginRaw ? JSON.parse(loginRaw) : {}; } catch { loginData = { _text: loginRaw }; }
+          if (!loginResp.ok) throw new Error(loginData?.message || 'Auto-login failed');
+          const session = loginData.session || loginData?.data?.session;
+          const token   = session?.access_token || session?.accessToken || loginData.token || loginData.access_token;
+          if (token) {
+            localStorage.setItem('token', token);
+            localStorage.setItem('access_token', token);
+          }
+        } catch (autoErr) {
+          console.error('Auto-login after register failed', autoErr);
         }
+      } else {
+        const token = data.session?.access_token || data.token || data.access_token || data.jwt || data.accessToken;
+        if (token) {
+          localStorage.setItem('token', token);
+          localStorage.setItem('access_token', token);
+        }
+      }
 
+      setMessage(
+        mode === 'login'
+          ? (window.i18n ? window.i18n.t('sign_in_success') : 'Connexion réussie. Redirection…')
+          : (window.i18n ? window.i18n.t('register_success') : 'Inscription réussie. Redirection…'),
+        'success'
+      );
+
+      setTimeout(() => {
+        window.location.href = 'facture_carte.html';
+      }, 700);
+
+    } catch (err) {
+      setMessage(err?.message || (window.i18n ? window.i18n.t('validation_fill_required') : 'Erreur serveur. Réessayez plus tard.'), 'danger');
+      setLoading(false);
+    }
+  });
+
+  /* ═══════ SUBTLE CARD TILT on hover ═══════ */
+  if (loginCard) {
+    const col = document.querySelector('.card-col');
+    if (col) {
+      col.addEventListener('mousemove', (e) => {
+        const rect = loginCard.getBoundingClientRect();
+        const dx = (e.clientX - rect.left - rect.width  / 2) / (rect.width  / 2);
+        const dy = (e.clientY - rect.top  - rect.height / 2) / (rect.height / 2);
+        loginCard.style.transform = `perspective(1000px) rotateY(${dx * 2}deg) rotateX(${dy * -1.5}deg)`;
+      });
+      col.addEventListener('mouseleave', () => {
+        loginCard.style.transform = '';
+      });
+    }
+  }
+
+  /* ═══════ FORGOT PASSWORD MODAL ═══════ */
+  const forgotModal    = document.getElementById('forgot-modal');
+  const forgotClose    = document.getElementById('forgot-close');
+  const forgotCancel   = document.getElementById('forgot-cancel');
+  const forgotForm     = document.getElementById('forgot-form');
+  const forgotEmail    = document.getElementById('forgot-email');
+  const forgotFeedback = document.getElementById('forgot-feedback');
+
+  function openForgot() {
+    if (!forgotModal) return;
+    forgotModal.setAttribute('aria-hidden', 'false');
+    forgotModal.style.display = 'flex';
+    if (forgotEmail) forgotEmail.focus();
+    if (forgotFeedback) { forgotFeedback.style.display = 'none'; forgotFeedback.textContent = ''; }
+  }
+
+  function closeForgot() {
+    if (!forgotModal) return;
+    forgotModal.setAttribute('aria-hidden', 'true');
+    forgotModal.style.display = 'none';
+  }
+
+  // Clicking the forgot link navigates to forgot.html (default behaviour).
+  // Modal stays available for programmatic use.
+  if (forgotClose)  forgotClose.addEventListener('click', closeForgot);
+  if (forgotCancel) forgotCancel.addEventListener('click', closeForgot);
+
+  // Close modal on backdrop click
+  if (forgotModal) {
+    forgotModal.addEventListener('click', (e) => {
+      if (e.target === forgotModal) closeForgot();
+    });
+  }
+
+  // Close on Escape
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeForgot();
+  });
+
+  if (forgotForm) {
+    forgotForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!forgotFeedback) return;
+      forgotFeedback.style.display = 'none';
+
+      const val = forgotEmail?.value?.trim();
+      if (!val || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) {
         forgotFeedback.style.display = 'block';
-        forgotFeedback.style.color = 'var(--muted)';
-        forgotFeedback.textContent = window.i18n ? window.i18n.t('forgot_modal_success') : 'If an account exists, you will receive an email with reset instructions.';
-        // disable inputs to avoid re-submits
-        forgotEmail.disabled = true;
-        document.getElementById('forgot-submit').disabled = true;
-        setTimeout(closeForgot, 2200);
+        forgotFeedback.style.color   = '#EF4444';
+        forgotFeedback.textContent   = window.i18n ? window.i18n.t('validation_invalid_email') : 'Adresse email invalide.';
+        return;
+      }
+
+      try {
+        await fetch(`${API_BASE}/forgot`, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ email: val }),
+        }).catch(() => null);
+      } catch { /* ignore */ }
+
+      forgotFeedback.style.display = 'block';
+      forgotFeedback.style.color   = '#10B981';
+      forgotFeedback.textContent   = window.i18n
+        ? window.i18n.t('forgot_modal_success')
+        : 'Si un compte existe, vous recevrez les instructions par email.';
+
+      if (forgotEmail) forgotEmail.disabled = true;
+      const sub = document.getElementById('forgot-submit');
+      if (sub) sub.disabled = true;
+      setTimeout(closeForgot, 2500);
     });
+  }
+
 })();

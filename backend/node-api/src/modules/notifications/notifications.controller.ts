@@ -36,11 +36,10 @@ export class NotificationsController {
 				.select(
 					`
 						id,
-						type,
+						channel,
 						title,
-						message,
-						entity_type,
-						entity_id,
+						body,
+						metadata,
 						is_read,
 						created_at
 					`,
@@ -66,11 +65,12 @@ export class NotificationsController {
 
 			const safeData = (data ?? []).map(n => ({
 				id: n.id,
-				type: n.type ?? 'REQUEST_STATUS_CHANGED',
+				type: n.metadata?.type ?? 'REQUEST_STATUS_CHANGED',
 				title: n.title ?? 'Notification',
-				message: n.message ?? 'You have a new notification.',
-				entity_type: n.entity_type ?? null,
-				entity_id: n.entity_id ?? null,
+				message: n.body ?? 'You have a new notification.',
+				entity_type: n.metadata?.entity_type ?? null,
+				entity_id: n.metadata?.entity_id ?? null,
+				metadata: n.metadata ?? null,
 				is_read: n.is_read ?? false,
 				created_at: n.created_at
 			}));
@@ -122,8 +122,7 @@ export class NotificationsController {
 			const { data, error } = await supabase
 				.from('notifications')
 				.update({
-					is_read: true,
-					updated_at: new Date().toISOString()
+					is_read: true
 				})
 				.eq('id', notificationId)
 				.eq('user_id', userId)

@@ -9,6 +9,7 @@
     "start": "node dist/main.js",
     "lint": "eslint .",
     "format": "prettier --write .",
+    "smoke-test": "node scripts/smoke_test.js",
     "create-bucket": "ts-node scripts/create-storage-bucket.ts"
   },
   "dependencies": {

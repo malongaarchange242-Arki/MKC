@@ -1,356 +1,515 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LOGI-RDC | Dashboard</title>
-  <link rel="stylesheet" href="dashboard_client.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Client Portal — Maritime Kargo Consulting</title>
+  <link rel="icon" href="Logotype_mkc_bon-removebg-preview.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="dashboard_client.css" />
 </head>
-
 <body>
-  <div class="app-container">
 
-    <nav class="sidebar" id="sidebar" aria-label="Navigation principale">
-      <div class="sidebar-header-mobile">
-        <div class="logo">
-          <h2>C</h2>
-        </div>
-        <button class="icon-btn close-sidebar" id="close-sidebar-btn" aria-label="Fermer le menu" type="button">
-          <i class="fas fa-times" aria-hidden="true"></i>
+<div class="app-container">
+
+  <!-- ═══════════════════════════════════════════
+       SIDEBAR
+  ════════════════════════════════════════════ -->
+  <nav class="sidebar" id="sidebar" aria-label="Navigation principale">
+
+    <!-- Mobile header (close btn) -->
+    <div class="sidebar-mobile-header">
+      <button class="sidebar-close-btn" id="close-sidebar-btn" aria-label="Fermer le menu" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <!-- Logo block -->
+    <div class="sidebar-logo">
+      <img src="Logotype_mkc_bon-removebg-preview.png" alt="Maritime Kargo Consulting" class="sidebar-logo-img" width="46" height="46" />
+      <div class="sidebar-logo-text">
+        <div class="sidebar-brand"><span class="sb-maritime">MARITIME </span><span class="sb-kargo">KARGO</span></div>
+        <div class="sb-consulting">CONSULTING</div>
+        <div class="sb-tagline">FERI · AD · INTERNATIONAL TRADE</div>
+      </div>
+    </div>
+
+    <!-- Section label -->
+    <div class="sidebar-section-label" data-i18n="client_area">ESPACE CLIENT</div>
+
+    <!-- Navigation -->
+    <ul class="sidebar-nav" role="menu">
+      <li class="nav-item" role="menuitem" tabindex="0" data-page="dashboard">
+        <span class="nav-active-bar" aria-hidden="true"></span>
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        <span data-i18n="dashboard">Tableau de bord</span>
+      </li>
+      <li class="nav-item active" role="menuitem" tabindex="0" data-page="requests" id="nav-requests" aria-current="page">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        <span data-i18n="my_requests">Mes demandes</span>
+      </li>
+      <li class="nav-item" role="menuitem" tabindex="0" onclick="window.location.href='PaiementClient.html'">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+        <span data-i18n="payments">Paiements</span>
+      </li>
+      <li class="nav-item" role="menuitem" tabindex="0">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        <span data-i18n="documents">Documents</span>
+      </li>
+      <li class="nav-item" role="menuitem" tabindex="0" id="nav-notif">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span>Notifications</span>
+        <span class="sidebar-notif-badge" id="sidebar-notif-badge" style="display:none;"></span>
+      </li>
+      <li class="nav-item" role="menuitem" tabindex="0">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <span data-i18n="company_profile">Profil entreprise</span>
+      </li>
+      <li class="nav-item" role="menuitem" tabindex="0">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+        <span data-i18n="settings">Paramètres</span>
+      </li>
+    </ul>
+
+    <!-- Logout -->
+    <div class="sidebar-logout" role="button" tabindex="0" id="logoutBtn" aria-label="Déconnexion">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      <span data-i18n="logout">Déconnexion</span>
+    </div>
+
+    <script>
+      document.getElementById('logoutBtn').addEventListener('click', () => {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        window.location.href = 'index.html';
+      });
+    </script>
+
+    <!-- Side panel for request details (preserved from original) -->
+    <aside id="side-panel" aria-hidden="true">
+      <button class="close-btn" id="side-close-btn" aria-label="Fermer le panneau">×</button>
+      <div class="side-content">
+        <h3 id="side-bl">BL: —</h3>
+        <p id="side-status">Status: —</p>
+        <p id="side-date">Updated: —</p>
+        <p id="side-client">Client: —</p>
+        <div id="side-docs"></div>
+      </div>
+    </aside>
+
+  </nav><!-- /sidebar -->
+
+  <!-- ═══════════════════════════════════════════
+       MAIN CONTENT
+  ════════════════════════════════════════════ -->
+  <div class="main-content" role="main">
+
+    <!-- ── HEADER ── -->
+    <header class="top-header">
+      <div class="header-left">
+        <!-- Hamburger (mobile) -->
+        <button class="hamburger-btn icon-btn" id="menu-trigger" aria-label="Ouvrir le menu" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
         </button>
-      </div>
-
-      <div class="logo desktop-logo">
-        <h2>MARITIME KARGO</h2>
-        <span class="subtitle">Consulting</span>
-      </div>
-
-      <ul role="menu">
-        <li class="active" role="menuitem" tabindex="0"><i class="fas fa-home" aria-hidden="true"></i> <span data-i18n="dashboard">Dashboard</span></li>
-        <li role="menuitem" tabindex="0" onclick="window.location.href='PaiementClient.html'"><i class="fas fa-file-invoice-dollar" aria-hidden="true"></i> <span data-i18n="payments">Paiements</span></li>
-      </ul>
-      <div class="logout" role="button" tabindex="0" id="logoutBtn">
-        <i class="fas fa-sign-out-alt" aria-hidden="true"></i> <span data-i18n="logout">Déconnexion</span>
-      </div>
-
-      <script>
-        document.getElementById('logoutBtn').addEventListener('click', () => {
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
-          window.location.href = 'index.html';
-        });
-      </script>
-
-      <!-- Side panel for request details -->
-      <aside id="side-panel" aria-hidden="true">
-        <button class="close-btn" id="side-close-btn" aria-label="Fermer le panneau">×</button>
-        <div class="side-content">
-          <h3 id="side-bl">BL: —</h3>
-          <p id="side-status">Status: —</p>
-          <p id="side-date">Updated: —</p>
-          <p id="side-client">Client: —</p>
-          <div id="side-docs"></div>
+        <!-- Search -->
+        <div class="search-wrap">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="search" class="search-input" id="global-search" placeholder="Rechercher une demande, un BL, une référence..." data-i18n-placeholder="search_requests" aria-label="Rechercher" />
         </div>
-      </aside>
+      </div>
 
-      <style>
-        /* Side panel styles */
-        #side-panel { position: fixed; right: -680px; top: 0; height: 100%; width: 640px; background: #fff; box-shadow: -6px 24px 24px rgba(0,0,0,0.12); transition: right .28s ease; z-index: 2000; overflow:auto; padding: 20px; }
-        #side-panel.show { right: 0; }
-        #side-panel .close-btn { position: absolute; left: 12px; top: 10px; font-size: 22px; line-height: 22px; background: none; border: none; cursor: pointer; }
-        #side-panel .side-content { margin-top: 36px; }
-        #side-panel h3 { margin: 0 0 8px 0; font-size: 18px; }
-        #side-panel p { margin: 6px 0; color: #374151; }
+      <div class="header-right">
+        <!-- Lang selector -->
+        <select id="lang-select" class="lang-selector" aria-label="Sélection de la langue">
+          <option value="fr">FR</option>
+          <option value="en">EN</option>
+        </select>
+        <svg class="lang-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
 
-        /* Clickable row highlight */
-        #table-body tr.clickable-row { cursor: pointer; }
-        #table-body tr.clickable-row:hover { background: rgba(255,165,0,0.08); }
-      </style>
+        <!-- Notifications bell -->
+        <div class="header-sep" aria-hidden="true"></div>
+        <button class="notif-btn icon-btn" id="notif-btn" aria-haspopup="dialog" aria-controls="popup-notif" aria-expanded="false" type="button" aria-label="Notifications">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <span id="notif-badge" class="notif-badge" aria-hidden="true" style="display:none;"></span>
+        </button>
 
-    </nav>
+        <!-- Messages -->
+        <button class="icon-btn" id="settings-btn" type="button" aria-label="Messages" title="Messages">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        </button>
 
-    <main class="main-content" role="main">
-      <header class="top-header">
-        <div class="header-left">
-          <button class="fas fa-bars menu-trigger icon-btn" id="menu-trigger" aria-label="Ouvrir le menu"
-            type="button"></button>
+        <!-- User profile -->
+        <div class="header-sep" aria-hidden="true"></div>
+        <div class="user-profile" aria-label="Profil utilisateur">
+          <div class="avatar-placeholder" id="avatar-wrap" aria-hidden="true"></div>
+          <div class="user-info">
+            <span class="user-name name"></span>
+            <span class="user-role role">Client</span>
+          </div>
+          <svg class="user-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
+      </div>
+    </header><!-- /header -->
 
-        <div class="header-right">
-          <label for="lang-select" style="font-size:12px; color:#6b7280; margin-right:6px; align-self:center;">EN/FR</label>
-          <select id="lang-select" aria-label="Language switch" style="padding:6px; border-radius:4px; margin-right:8px;">
-            <option value="en">EN</option>
-            <option value="fr">FR</option>
-          </select>
-          <button class="far fa-bell icon-btn" id="notif-btn" aria-haspopup="dialog" aria-controls="popup-notif"
-            aria-expanded="false" type="button">
-            <span id="notif-badge" class="notif-badge" aria-hidden="true" style="display:none;"></span>
+    <!-- ── SCROLLABLE AREA ── -->
+    <div class="content-scroll">
+
+      <!-- ── PAGE HEADER ── -->
+      <div class="page-hero requests-hero">
+        <div class="page-hero-left">
+          <div class="hero-accent-line" aria-hidden="true"></div>
+          <h1 class="requests-page-title" data-i18n="my_requests">Mes demandes</h1>
+          <p class="hero-subtitle" data-i18n="requests_page_subtitle">Suivez et gérez l'ensemble de vos demandes FERI &amp; AD.</p>
+        </div>
+        <div class="page-hero-right">
+          <!-- Maritime routes graphic (decorative) -->
+          <div class="maritime-graphic" aria-hidden="true">
+            <svg class="routes-svg" viewBox="0 0 420 200" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+              <!-- Simplified Africa/Atlantic coastline silhouette -->
+              <g opacity="0.06" fill="#092844">
+                <path d="M60 20 L110 10 L180 15 L230 30 L260 55 L270 90 L260 130 L240 165 L210 185 L180 190 L150 180 L120 160 L100 130 L85 95 L70 60 Z"/>
+                <path d="M280 40 L340 30 L390 40 L415 65 L415 100 L400 130 L370 150 L340 155 L310 140 L290 110 L280 80 Z"/>
+              </g>
+              <!-- Maritime route lines -->
+              <g opacity="0.55">
+                <path d="M120 120 Q 220 60 310 90" stroke="#092844" stroke-width="0.8" fill="none" stroke-dasharray="5 4"/>
+                <path d="M90 80 Q 200 120 360 100" stroke="#092844" stroke-width="0.7" fill="none" stroke-dasharray="4 4"/>
+                <path d="M150 160 Q 260 130 380 140" stroke="#092844" stroke-width="0.6" fill="none" stroke-dasharray="3 5"/>
+              </g>
+              <!-- Port dots -->
+              <g>
+                <circle cx="120" cy="120" r="4" fill="#FF8A00" opacity="0.85"/>
+                <text x="127" y="124" font-family="Inter,sans-serif" font-size="8" fill="#092844" opacity="0.6">Pointe-Noire</text>
+                <circle cx="90" cy="80" r="4" fill="#FF8A00" opacity="0.85"/>
+                <text x="97" y="84" font-family="Inter,sans-serif" font-size="8" fill="#092844" opacity="0.6">Matadi</text>
+                <circle cx="150" cy="160" r="4" fill="#FF8A00" opacity="0.85"/>
+                <text x="157" y="164" font-family="Inter,sans-serif" font-size="8" fill="#092844" opacity="0.6">Kinshasa</text>
+                <circle cx="310" cy="90" r="3" fill="#FF8A00" opacity="0.6"/>
+                <circle cx="360" cy="100" r="3" fill="#FF8A00" opacity="0.5"/>
+                <circle cx="380" cy="140" r="3" fill="#FF8A00" opacity="0.5"/>
+              </g>
+            </svg>
+          </div>
+          <!-- New request button -->
+          <button class="btn-new-request" id="open-modal-btn" aria-haspopup="dialog" aria-controls="modal" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <span data-i18n="new_request">Nouvelle demande</span>
           </button>
-          <button class="fas fa-envelope icon-btn" id="settings-btn" aria-haspopup="dialog" aria-controls="popup-settings"
-            aria-expanded="false" type="button" title="Messages"></button>
-          <div class="user-profile" aria-label="Profil utilisateur">
-            <div class="user-info">
-              <span class="name"></span>
-              <span class="role"></span>
-            </div>
-            <div class="avatar-placeholder" aria-hidden="true"
-              style="width:36px; height:36px; background:#ddd; border-radius:50%; display:flex; align-items:center; justify-content:center;">
-              
-            </div>
-          </div>
         </div>
-      </header>
+      </div>
 
-      <section class="action-bar" aria-label="Barre d'actions">
-          <div class="actions-left">
-          <button class="btn-green" id="open-modal-btn" aria-haspopup="dialog" aria-controls="modal" type="button" data-i18n="new_request">New
-            Request <i class="fas fa-chevron-down" aria-hidden="true"></i></button>
-        </div>
-        <div class="action-center">
-        </div>
-        <div class="actions-right">
-          <div class="filters" style="display:flex; gap:8px; align-items:center; margin-right:12px;">
-            <select id="filter-date" aria-label="Filtrer par date" style="padding:6px; border-radius:4px;">
-              <option value="all" data-i18n="filter_all_dates">All dates</option>
-              <option value="today" data-i18n="filter_today">Today</option>
-              <option value="7" data-i18n="filter_last7">Last 7 days</option>
-              <option value="30" data-i18n="filter_last30">Last 30 days</option>
-            </select>
-            <select id="filter-status" aria-label="Filtrer par statut" style="padding:6px; border-radius:4px; min-width:160px;">
-              <option value="all" data-i18n="filter_all_statuses">All statuses</option>
-            </select>
-            <select id="filter-type" aria-label="Filtrer par type de requête" style="padding:6px; border-radius:4px; min-width:160px;">
-              <option value="all" data-i18n="filter_all_types">All types</option>
-            </select>
+      <!-- ── ALERTS ── -->
+      <div id="alerts-container" role="region" aria-live="polite" aria-label="Messages d'alerte"></div>
+
+      <section class="requests-toolbar" aria-label="Filtres des demandes">
+        <label class="request-search-field">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input type="search" id="request-search" data-i18n-placeholder="filter_requests_placeholder" placeholder="Rechercher par numéro de demande, BL, référence..." aria-label="Rechercher dans les demandes">
+        </label>
+        <label class="request-filter">
+          <span data-i18n="type">Type</span>
+          <select id="filter-type" aria-label="Filtrer par type">
+            <option value="all" data-i18n="filter_all">Tous</option>
+            <option value="feri">FERI</option>
+            <option value="ad">AD</option>
+          </select>
+        </label>
+        <label class="request-filter">
+          <span data-i18n="status">Statut</span>
+          <select id="filter-status" aria-label="Filtrer par statut">
+            <option value="all" data-i18n="filter_all">Tous</option>
+            <option value="pending" data-i18n="request_status_pending">En attente</option>
+            <option value="in_progress" data-i18n="request_status_in_progress">En cours</option>
+            <option value="completed" data-i18n="request_status_completed">Terminé</option>
+            <option value="rejected" data-i18n="request_status_rejected">Rejetée</option>
+          </select>
+        </label>
+        <label class="request-filter request-period-filter">
+          <span data-i18n="period">Période</span>
+          <select id="filter-date" aria-label="Filtrer par période">
+            <option value="all" data-i18n="filter_all_dates">Toutes les dates</option>
+            <option value="today" data-i18n="filter_today">Aujourd'hui</option>
+            <option value="7" data-i18n="filter_last7">7 derniers jours</option>
+            <option value="30" data-i18n="filter_last30">30 derniers jours</option>
+          </select>
+        </label>
+        <label class="request-filter request-sort-filter">
+          <span data-i18n="sort_by">Trier par</span>
+          <select id="sort-by" aria-label="Trier les demandes">
+            <option value="newest" data-i18n="sort_creation_desc">Date de création</option>
+            <option value="oldest" data-i18n="sort_creation_asc">Plus anciennes d'abord</option>
+          </select>
+        </label>
+      </section>
+
+      <section class="requests-section" aria-labelledby="requests-section-title">
+        <div class="requests-section-heading">
+          <div class="card-title-group">
+            <svg class="card-title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            <h2 class="card-title" id="requests-section-title" data-i18n="all_requests">Toutes les demandes</h2>
+            <span class="request-count" id="request-count" aria-live="polite">0</span>
           </div>
-         
+        </div>
+
+        <div class="card requests-card" id="requests-card">
+          <div class="table-responsive" id="requests-table-wrap" role="region" aria-label="Tableau des demandes" tabindex="0">
+            <table class="dashboard-table" aria-describedby="entries-info">
+              <thead>
+                <tr>
+                  <th scope="col" data-i18n="request_number">N° DEMANDE</th>
+                  <th scope="col" data-i18n="type">TYPE</th>
+                  <th scope="col" data-i18n="ref_number">RÉFÉRENCE</th>
+                  <th scope="col" data-i18n="client_company">CLIENT / SOCIÉTÉ</th>
+                  <th scope="col" data-i18n="creation_date">DATE DE CRÉATION</th>
+                  <th scope="col" data-i18n="status">STATUT</th>
+                  <th scope="col" data-i18n="actions">ACTIONS</th>
+                </tr>
+              </thead>
+              <tbody id="table-body" aria-live="polite"></tbody>
+            </table>
+          </div>
+
+          <div class="request-state request-empty" id="requests-empty" hidden>
+            <div class="request-state-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="14" y2="17"/></svg></div>
+            <h3 id="empty-title" data-i18n="no_requests">Aucune demande trouvée</h3>
+            <p id="empty-description" data-i18n="empty_requests_description">Modifiez vos filtres ou créez une nouvelle demande.</p>
+            <button class="btn-new-request" id="empty-action" type="button"><span data-i18n="create_request">Créer une demande</span></button>
+          </div>
+
+          <div class="request-state request-error" id="requests-error" hidden>
+            <div class="request-state-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5m0 3h.01"/></svg></div>
+            <h3 data-i18n="requests_load_error">Impossible de charger vos demandes</h3>
+            <button class="btn-retry" id="retry-requests" type="button" data-i18n="retry">Réessayer</button>
+          </div>
+
+          <div class="pagination-footer" id="pagination-footer">
+            <div class="page-numbers" id="pagination-pages" aria-label="Pagination"></div>
+            <div class="pagination-meta">
+              <label for="page-size" data-i18n="items_per_page">Éléments par page :</label>
+              <select id="page-size" aria-label="Éléments par page">
+                <option value="10" selected>10</option>
+                <option value="20">20</option>
+                <option value="50">50</option>
+              </select>
+              <span class="showing-text" id="entries-info" aria-live="polite"></span>
+            </div>
+          </div>
         </div>
       </section>
 
-      <!-- Alerts Container for BL Auto-Generated and other notifications -->
-      <div id="alerts-container" role="region" aria-live="polite" aria-label="Messages d'alerte" style="margin-bottom: 16px;"></div>
-
-      <div class="table-responsive" role="region" aria-label="Tableau des demandes">
-        <table class="dashboard-table" aria-describedby="entries-info">
-          <thead>
-            <tr>
-              <th scope="col"><span data-i18n="bl_number">BL Number</span> <i class="fas fa-filter text-muted" aria-hidden="true"></i></th>
-              <th scope="col"><span data-i18n="ref_number">Ref #</span></th>
-              <th scope="col"><span data-i18n="last_updated">Last Updated</span> <i class="fas fa-sort-amount-down text-blue" aria-hidden="true"></i></th>
-              <th scope="col"><span data-i18n="status">Status</span> <i class="fas fa-sort text-muted" aria-hidden="true"></i></th>
-              <th scope="col"><span data-i18n="country">Country</span> <i class="fas fa-sort text-muted" aria-hidden="true"></i></th>
-              <th scope="col"><span data-i18n="invoice_number">Invoice #</span> <i class="fas fa-sort text-muted" aria-hidden="true"></i></th>
-              <th scope="col"><span data-i18n="actions">Actions</span></th>
-            </tr>
-          </thead>
-          <tbody id="table-body"></tbody>
-        </table>
-      </div>
-
-      <div class="pagination-footer" aria-live="polite">
-        <div class="page-numbers" role="navigation" aria-label="Pagination">
-          <button aria-label="Page précédente" type="button"><i class="fas fa-angle-left"
-              aria-hidden="true"></i></button>
-          <button class="active" aria-current="page" type="button">1</button>
-          <button aria-label="Page suivante" type="button"><i class="fas fa-angle-right"
-              aria-hidden="true"></i></button>
+      <!-- ── HELP CARD ── -->
+      <div class="card help-card">
+        <div class="help-card-inner">
+          <div class="help-icon-wrap" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><circle cx="10" cy="13" r="1"/><circle cx="14" cy="13" r="1"/></svg>
+          </div>
+          <div class="help-text">
+            <p class="help-title" data-i18n="help_title">Besoin d'aide ?</p>
+            <p class="help-sub" data-i18n="help_subtitle">Consultez notre FAQ ou contactez notre équipe support.</p>
+          </div>
+          <a href="faq.html" target="_blank" class="help-link">
+            <span data-i18n="faq_link">Accéder à la FAQ</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </a>
         </div>
-        <span class="showing-text" id="entries-info"></span>
-      </div>
-    </main>
-  </div>
+        <!-- Graphic signature -->
+        <div class="help-graphic" aria-hidden="true">
+          <div class="help-graphic-navy"></div>
+          <div class="help-graphic-bar"></div>
+        </div>
+      </div><!-- /help-card -->
 
-  <div id="modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title"
-    aria-hidden="true">
-    <div class="modal-box" role="document">
-      <div class="modal-header">
-        <h3 id="modal-title" data-i18n="modal_select_request_type">Select Request Type</h3>
+      <!-- ── FOOTER ── -->
+      <footer class="dashboard-footer">
+        <div class="footer-left">
+          <div class="footer-bar" aria-hidden="true"></div>
+          <span class="footer-tagline"><span data-i18n="footer_tagline_line1">PLUS QU'UNE PLATEFORME,</span><br/><span data-i18n="footer_tagline_line2">UN PARTENAIRE DE CONFIANCE</span></span>
+        </div>
+        <small class="footer-copy" data-i18n="footer_copyright">© 2026 Maritime Kargo Consulting. Tous droits réservés.</small>
+      </footer>
+
+    </div><!-- /content-scroll -->
+  </div><!-- /main-content -->
+</div><!-- /app-container -->
+
+<!-- ═══════════════════════════════════════════
+     MODAL — Nouvelle demande (preserved entirely)
+════════════════════════════════════════════ -->
+<div id="modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-hidden="true">
+  <div class="modal-box" role="document">
+    <div class="modal-header">
+      <h3 id="modal-title" data-i18n="modal_select_request_type">Sélectionner le type de demande</h3>
+    </div>
+    <div class="modal-body">
+      <div id="step-1">
+        <p class="label-text" data-i18n="modal_which_type">De quel type de document avez-vous besoin ?</p>
+        <div class="option-grid" role="list">
+          <button class="option-btn" data-type="FERI" type="button" data-i18n="option_feri">FERI</button>
+          <button class="option-btn" data-type="AD" type="button" data-i18n="option_ad">AD</button>
+          <button class="option-btn" data-type="FERI + AD" type="button" data-i18n="option_feri_ad">FERI + AD</button>
+        </div>
       </div>
-      <div class="modal-body">
-        <div id="step-1">
-          <p class="label-text" data-i18n="modal_which_type">What type of document do you need?</p>
-          <div class="option-grid" role="list">
-            <button class="option-btn" data-type="FERI" type="button" data-i18n="option_feri">FERI</button>
-            <button class="option-btn" data-type="AD" type="button" data-i18n="option_ad">AD</button>
-            <button class="option-btn" data-type="FERI + AD" type="button" data-i18n="option_feri_ad">FERI + AD</button>
+      <div id="step-2" style="display:none;">
+        <input type="text" class="input-ref" id="refInput" data-i18n-placeholder="your_ref_optional" placeholder="Votre référence (optionnel)" aria-label="Numéro de référence (optionnel)">
+        <div class="country-select" role="button" tabindex="0" aria-label="Sélectionner le pays">
+          <div class="flag-text">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/6/6f/Flag_of_the_Democratic_Republic_of_the_Congo.svg" width="24" alt="Drapeau RDC" data-i18n-alt="flag_rdc">
+            <span data-i18n="country_demo">République Démocratique du Congo</span>
           </div>
         </div>
-
-          <div id="step-2" style="display: none;">
-          <input type="text" class="input-ref" id="refInput" data-i18n-placeholder="your_ref_optional" placeholder="Your Ref Number (optional)"
-            aria-label="Numéro de référence (optionnel)">
-          <div class="country-select" role="button" tabindex="0" aria-label="Sélectionner le pays">
-            <div class="flag-text">
-                <img
-                  src="https://upload.wikimedia.org/wikipedia/commons/6/6f/Flag_of_the_Democratic_Republic_of_the_Congo.svg"
-                  width="24" alt="Drapeau RDC" data-i18n-alt="flag_rdc">
-                <span data-i18n="country_demo">Democratic Republic of Congo</span>
-              </div>
-          </div>
-          <div class="requirements-section">
-            <h4 id="selected-type-display" data-i18n="requirements">Requirements</h4>
-            <p id="requirements-instruction" class="sub-text" data-i18n="requirements_subtext">Dem. Republic of Congo requires the following documents:</p>
-
-            <div class="upload-group" aria-label="Zone de téléchargement des documents">
-              <div class="feri-req">
+        <div class="requirements-section">
+          <h4 id="selected-type-display" data-i18n="requirements">Documents requis</h4>
+          <p id="requirements-instruction" class="sub-text" data-i18n="requirements_subtext">La RDC exige les documents suivants :</p>
+          <div class="upload-group" aria-label="Zone de téléchargement des documents">
+            <div class="feri-req">
               <label class="doc-upload-btn" id="btn-bl" for="file-bl" role="button" tabindex="0">
                 <i class="fas fa-cloud-upload-alt" aria-hidden="true"></i> <span id="label-bl" data-i18n="bill_of_lading">Bill of Lading</span>
                 <input id="file-bl" type="file" hidden aria-label="Charger Bill of Lading" accept=".pdf,.jpg,.jpeg,.png">
               </label>
-
               <label class="doc-upload-btn" id="btn-fi" for="file-fi" role="button" tabindex="0">
                 <i class="fas fa-cloud-upload-alt" aria-hidden="true"></i> <span id="label-fi" data-i18n="freight_invoice">Freight Invoice</span>
                 <input id="file-fi" type="file" hidden aria-label="Charger Freight Invoice" accept=".pdf,.jpg,.jpeg,.png">
               </label>
-
               <label class="doc-upload-btn" id="btn-ci" for="file-ci" role="button" tabindex="0">
                 <i class="fas fa-cloud-upload-alt" aria-hidden="true"></i> <span id="label-ci" data-i18n="commercial_invoice">Commercial Invoice</span>
                 <input id="file-ci" type="file" hidden aria-label="Charger Commercial Invoice" accept=".pdf,.jpg,.jpeg,.png">
               </label>
-
-              <div class="doc-upload-btn" id="btn-ed" role="group" tabindex="0" style="display:flex; flex-direction:column; gap:6px;">
-                <label for="input-fxi" style="font-weight:600;" data-i18n="fxi_number_label">Numero FXI</label>
-                <input id="input-fxi" type="text" data-i18n-placeholder="fxi_number_placeholder" aria-label="Numero FXI" style="padding:8px; border:1px solid #ddd; border-radius:6px;">
+              <div class="doc-upload-btn" id="btn-ed" role="group" tabindex="0" style="display:flex;flex-direction:column;gap:6px;">
+                <label for="input-fxi" style="font-weight:600;" data-i18n="fxi_number_label">Numéro FXI</label>
+                <input id="input-fxi" type="text" data-i18n-placeholder="fxi_number_placeholder" aria-label="Numéro FXI" style="padding:8px;border:1px solid #ddd;border-radius:6px;">
               </div>
-              <div style="display:flex; flex-direction:column; gap:6px; width:100%; margin-top:6px;">
+              <div style="display:flex;flex-direction:column;gap:6px;width:100%;margin-top:6px;">
                 <label for="input-carte-chargeur" style="font-weight:600;" id="label-carte-chargeur" data-i18n="carte_chargeur_label">Numéro carte chargeur</label>
                 <input id="input-carte-chargeur" class="input-upload-like" type="text" data-i18n-placeholder="carte_chargeur_placeholder" aria-label="Numéro carte chargeur" placeholder="Numéro carte chargeur" style="width:100%;">
               </div>
+            </div>
+            <!-- AD documents block -->
+            <div class="ad-req" style="display:none;width:100%;margin-top:12px;">
+              <div style="display:flex;flex-direction:column;gap:8px;width:100%;">
+                <label class="doc-upload-btn" id="btn-im8" for="file-im8" role="button" tabindex="0">
+                  <i class="fas fa-cloud-upload-alt" aria-hidden="true"></i> <span id="label-im8" data-i18n="customs_declaration"></span>
+                  <input id="file-im8" class="doc-file" type="file" hidden aria-label="Charger IM8" accept=".pdf,.jpg,.jpeg,.png">
+                </label>
+                <label class="doc-upload-btn" id="btn-road-inv" for="file-road-inv" role="button" tabindex="0">
+                  <i class="fas fa-cloud-upload-alt" aria-hidden="true"></i> <span id="label-road-inv" data-i18n="road_freight_invoice"></span>
+                  <input id="file-road-inv" class="doc-file" type="file" hidden aria-label="Charger Facture fret terrestre" accept=".pdf,.jpg,.jpeg,.png">
+                </label>
+                <label class="doc-upload-btn" id="btn-river-inv" for="file-river-inv" role="button" tabindex="0">
+                  <i class="fas fa-cloud-upload-alt" aria-hidden="true"></i> <span id="label-river-inv" data-i18n="river_freight_invoice"></span>
+                  <input id="file-river-inv" class="doc-file" type="file" hidden aria-label="Charger Facture fret fluvial" accept=".pdf,.jpg,.jpeg,.png">
+                </label>
               </div>
-              <!-- AD documents block (hidden by default; shown for AD and FERI + AD) -->
-              <div class="ad-req" style="display:none; width:100%; margin-top:12px;">
-                <!-- Uploads first -->
-                <div style="display:flex; flex-direction:column; gap:8px; width:100%;">
-                  <label class="doc-upload-btn" id="btn-im8" for="file-im8" role="button" tabindex="0">
-                    <i class="fas fa-cloud-upload-alt" aria-hidden="true"></i> <span id="label-im8" data-i18n="customs_declaration"></span>
-                    <input id="file-im8" class="doc-file" type="file" hidden aria-label="Charger IM8" accept=".pdf,.jpg,.jpeg,.png">
-                  </label>
-
-                  <label class="doc-upload-btn" id="btn-road-inv" for="file-road-inv" role="button" tabindex="0">
-                    <i class="fas fa-cloud-upload-alt" aria-hidden="true"></i> <span id="label-road-inv" data-i18n="road_freight_invoice"></span>
-                    <input id="file-road-inv" class="doc-file" type="file" hidden aria-label="Charger Facture fret terrestre" accept=".pdf,.jpg,.jpeg,.png">
-                  </label>
-
-                  <label class="doc-upload-btn" id="btn-river-inv" for="file-river-inv" role="button" tabindex="0">
-                    <i class="fas fa-cloud-upload-alt" aria-hidden="true"></i> <span id="label-river-inv" data-i18n="river_freight_invoice"></span>
-                    <input id="file-river-inv" class="doc-file" type="file" hidden aria-label="Charger Facture fret fluvial" accept=".pdf,.jpg,.jpeg,.png">
-                  </label>
+              <div style="width:100%;display:flex;flex-direction:column;gap:8px;margin-top:12px;">
+                <div style="width:100%;display:flex;flex-direction:column;gap:6px;">
+                  <label for="input-feri" style="font-weight:600;" data-i18n="feri_number_label"></label>
+                  <input id="input-feri" class="input-upload-like" type="text" data-i18n-placeholder="feri_number_placeholder" aria-label="Numéro FERI" placeholder="Saisir Numéro FERI requis pour AD" style="width:100%;font-size:14px;">
                 </div>
-
-                <!-- Text inputs below uploads -->
-                <div style="width:100%; display:flex; flex-direction:column; gap:8px; margin-top:12px;">
-                  <div style="width:100%; display:flex; flex-direction:column; gap:6px;">
-                    <label for="input-feri" style="font-weight:600;" data-i18n="feri_number_label"></label>
-                    <input id="input-feri" class="input-upload-like" type="text" data-i18n-placeholder="feri_number_placeholder" aria-label="Numéro FERI" placeholder="Saisir Numéro FERI requis pour AD" style="width:100%; font-size:14px;">
-                  </div>
-
-                  <div id="transporteur-group" role="group" tabindex="0" style="display:flex; flex-direction:column; gap:6px; width:100%;">
-                    <label for="input-transporteur" style="font-weight:600;" id="label-transporteur" data-i18n="carrier_name"></label>
-                    <input id="input-transporteur" class="input-upload-like" type="text" aria-label="Nom du transporteur" data-i18n-placeholder="carrier_name_placeholder" placeholder="Saisir le nom du transporteur" style="width:100%; font-size:14px;">
-                  </div>
-
-                  <div id="btn-vehicle" role="group" tabindex="0" style="display:flex; flex-direction:column; gap:6px;">
-                    <label for="input-vehicle" style="font-weight:600;" id="label-vehicle" data-i18n="vehicle_registration"></label>
-                    <input id="input-vehicle" class="input-upload-like" type="text" aria-label="Numéro d'immatriculation du véhicule" data-i18n-placeholder="vehicle_registration_placeholder" placeholder="Saisir le Numéro d'immatriculation du véhicule" style="width:100%;">
-                  </div>
-                  
-
-                  <div style="display:flex; flex-direction:column; gap:6px; width:100%;">
-                    <label for="input-road-amount" style="font-weight:600;" data-i18n="road_transport_amount_label"></label>
-                    <input id="input-road-amount" class="input-upload-like" type="text" data-i18n-placeholder="road_transport_amount_placeholder" placeholder="Saisir montant payé transport terrestre (XAF)" style="width:100%; font-size:13px;">
-                  </div>
-
-                  <div style="display:flex; flex-direction:column; gap:6px; width:100%;">
-                    <label for="input-river-amount" style="font-weight:600;" data-i18n="river_transport_amount_label"></label>
-                    <input id="input-river-amount" class="input-upload-like" type="text" data-i18n-placeholder="river_transport_amount_placeholder" placeholder="Saisir montant payé transport fluvial (XAF)" style="width:100%; font-size:13px;">
-                  </div>
+                <div id="transporteur-group" role="group" tabindex="0" style="display:flex;flex-direction:column;gap:6px;width:100%;">
+                  <label for="input-transporteur" style="font-weight:600;" id="label-transporteur" data-i18n="carrier_name"></label>
+                  <input id="input-transporteur" class="input-upload-like" type="text" aria-label="Nom du transporteur" data-i18n-placeholder="carrier_name_placeholder" placeholder="Saisir le nom du transporteur" style="width:100%;font-size:14px;">
+                </div>
+                <div id="btn-vehicle" role="group" tabindex="0" style="display:flex;flex-direction:column;gap:6px;">
+                  <label for="input-vehicle" style="font-weight:600;" id="label-vehicle" data-i18n="vehicle_registration"></label>
+                  <input id="input-vehicle" class="input-upload-like" type="text" aria-label="Numéro d'immatriculation du véhicule" data-i18n-placeholder="vehicle_registration_placeholder" placeholder="Saisir le Numéro d'immatriculation du véhicule" style="width:100%;">
+                </div>
+                <div style="display:flex;flex-direction:column;gap:6px;width:100%;">
+                  <label for="input-road-amount" style="font-weight:600;" data-i18n="road_transport_amount_label"></label>
+                  <input id="input-road-amount" class="input-upload-like" type="text" data-i18n-placeholder="road_transport_amount_placeholder" placeholder="Saisir montant payé transport terrestre (XAF)" style="width:100%;font-size:13px;">
+                </div>
+                <div style="display:flex;flex-direction:column;gap:6px;width:100%;">
+                  <label for="input-river-amount" style="font-weight:600;" data-i18n="river_transport_amount_label"></label>
+                  <input id="input-river-amount" class="input-upload-like" type="text" data-i18n-placeholder="river_transport_amount_placeholder" placeholder="Saisir montant payé transport fluvial (XAF)" style="width:100%;font-size:13px;">
                 </div>
               </div>
             </div>
           </div>
-
-          
-          
-          <p class="validation-note" data-i18n="validation_note">Validation is required before the vessel arrives.</p>
         </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn-close" id="modal-close-btn" type="button"><i class="fas fa-times" aria-hidden="true"></i>
-          <span data-i18n="close">Close</span></button>
-        <button id="submit-btn" class="btn-submit" type="button" style="display: none;"> <i class="fas fa-check"
-            aria-hidden="true"></i> <span data-i18n="submit">Submit</span></button>
+        <p class="validation-note" data-i18n="validation_note">La validation est requise avant l'arrivée du navire.</p>
       </div>
     </div>
-  </div>
-
-  <div id="popup-notif" class="dropdown-popup" aria-hidden="true" role="dialog" aria-label="Notifications"
-    style="display:none;">
-    <div class="popup-header" data-i18n="notifications">Notifications</div>
-    
-    <div class="popup-body" id="popup-notif-body">
-      <div class="notif-item">Aucune notification</div>
+    <div class="modal-footer">
+      <button class="btn-close" id="modal-close-btn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        <span data-i18n="close">Fermer</span>
+      </button>
+      <button id="submit-btn" class="btn-submit-modal" type="button" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+        <span data-i18n="submit">Soumettre</span>
+      </button>
     </div>
   </div>
+</div>
 
-  <style>
-    .notif-badge {
-      position: absolute;
-      top: 6px;
-      right: 6px;
-      min-width: 20px;
-      height: 20px;
-      padding: 0 6px;
-      background: #ff7a00;
-      color: white;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 700;
-      line-height: 20px;
-      text-align: center;
-      box-shadow: 0 0 0 2px white;
-      display: none;
-      white-space: nowrap;
+<!-- Notifications popup -->
+<div id="popup-notif" class="dropdown-popup" aria-hidden="true" role="dialog" aria-label="Notifications" style="display:none;">
+  <div class="popup-header" data-i18n="notifications">Notifications</div>
+  <div class="popup-body" id="popup-notif-body">
+    <div class="notif-item">Aucune notification</div>
+  </div>
+</div>
+
+<!-- Messages popup -->
+<div id="popup-settings" class="dropdown-popup" aria-hidden="true" role="dialog" aria-label="Messages"
+  style="display:none;position:fixed;top:5vh;left:5vw;width:90vw;height:90vh;background:#fff;z-index:3000;box-shadow:0 24px 48px rgba(0,0,0,0.18);border-radius:12px;overflow:hidden;">
+  <div class="popup-header" style="padding:16px 20px;border-bottom:1px solid #E4EBF2;font-weight:600;position:relative;">
+    Messages
+    <button id="popup-settings-close" aria-label="Fermer messages" style="position:absolute;right:16px;top:12px;background:transparent;border:0;font-size:20px;cursor:pointer;">×</button>
+  </div>
+  <div class="popup-body" id="popup-settings-body" style="height:calc(100% - 54px);padding:0;"></div>
+</div>
+
+<!-- Font Awesome (required by dashboard_client.js for upload icons etc.) -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+
+<script src="i18n.js"></script>
+
+<script>
+/* ── Mobile sidebar toggle ── */
+(function () {
+  var trigger = document.getElementById('menu-trigger');
+  var sidebar = document.getElementById('sidebar');
+  var closeBtn = document.getElementById('close-sidebar-btn');
+  if (trigger && sidebar) {
+    trigger.addEventListener('click', function () { sidebar.classList.add('show'); });
+  }
+  if (closeBtn && sidebar) {
+    closeBtn.addEventListener('click', function () { sidebar.classList.remove('show'); });
+  }
+  /* Click outside to close */
+  document.addEventListener('click', function (e) {
+    if (sidebar && sidebar.classList.contains('show') && !sidebar.contains(e.target) && e.target !== trigger) {
+      sidebar.classList.remove('show');
     }
-    .dropdown-popup .notif-item { padding: 12px; border-bottom: 1px solid #eee; }
-    .dropdown-popup .notif-item .title { font-weight: 600; margin-bottom: 6px; }
-    .dropdown-popup .notif-item .meta { font-size: 12px; color: #666; margin-top:8px }
-  </style>
+  });
 
-  <div id="popup-settings" class="dropdown-popup" aria-hidden="true" role="dialog" aria-label="Messages"
-    style="display:none; position:fixed; top:5vh; left:5vw; width:90vw; height:90vh; background:#fff; z-index:3000; box-shadow:0 24px 48px rgba(0,0,0,0.18); border-radius:8px; overflow:hidden;">
-    <div class="popup-header" style="padding:12px 16px; border-bottom:1px solid #eee; font-weight:600; position:relative;">
-      Messages
-      <button id="popup-settings-close" aria-label="Close messages" style="position:absolute; right:12px; top:8px; background:transparent; border:0; font-size:20px; cursor:pointer;">×</button>
-    </div>
-    <div class="popup-body" id="popup-settings-body" style="height:calc(100% - 52px); padding:0;">
-      <!-- content loaded dynamically (iframe fills this area) -->
-    </div>
-  </div>
+  /* Nav items toggle active */
+  document.querySelectorAll('.nav-item').forEach(function (item) {
+    item.addEventListener('click', function () {
+      document.querySelectorAll('.nav-item').forEach(function (i) { i.classList.remove('active'); });
+      item.classList.add('active');
+    });
+  });
 
-  <script src="i18n.js"></script>
-  <!-- Floating FAQ button -->
-  <a id="faq-btn" class="floating-faq" href="faq.html" target="_blank" aria-label="FAQ - Ouvrir la FAQ">
-    <i class="fas fa-question"></i>
-    <span class="sr-only">FAQ</span>
-  </a>
+})();
 
-  <style>
-    /* Keep the FAQ button above the pagination footer to avoid overlap */
-    .floating-faq { position: fixed; right: 20px; bottom: 96px; width:56px; height:56px; background:#0b75f5; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 6px 18px rgba(11,117,245,0.28); z-index:4000; text-decoration:none; }
-    .floating-faq i { font-size:18px; }
-    .floating-faq:focus, .floating-faq:hover { transform:translateY(-2px); box-shadow:0 10px 26px rgba(11,117,245,0.32); }
+/* ── Sync sidebar notif badge ── */
+(function () {
+  var badge = document.getElementById('notif-badge');
+  var sbBadge = document.getElementById('sidebar-notif-badge');
+  if (badge && sbBadge) {
+    new MutationObserver(function () {
+      var v = badge.textContent.trim();
+      var vis = badge.style.display !== 'none' && v;
+      sbBadge.textContent = v;
+      sbBadge.style.display = vis ? 'inline-flex' : 'none';
+    }).observe(badge, { childList: true, attributes: true, attributeFilter: ['style'] });
+  }
+})();
+</script>
 
-    /* On very small screens keep distance but slightly smaller button */
-    @media (max-width: 520px) {
-      .floating-faq { bottom: 88px; right: 12px; width:48px; height:48px; }
-      .floating-faq i { font-size:16px; }
-    }
-    .sr-only { position:absolute; left:-10000px; top:auto; width:1px; height:1px; overflow:hidden; }
-  </style>
+<script type="module" src="dashboard_client.js"></script>
 
-  <script type="module" src="dashboard_client.js"></script>
 </body>
-
 </html>

@@ -138,7 +138,7 @@
     // create a floating switch only on index page when no inline switch exists
     const path = window.location.pathname.split('/').pop().toLowerCase();
     const isIndex = (path === '' || path === 'index.html');
-    if (!document.getElementById('lang-select') && isIndex) {
+    if (!document.getElementById('lang-select') && !document.querySelector('.lang-switch') && !document.querySelector('.lang-toggle') && isIndex) {
       const container = document.createElement('div');
       container.id = 'lang-switcher-float';
       container.style.position = 'fixed';

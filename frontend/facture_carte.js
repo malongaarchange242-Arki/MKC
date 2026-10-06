@@ -5,8 +5,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const tableBody = document.getElementById('tableBody');
     const previewModal = document.getElementById('previewModal');
     const addBtn = document.getElementById('addBtn');
-    const previewBtn = document.getElementById('previewBtn');
-    const saveBtn = document.getElementById('saveBtn');
+    const previewBtnBottom = document.getElementById('previewBtnBottom');
+    const previewBtn = previewBtnBottom || document.getElementById('previewBtn');
+    const saveBtnBottom = document.getElementById('saveBtnBottom');
+    const saveBtn = saveBtnBottom || document.getElementById('saveBtn');
 
     // --- 1. GESTION DU TABLEAU DYNAMIQUE ---
     function addRow() {
@@ -38,14 +40,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     <input type="date" class="in-date-seule" style="width:100%;">
                 </div>
             </td>
-            <td><input type="number" class="in-qty" value="1" min="1" style="width:100%;"></td>
+            <td><input type="number" class="in-qty" value="2" min="1" style="width:100%;"></td>
             <td><input type="number" class="in-pu" placeholder="0" step="0.01" style="width:100%;"></td>
             <td class="row-montant-text" style="font-weight:bold; text-align:center; vertical-align:middle;">0</td>
             <input type="hidden" class="in-montant" value="0">
-            <td><button class="btn-del">×</button></td>
+            <td><button class="btn-del" type="button" aria-label="Supprimer cette prestation"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2m3 0-1 14H6L5 6m4 4v6m6-6v6"/></svg></button></td>
         `;
         tableBody.appendChild(tr);
         attachRowEvents(tr);
+        calculateRow(tr);
     }
 
     function attachRowEvents(row) {
@@ -59,11 +62,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const isUnique = e.target.value === 'unique';
             row.querySelector('.group-periode').style.display = isUnique ? 'none' : 'flex';
             row.querySelector('.group-unique').style.display = isUnique ? 'block' : 'none';
-            if (isUnique) row.querySelector('.in-qty').value = 1;
             calculateRow(row);
         });
 
-        // Recalcul when qty or pu or date inputs change
+        // Recalculate from validity, quantity, and unit price without deriving quantity from dates.
         const inputsToWatch = row.querySelectorAll('.in-val-debut, .in-val-fin, .in-date-seule, .in-qty, .in-pu');
         inputsToWatch.forEach(input => {
             input.addEventListener('input', () => calculateRow(row));
@@ -71,23 +73,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function calculateRow(row) {
-        const dateType = row.querySelector('.in-date-type').value;
         const qtyInput = row.querySelector('.in-qty');
         const puInput = row.querySelector('.in-pu');
-
-        // calculate quantity for period type
-        if (dateType === 'periode') {
-            const debut = parseInt(row.querySelector('.in-val-debut').value) || 0;
-            const fin = parseInt(row.querySelector('.in-val-fin').value) || 0;
-            if (debut > 0 && fin > 0 && fin >= debut) qtyInput.value = (fin - debut) + 1;
-            else qtyInput.value = 0;
-        }
 
         const qty = Number(qtyInput.value) || 0;
         const pu = Number(puInput.value) || 0;
         const montant = qty * pu;
         row.querySelector('.row-montant-text').textContent = montant.toLocaleString('fr-FR');
         row.querySelector('.in-montant').value = montant;
+        updateTotals();
+    }
+
+    function updateTotals() {
+        const subtotal = Array.from(document.querySelectorAll('.item-row .in-montant'))
+            .reduce((sum, input) => sum + (Number(input.value) || 0), 0);
+        const subtotalElement = document.getElementById('subtotalAmount');
+        const totalElement = document.getElementById('totalAmount');
+        if (subtotalElement) subtotalElement.textContent = subtotal.toLocaleString('fr-FR');
+        if (totalElement) totalElement.textContent = subtotal.toLocaleString('fr-FR');
     }
 
     // Ajouter une ligne au clic
@@ -95,10 +98,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Supprimer une ligne
     tableBody.onclick = (e) => {
-        if (e.target.classList.contains('btn-del')) {
+        const deleteButton = e.target.closest('.btn-del');
+        if (deleteButton) {
             const rows = document.querySelectorAll('.item-row');
             if (rows.length > 1) {
-                e.target.closest('tr').remove();
+                deleteButton.closest('tr').remove();
+                updateTotals();
             }
         }
     };
@@ -288,6 +293,8 @@ document.addEventListener('DOMContentLoaded', () => {
         previewModal.style.display = 'block';
     };
 
+    if (previewBtnBottom && previewBtnBottom !== previewBtn) previewBtnBottom.addEventListener('click', () => previewBtn.click());
+
     // --- 4. SAVE (POST to backend) ---
     saveBtn.onclick = async () => {
         const originalText = saveBtn.textContent;
@@ -296,6 +303,10 @@ document.addEventListener('DOMContentLoaded', () => {
             saveBtn.disabled = true;
             saveBtn.classList.add('btn-loading');
             saveBtn.textContent = 'En cours...';
+            if (saveBtnBottom) {
+                saveBtnBottom.disabled = true;
+                saveBtnBottom.classList.add('btn-loading');
+            }
 
             const client = clientNameInput.value || "";
             const ref = getCurrentRef() || "";
@@ -380,9 +391,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 saveBtn.disabled = false;
                 saveBtn.classList.remove('btn-loading');
                 saveBtn.textContent = originalText;
+                if (saveBtnBottom) {
+                    saveBtnBottom.disabled = false;
+                    saveBtnBottom.classList.remove('btn-loading');
+                }
             } catch (e) {}
         }
     };
+
+    if (saveBtnBottom && saveBtnBottom !== saveBtn) saveBtnBottom.addEventListener('click', () => saveBtn.click());
 
     // Initialiser avec une ligne vide au chargement
     addRow();

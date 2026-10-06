@@ -4,7 +4,8 @@
  * ===============================
  */
 import dotenv from 'dotenv';
-dotenv.config();
+import path from 'path';
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 /**
  * ===============================
@@ -12,10 +13,11 @@ dotenv.config();
  * ===============================
  */
 import express, { Application, Request, Response, NextFunction } from 'express';
-import cors from 'cors';
+import cors, { CorsOptions } from 'cors';
 import helmet from 'helmet';
 import http from 'http';
 
+import { env } from './config/env';
 import { logger } from './utils/logger';
 import axios from 'axios';
 import { requestsModule } from './modules/requests/requests.module';
@@ -37,8 +39,37 @@ import notificationsRouter from './modules/notifications/notifications.module';
  * ENV VARIABLES
  * ===============================
  */
-const PORT = Number(process.env.APP_PORT) || 3000;
-const APP_ENV = process.env.APP_ENV || 'development';
+const PORT = env.APP_PORT;
+const APP_ENV = env.APP_ENV;
+
+const configuredOrigins = (env.CORS_ORIGINS || env.CORS_ORIGIN || 'http://localhost:8080,http://127.0.0.1:8080,https://mkc-frontend.onrender.com')
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(Boolean);
+const developmentOrigins = APP_ENV === 'development'
+  ? ['http://localhost:5501', 'http://127.0.0.1:5501']
+  : [];
+const allowedOrigins = [...new Set([...configuredOrigins, ...developmentOrigins])];
+
+const corsOptions: CorsOptions = {
+  origin: (origin, callback) => {
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    logger.warn('Rejected CORS origin', { origin, allowedOrigins });
+    callback(new Error(`Origin ${origin} not allowed by CORS`));
+  },
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key'],
+  credentials: true
+};
 
 /**
  * =============================== 
@@ -53,7 +84,7 @@ const app: Application = express();
  * ===============================
  */
 app.use(helmet());
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -71,17 +102,21 @@ app.get('/health', async (_req: Request, res: Response) => {
   });
 });
 
-// Verify Python parse endpoint by making a short call using configured API key
-app.get('/services/python/verify', async (_req: Request, res: Response) => {
-  const pythonCfg = process.env.PYTHON_SERVICE_URL || 'https://mkc-8s1l.onrender.com';
-  // if the configured URL already points to a parsing endpoint, use it, otherwise append path
+// Verify Python parse endpoint by making a short call using configured API key.
+// This route must remain server-side only and require an authenticated admin session.
+app.get('/services/python/verify', authMiddleware, async (req: Request, res: Response) => {
+  if ((req as any).authUserRole !== 'ADMIN') {
+    return res.status(403).json({ message: 'Forbidden' });
+  }
+
+  const pythonCfg = env.PYTHON_SERVICE_URL;
   const endpoint = pythonCfg.includes('/api/') ? pythonCfg : `${pythonCfg.replace(/\/$/, '')}/api/v1/parse/document`;
-  const apiKey = process.env.PYTHON_SERVICE_API_KEY || '';
+  const apiKey = env.PYTHON_SERVICE_API_KEY;
 
   try {
     const payload = { file_url: 'https://example.com/noop.pdf', document_id: 'verify', request_id: 'verify' };
     const resp = await axios.post(endpoint, payload, {
-      headers: apiKey ? { 'x-api-key': apiKey } : undefined
+      headers: { 'x-api-key': apiKey.replace(/\s/g, '') }
     });
 
     return res.status(200).json({ ok: true, endpoint, status: resp.status, data: resp.data });

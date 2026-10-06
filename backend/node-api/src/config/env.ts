@@ -15,7 +15,15 @@ const envSchema = z.object({
   // 🔌 Supabase
   SUPABASE_URL: z.string().url(),
   SUPABASE_ANON_KEY: z.string(),
-  SUPABASE_SERVICE_ROLE_KEY: z.string()
+  SUPABASE_SERVICE_ROLE_KEY: z.string(),
+
+  // 🔗 Internal Python service
+  PYTHON_SERVICE_URL: z.string().url(),
+  PYTHON_SERVICE_API_KEY: z.string().min(16, 'PYTHON_SERVICE_API_KEY is too short'),
+
+  // 🌐 CORS
+  CORS_ORIGINS: z.string().optional(),
+  CORS_ORIGIN: z.string().optional()
 });
 
 /**

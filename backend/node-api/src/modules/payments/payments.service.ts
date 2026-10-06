@@ -51,7 +51,6 @@ export class PaymentsService {
           invoice_number,
           total_amount,
           currency,
-          bill_of_lading,
           status,
           created_at,
           request_id,
