@@ -49,7 +49,8 @@ const configuredOrigins = (env.CORS_ORIGINS || env.CORS_ORIGIN || 'http://localh
 const developmentOrigins = APP_ENV === 'development'
   ? ['http://localhost:5501', 'http://127.0.0.1:5501']
   : [];
-const allowedOrigins = [...new Set([...configuredOrigins, ...developmentOrigins])];
+const productionOrigins = ['https://feri-mkc.com'];
+const allowedOrigins = [...new Set([...configuredOrigins, ...developmentOrigins, ...productionOrigins])];
 
 const corsOptions: CorsOptions = {
   origin: (origin, callback) => {
