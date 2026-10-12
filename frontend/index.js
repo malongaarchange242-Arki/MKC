@@ -170,6 +170,7 @@
 
       // Auto-login after register to get token
       let loginData = {};
+      let userRole = data.user?.user_metadata?.role || data.session?.user?.user_metadata?.role || data.role;
       if (mode === 'register') {
         try {
           const loginResp = await fetch(`${API_BASE}/login`, {
@@ -180,6 +181,7 @@
           const loginRaw = await loginResp.text();
           try { loginData = loginRaw ? JSON.parse(loginRaw) : {}; } catch { loginData = { _text: loginRaw }; }
           if (!loginResp.ok) throw new Error(loginData?.message || 'Auto-login failed');
+          userRole = loginData.user?.user_metadata?.role || loginData.session?.user?.user_metadata?.role || loginData.role || userRole;
           const session = loginData.session || loginData?.data?.session;
           const token   = session?.access_token || session?.accessToken || loginData.token || loginData.access_token;
           if (token) {
@@ -205,7 +207,13 @@
       );
 
       setTimeout(() => {
-        window.location.href = 'facture_carte.html';
+        const role = String(userRole || '').toUpperCase();
+        const destination = role === 'CLIENT'
+          ? 'dashboard_client.html'
+          : role === 'ADMIN'
+            ? 'dashboard_admin.html'
+            : 'facture_carte.html';
+        window.location.href = destination;
       }, 700);
 
     } catch (err) {

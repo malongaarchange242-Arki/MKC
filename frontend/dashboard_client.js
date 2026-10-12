@@ -1,5 +1,5 @@
 import { getMe, createRequest } from './client.js';
-import { uploadDocuments, getDocument, DOCUMENT_TYPES } from './documents.js';
+import { uploadDocuments, downloadDocument as downloadRequestFile, DOCUMENT_TYPES } from './documents.js';
 import { logout } from './auth.js';
 import { api } from './axios.config.js';
 
@@ -8,6 +8,9 @@ const STORAGE_KEY = 'logirdc_requests_v1';
 let requests = [];
 let extractedBL = "";
 let selectedRequestType = '';
+let activeDetailRequestId = '';
+let detailDocumentsExpanded = false;
+let activeDetailTrigger = null;
 // Invoices cache retrieved from backend
 let invoicesMap = new Map();
 let currentPage = 1;
@@ -496,45 +499,127 @@ function clearRequestFilters() {
   renderRequests();
 }
 
-function openRequestDetails(requestId) {
-  const row = requests.find(item => String(item.request_id || item.id || '') === String(requestId));
-  const panel = document.getElementById('side-panel');
-  if (!row || !panel) return;
+function detailText(key, fallback) {
+  return window.i18n?.t?.(key) || fallback;
+}
 
+function formatDetailDate(value) {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  const locale = window.i18n?.getLang?.() === 'en' ? 'en-US' : 'fr-FR';
+  return new Intl.DateTimeFormat(locale, { day: '2-digit', month: 'short', year: 'numeric' }).format(date);
+}
+
+function getDetailProgress(status) {
+  const value = String(status || '').toUpperCase();
+  if (['COMPLETED', 'VALIDATED', 'ISSUED'].includes(value)) return 3;
+  if (['PROCESSING', 'DRAFT_SENT', 'PROFORMAT_SENT', 'PAYMENT_PROOF_UPLOADED', 'PAYMENT_CONFIRMED'].includes(value)) return 2;
+  if (['UNDER_REVIEW', 'SUBMITTED', 'OCR_PENDING', 'INITIATED', 'AWAITING_REVIEW'].includes(value)) return 1;
+  return 0;
+}
+
+function normalizeDocumentType(type) {
+  return String(type || '').toUpperCase().replace(/[\s-]+/g, '_');
+}
+
+function getExpectedRequestDocuments(type) {
+  const normalized = normalizeDocumentType(type);
+  const feri = normalized.includes('FERI');
+  const ad = normalized.includes('AD');
+  const result = [];
+  if (feri) {
+    result.push(
+      { type: DOCUMENT_TYPES.BILL_OF_LADING, nameKey: 'bill_of_lading', name: 'Connaissement maritime', descriptionKey: 'bill_of_lading_description', icon: 'fa-file-lines' },
+      { type: DOCUMENT_TYPES.FREIGHT_INVOICE, nameKey: 'freight_invoice', name: 'Facture de fret', descriptionKey: 'freight_invoice_description', icon: 'fa-file-invoice' },
+      { type: DOCUMENT_TYPES.COMMERCIAL_INVOICE, nameKey: 'commercial_invoice', name: 'Facture commerciale', descriptionKey: 'commercial_invoice_description', icon: 'fa-file-invoice-dollar' }
+    );
+  }
+  if (ad) {
+    result.push(
+      { type: DOCUMENT_TYPES.CUSTOMS_DECLARATION, nameKey: 'customs_declaration', name: 'Déclaration en douane (IM8)', descriptionKey: 'customs_declaration_description', icon: 'fa-file-alt' },
+      { type: DOCUMENT_TYPES.ROAD_FREIGHT_INVOICE, nameKey: 'road_freight_invoice', name: 'Facture fret terrestre', descriptionKey: 'road_freight_invoice_description', icon: 'fa-truck' },
+      { type: DOCUMENT_TYPES.RIVER_FREIGHT_INVOICE, nameKey: 'river_freight_invoice', name: 'Facture fret fluvial', descriptionKey: 'river_freight_invoice_description', icon: 'fa-water' }
+    );
+  }
+  return result;
+}
+
+function renderDetailDocuments(row, documents, loadError = false) {
+  const container = document.getElementById('side-docs');
+  const toggle = document.getElementById('detail-documents-toggle');
+  if (!container) return;
+  if (loadError) {
+    container.innerHTML = `<p class="detail-docs-message is-error">${escapeHtml(detailText('detail_documents_error', 'Impossible de charger les documents.'))} <button type="button" id="detail-documents-retry">${escapeHtml(detailText('retry', 'Réessayer'))}</button></p>`;
+    if (toggle) toggle.hidden = true;
+    return;
+  }
+
+  const expected = getExpectedRequestDocuments(getRequestType(row));
+  const normalizedDocs = documents.map(doc => ({
+    ...doc,
+    normalizedType: normalizeDocumentType(doc.type || doc.document_type || doc.doc_type)
+  }));
+  const rendered = expected.map(expectedDoc => {
+    const document = normalizedDocs.find(doc => doc.normalizedType === normalizeDocumentType(expectedDoc.type));
+    const provided = Boolean(document);
+    const statusLabel = document?.status
+      ? translateStatus(document.status)
+      : provided ? detailText('document_status_received', 'Reçu') : detailText('document_status_not_received', 'Non transmis');
+    const documentName = document?.file_name || detailText(expectedDoc.nameKey, expectedDoc.name);
+    const action = document?.id
+      ? `<button type="button" class="detail-download-btn" data-document-id="${escapeHtml(document.id)}"><i class="fas fa-download" aria-hidden="true"></i><span>${escapeHtml(detailText('download', 'Télécharger'))}</span></button>`
+      : '';
+    return `<article class="detail-document-row ${provided ? 'is-provided' : 'is-unavailable'}">
+      <span class="detail-document-icon"><i class="fas ${expectedDoc.icon}" aria-hidden="true"></i></span>
+      <span class="detail-document-copy"><strong>${escapeHtml(documentName)}</strong><small>${escapeHtml(detailText(expectedDoc.descriptionKey, expectedDoc.name))}</small></span>
+      <span class="detail-document-status ${provided ? 'status-received' : 'status-not-received'}"><i class="fas ${provided ? 'fa-circle-check' : 'fa-circle-minus'}" aria-hidden="true"></i>${escapeHtml(statusLabel)}</span>
+      ${action}
+    </article>`;
+  });
+  const knownTypes = new Set(expected.map(item => normalizeDocumentType(item.type)));
+  normalizedDocs.filter(doc => !knownTypes.has(doc.normalizedType)).forEach(doc => {
+    const name = doc.file_name || detailText('document', 'Document');
+    rendered.push(`<article class="detail-document-row is-provided">
+      <span class="detail-document-icon"><i class="fas fa-file" aria-hidden="true"></i></span>
+      <span class="detail-document-copy"><strong>${escapeHtml(name)}</strong><small>${escapeHtml(doc.type || detailText('document', 'Document'))}</small></span>
+      <span class="detail-document-status status-received"><i class="fas fa-circle-check" aria-hidden="true"></i>${escapeHtml(detailText('document_status_received', 'Reçu'))}</span>
+      ${doc.id ? `<button type="button" class="detail-download-btn" data-document-id="${escapeHtml(doc.id)}"><i class="fas fa-download" aria-hidden="true"></i><span>${escapeHtml(detailText('download', 'Télécharger'))}</span></button>` : ''}
+    </article>`);
+  });
   const requestKey = String(row.request_id || row.id || '');
   const bl = row.bl_number || row.bl || row.extracted_bl || row.manual_bl || '—';
-  const reference = row.ref || row.reference || row.customer_reference || '—';
   const profile = getRelatedProfile(row);
-  const setPanelText = (id, value) => {
-    const element = document.getElementById(id);
-    if (element) element.textContent = value;
-  };
-
-  setPanelText('side-bl', `${window.i18n?.t?.('bl_number') || 'BL'}: ${bl}`);
-  setPanelText('side-status', `${window.i18n?.t?.('status') || 'Status'}: ${translateStatus(row.status || row.state || 'UNKNOWN') || '—'}`);
-  setPanelText('side-date', `${window.i18n?.t?.('updated_label') || 'Updated'}: ${getRequestDate(row)}`);
-  setPanelText('side-client', `${window.i18n?.t?.('client') || 'Client'}: ${getRequestClient(row)}`);
-
-  const links = [];
-  const documents = [
+  const externalFiles = [
     ...(Array.isArray(row.documents) ? row.documents : []),
     ...(Array.isArray(row.deliveries) ? row.deliveries : []),
     ...(Array.isArray(row.feri_deliveries) ? row.feri_deliveries : [])
-  ];
-  documents.forEach(doc => {
-    const href = doc.downloadUrl || doc.signedUrl || doc.pdf_url || doc.pdfUrl || doc.url || doc.file_path || doc.filePath;
-    const name = doc.file_name || doc.fileName || doc.name || 'Document';
-    if (href) links.push(`<a class="detail-document-link" href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(name)} <span aria-hidden="true">↗</span></a>`);
-  });
-  const draftUrl = row.draft_url || row.draftUrl || row.request_draft_url;
-  const feriUrl = row.feri_signed_url || row.feriSignedUrl;
+  ].map(doc => ({
+    href: doc.downloadUrl || doc.signedUrl || doc.pdf_url || doc.pdfUrl || doc.url,
+    name: doc.file_name || doc.fileName || doc.name || detailText('document', 'Document')
+  }));
   [
-    { url: draftUrl, name: 'Draft' },
-    { url: feriUrl, name: 'FERI' }
+    { href: row.draft_url || row.draftUrl || row.request_draft_url, name: 'Draft' },
+    { href: row.feri_signed_url || row.feriSignedUrl, name: 'FERI' }
   ].forEach(file => {
-    if (file.url && !links.some(link => link.includes(escapeHtml(file.url)))) {
-      links.push(`<a class="detail-document-link" href="${escapeHtml(file.url)}" target="_blank" rel="noopener noreferrer">${file.name} <span aria-hidden="true">↗</span></a>`);
+    if (file.href && !externalFiles.some(existing => existing.href === file.href)) externalFiles.push(file);
+  });
+  externalFiles.forEach(file => {
+    if (!file.href) return;
+    let safeHref;
+    try {
+      const parsed = new URL(file.href, window.location.href);
+      if (!['http:', 'https:'].includes(parsed.protocol)) return;
+      safeHref = parsed.href;
+    } catch (_) {
+      return;
     }
+    rendered.push(`<article class="detail-document-row is-provided">
+      <span class="detail-document-icon"><i class="fas fa-file-pdf" aria-hidden="true"></i></span>
+      <span class="detail-document-copy"><strong>${escapeHtml(file.name)}</strong><small>${escapeHtml(detailText('document_status_received', 'Reçu'))}</small></span>
+      <span class="detail-document-status status-received"><i class="fas fa-circle-check" aria-hidden="true"></i>${escapeHtml(detailText('document_status_received', 'Reçu'))}</span>
+      <a class="detail-download-btn" href="${escapeHtml(safeHref)}" target="_blank" rel="noopener noreferrer"><i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i><span>${escapeHtml(detailText('view_document', 'Consulter'))}</span></a>
+    </article>`);
   });
 
   const invoice = invoicesMap.get(requestKey) || invoicesMap.get(String(bl)) || null;
@@ -545,22 +630,145 @@ function openRequestDetails(requestId) {
       invoice: invoiceNumber || requestKey,
       amount,
       bl,
-      ref: reference,
+      ref: row.ref || row.reference || row.customer_reference || row.feri_ref || '',
       date: row.created_at || row.updated_at,
       nom: profile?.nom || row.nom,
       prenom: profile?.prenom || row.prenom,
       email: profile?.email || row.email
     });
-    links.unshift(`<a class="invoice-link detail-document-link" href="${escapeHtml(invoiceUrl)}" data-request="${escapeHtml(requestKey)}" data-bl="${escapeHtml(bl)}" data-inv="${escapeHtml(invoiceNumber)}" data-amount="${escapeHtml(String(amount))}" data-nom="${escapeHtml(profile?.nom || row.nom || '')}" data-prenom="${escapeHtml(profile?.prenom || row.prenom || '')}" data-email="${escapeHtml(profile?.email || row.email || '')}">${escapeHtml(invoiceNumber || formatAmountValue(amount))} <span aria-hidden="true">↗</span></a>`);
+    rendered.unshift(`<article class="detail-document-row is-provided">
+      <span class="detail-document-icon"><i class="fas fa-receipt" aria-hidden="true"></i></span>
+      <span class="detail-document-copy"><strong>${escapeHtml(detailText('invoice', 'Facture'))}</strong><small>${escapeHtml(String(invoiceNumber || formatAmountValue(amount)))}</small></span>
+      <span class="detail-document-status status-received">${escapeHtml(detailText('available', 'Disponible'))}</span>
+      <a class="invoice-link detail-download-btn" href="${escapeHtml(invoiceUrl)}" data-request="${escapeHtml(requestKey)}" data-bl="${escapeHtml(bl)}" data-inv="${escapeHtml(invoiceNumber)}" data-amount="${escapeHtml(String(amount))}" data-nom="${escapeHtml(profile?.nom || row.nom || '')}" data-prenom="${escapeHtml(profile?.prenom || row.prenom || '')}" data-email="${escapeHtml(profile?.email || row.email || '')}"><i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i><span>${escapeHtml(detailText('view_document', 'Consulter'))}</span></a>
+    </article>`);
+  }
+  if (!rendered.length) {
+    container.innerHTML = `<p class="detail-docs-message">${escapeHtml(detailText('detail_no_documents', 'Aucun document défini pour cette demande.'))}</p>`;
+    if (toggle) toggle.hidden = true;
+    return;
+  }
+  const limit = 4;
+  const hasOverflow = rendered.length > limit;
+  container.innerHTML = rendered.map((html, index) => `<div class="detail-document-wrapper${hasOverflow && !detailDocumentsExpanded && index >= limit ? ' is-collapsed' : ''}">${html}</div>`).join('');
+  if (toggle) {
+    toggle.hidden = !hasOverflow;
+    toggle.textContent = detailDocumentsExpanded
+      ? detailText('view_less_documents', 'Voir moins')
+      : detailText('view_all_documents', 'Voir tous');
+    toggle.setAttribute('aria-expanded', String(detailDocumentsExpanded));
+  }
+}
+
+function openRequestDetails(requestId, trigger = null) {
+  const row = requests.find(item => String(item.request_id || item.id || '') === String(requestId));
+  const panel = document.getElementById('side-panel');
+  if (!row || !panel) return;
+
+  const requestKey = String(row.request_id || row.id || '');
+  const status = String(row.status || row.state || '');
+  const category = getStatusCategory(status);
+  const rawType = getRequestType(row).toUpperCase();
+  const type = rawType === 'FERI_ONLY' ? 'FERI' : rawType === 'AD_ONLY' ? 'AD' : rawType === 'FERI_AND_AD' ? 'FERI + AD' : rawType || '—';
+  const reference = row.ref || row.reference || row.customer_reference || row.feri_ref || '—';
+  const profile = getRelatedProfile(row);
+  const rejected = category === 'rejected';
+  activeDetailRequestId = requestKey;
+  activeDetailTrigger = trigger || document.activeElement;
+  detailDocumentsExpanded = false;
+
+  const setText = (id, value) => {
+    const element = document.getElementById(id);
+    if (element) element.textContent = value == null || value === '' ? '—' : String(value);
+  };
+  const formattedStatus = translateStatus(status) || '—';
+  const requestNumber = getRequestNumber(row);
+  setText('side-request-number', requestNumber);
+  const closeButton = document.getElementById('side-close-btn');
+  if (closeButton) closeButton.setAttribute('aria-label', detailText('close_request_details', 'Fermer le panneau'));
+  setText('detail-info-type', type);
+  setText('detail-info-date', formatDetailDate(row.created_at || row.createdAt));
+  setText('detail-info-client', getRequestClient(row));
+  setText('detail-info-country', row.destination_country || row.country || row.destination || '—');
+  setText('detail-info-reference', reference);
+  setText('detail-info-status', formattedStatus);
+  setText('detail-info-fxi', row.fxi_number || row.fxi || '—');
+  setText('detail-info-charger', row.carte_chargeur || row.charger_card_number || '—');
+
+  const typeBadge = document.getElementById('side-request-type');
+  if (typeBadge) {
+    typeBadge.textContent = type;
+    typeBadge.className = `badge-type ${type === 'AD' ? 'badge-ad' : 'badge-feri'}`;
   }
 
-  const docsContainer = document.getElementById('side-docs');
-  if (docsContainer) {
-    docsContainer.innerHTML = `<p class="detail-reference"><strong>${escapeHtml(window.i18n?.t?.('ref_number') || 'Reference')}:</strong> ${escapeHtml(reference)}</p>` +
-      `<div class="detail-documents">${links.length ? links.join('') : `<span>${escapeHtml(window.i18n?.t?.('no_documents') || 'No documents available')}</span>`}</div>`;
+  const steps = document.getElementById('voyage-steps');
+  const rejectedPriorStatus = row.previous_status || row.status_before_rejection;
+  const progress = rejected ? getDetailProgress(rejectedPriorStatus || 'CREATED') : getDetailProgress(status);
+  if (steps) {
+    steps.dataset.progress = String(progress);
+    steps.classList.toggle('is-rejected', rejected);
+    steps.querySelectorAll('li').forEach((step, index) => {
+      step.classList.toggle('is-complete', !rejected && index < progress);
+      step.classList.toggle('is-current', !rejected && index === progress);
+      step.classList.toggle('is-future', !rejected && index > progress);
+      step.classList.toggle('is-rejected-step', rejected && Boolean(rejectedPriorStatus) && index === progress);
+    });
   }
+  const ocean = document.querySelector('.voyage-ocean');
+  if (ocean) {
+    const shipPosition = Math.max(5, Math.min(95, 5 + progress * 30));
+    ocean.style.setProperty('--ship-left', `${shipPosition}%`);
+    ocean.style.setProperty('--route-fill', `${progress * 33.33}%`);
+  }
+  const route = document.querySelector('.voyage-steps');
+  if (route) route.setAttribute('aria-label', `${detailText('request_details_title', 'Détails de la demande')} — ${formattedStatus}`);
+  setText('voyage-date-created', formatDetailDate(row.created_at || row.createdAt));
+  setText('voyage-date-review', formatDetailDate(row.reviewed_at || row.under_review_at || row.submitted_at));
+  setText('voyage-date-processing', formatDetailDate(row.processing_started_at || row.processed_at));
+  setText('voyage-date-completed', formatDetailDate(row.completed_at || row.validated_at));
+
+  const notice = document.getElementById('detail-status-notice');
+  if (notice) {
+    const needsAction = ['AWAITING_DOCUMENTS', 'PAYMENT_REQUIRED', 'ACTION_REQUIRED'].includes(status.toUpperCase());
+    notice.hidden = !rejected && !needsAction;
+    notice.className = `detail-status-notice ${rejected ? 'is-rejected' : 'is-action-required'}`;
+    notice.textContent = rejected
+      ? detailText('request_rejected_notice', 'Demande rejetée')
+      : needsAction ? formattedStatus : '';
+  }
+  const rejectionReason = document.getElementById('detail-rejection-reason');
+  if (rejectionReason) {
+    const reason = row.rejection_reason || row.reject_reason || row.rejection_message || '';
+    rejectionReason.hidden = !rejected || !reason;
+    rejectionReason.textContent = reason ? `${detailText('rejection_reason', 'Motif du rejet')} : ${reason}` : '';
+  }
+  const infoNote = document.querySelector('.detail-info-note');
+  if (infoNote) infoNote.hidden = !['CREATED', 'AWAITING_DOCUMENTS', 'PROCESSING'].includes(status.toUpperCase());
+
+  const docContainer = document.getElementById('side-docs');
+  if (docContainer) docContainer.innerHTML = `<p class="detail-docs-message"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i> ${escapeHtml(detailText('loading', 'Chargement...'))}</p>`;
   panel.classList.add('show');
   panel.setAttribute('aria-hidden', 'false');
+  document.getElementById('side-panel-backdrop')?.classList.add('show');
+  document.getElementById('side-close-btn')?.focus();
+
+  const loadDetailDocuments = async () => {
+    try {
+      const response = await api.get(`/requests/${encodeURIComponent(requestKey)}/documents`);
+      if (activeDetailRequestId !== requestKey) return;
+      const list = Array.isArray(response.data?.documents) ? response.data.documents : [];
+      renderDetailDocuments(row, list);
+    } catch (error) {
+      console.error('Failed to load documents for request details', {
+        requestId: requestKey,
+        status: error.response?.status,
+        response: error.response?.data,
+        message: error.message
+      });
+      if (activeDetailRequestId === requestKey) renderDetailDocuments(row, [], true);
+    }
+  };
+  loadDetailDocuments();
 }
 
 // --- RECHERCHE ET BIND UI ---
@@ -595,12 +803,74 @@ function bindUIEvents() {
   const retryRequests = document.getElementById('retry-requests');
   if (retryRequests) retryRequests.addEventListener('click', loadRequests);
   const closeSidePanel = document.getElementById('side-close-btn');
-  if (closeSidePanel) closeSidePanel.addEventListener('click', () => {
+  const closeDetails = () => {
     const panel = document.getElementById('side-panel');
-    if (panel) {
-      panel.classList.remove('show');
-      panel.setAttribute('aria-hidden', 'true');
+    if (!panel) return;
+    panel.classList.remove('show');
+    panel.setAttribute('aria-hidden', 'true');
+    document.getElementById('side-panel-backdrop')?.classList.remove('show');
+    activeDetailRequestId = '';
+    activeDetailTrigger?.focus?.();
+    activeDetailTrigger = null;
+  };
+  if (closeSidePanel) closeSidePanel.addEventListener('click', closeDetails);
+  document.getElementById('side-panel-backdrop')?.addEventListener('click', closeDetails);
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && document.getElementById('side-panel')?.classList.contains('show')) closeDetails();
+  });
+
+  const documentsToggle = document.getElementById('detail-documents-toggle');
+  if (documentsToggle) documentsToggle.addEventListener('click', () => {
+    detailDocumentsExpanded = !detailDocumentsExpanded;
+    document.querySelectorAll('.detail-document-wrapper').forEach((item, index) => {
+      item.classList.toggle('is-collapsed', !detailDocumentsExpanded && index >= 4);
+    });
+    documentsToggle.textContent = detailDocumentsExpanded
+      ? detailText('view_less_documents', 'Voir moins')
+      : detailText('view_all_documents', 'Voir tous');
+    documentsToggle.setAttribute('aria-expanded', String(detailDocumentsExpanded));
+  });
+  const docsContainer = document.getElementById('side-docs');
+  if (docsContainer) docsContainer.addEventListener('click', async event => {
+    const retry = event.target.closest('#detail-documents-retry');
+    if (retry) {
+      const row = requests.find(item => String(item.request_id || item.id || '') === activeDetailRequestId);
+      if (row) openRequestDetails(activeDetailRequestId, activeDetailTrigger);
+      return;
     }
+    const downloadButton = event.target.closest('.detail-download-btn');
+    if (!downloadButton) return;
+    const documentId = downloadButton.dataset.documentId;
+    if (!documentId) return;
+    const original = downloadButton.innerHTML;
+    downloadButton.disabled = true;
+    downloadButton.innerHTML = `<i class="fas fa-spinner fa-spin" aria-hidden="true"></i><span>${escapeHtml(detailText('loading', 'Chargement...'))}</span>`;
+    try {
+      const response = await downloadRequestFile(documentId);
+      const filename = response.headers?.['content-disposition']?.match(/filename="?([^";]+)"?/i)?.[1] || 'document';
+      const objectUrl = URL.createObjectURL(response.data);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch (error) {
+      console.error('Failed to download request document', { documentId, error });
+      window.alert(detailText('detail_document_download_error', 'Impossible de télécharger ce document. Réessayez plus tard.'));
+    } finally {
+      if (downloadButton.isConnected) {
+        downloadButton.disabled = false;
+        downloadButton.innerHTML = original;
+      }
+    }
+  });
+
+  const contactSupport = document.getElementById('detail-contact-support');
+  if (contactSupport) contactSupport.addEventListener('click', () => {
+    closeDetails();
+    document.getElementById('settings-btn')?.click();
   });
 
   // Popup buttons
@@ -652,6 +922,17 @@ function bindUIEvents() {
   // Modal close and submit
   const modalClose = document.getElementById('modal-close-btn');
   if (modalClose) modalClose.addEventListener('click', closeModal);
+  const modalHeaderClose = document.getElementById('modal-header-close');
+  if (modalHeaderClose) modalHeaderClose.addEventListener('click', closeModal);
+  const modal = document.getElementById('modal');
+  if (modal) {
+    modal.addEventListener('click', event => {
+      if (event.target === modal) closeModal();
+    });
+    modal.addEventListener('keydown', event => {
+      if (event.key === 'Escape') closeModal();
+    });
+  }
   const submitBtn = document.getElementById('submit-btn');
   if (submitBtn) submitBtn.addEventListener('click', submitNewRequest);
 
@@ -671,6 +952,27 @@ function bindUIEvents() {
       const labelId = fileId.startsWith('file-') ? 'label-' + fileId.slice(5) : null;
       updateFileName(this, labelId);
     });
+
+    const uploadCard = inp.closest('.doc-upload-btn');
+    if (uploadCard) {
+      uploadCard.addEventListener('dragover', event => {
+        event.preventDefault();
+        uploadCard.classList.add('is-dragover');
+      });
+      uploadCard.addEventListener('dragleave', event => {
+        if (!uploadCard.contains(event.relatedTarget)) uploadCard.classList.remove('is-dragover');
+      });
+      uploadCard.addEventListener('drop', event => {
+        event.preventDefault();
+        uploadCard.classList.remove('is-dragover');
+        const file = event.dataTransfer && event.dataTransfer.files[0];
+        if (!file || typeof DataTransfer === 'undefined') return;
+        const transfer = new DataTransfer();
+        transfer.items.add(file);
+        inp.files = transfer.files;
+        inp.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+    }
   });
 
   // Delegated handlers for invoice/document downloads rendered in table
@@ -679,7 +981,7 @@ function bindUIEvents() {
     tableBody.addEventListener('click', function (e) {
       const detailButton = e.target.closest('.request-detail-link');
       if (!detailButton) return;
-      openRequestDetails(detailButton.dataset.requestId);
+      openRequestDetails(detailButton.dataset.requestId, detailButton);
     });
   }
 
@@ -1115,7 +1417,14 @@ function closeModal() {
 
 function goToStep2(type) {
   const title = document.getElementById('modal-title');
-  if (title) title.innerText = (type === 'FERI') ? "" : (window.i18n && typeof window.i18n.t === 'function' ? window.i18n.t('modal_title_issue_ctn', { type }) : "Issue a CTN " + type);
+  const requestType = type === 'FERI + AD' ? 'FERI + AD' : type;
+  if (title) title.innerText = window.i18n && typeof window.i18n.t === 'function'
+    ? window.i18n.t('modal_new_request_type', { type: requestType })
+    : `New ${requestType} Request`;
+  const stepBadge = document.getElementById('modal-step-badge');
+  if (stepBadge) stepBadge.innerText = window.i18n && typeof window.i18n.t === 'function'
+    ? window.i18n.t('modal_step_selected')
+    : 'STEP 1 / 1';
   // Map human labels to backend enum values
   const map = {
     'FERI': 'FERI_ONLY',
@@ -1143,7 +1452,7 @@ function goToStep2(type) {
   // and ensure FXI input is hidden for AD-only.
   function showElement(el) {
     if (!el) return;
-    el.style.display = 'block';
+    el.style.display = el.classList.contains('feri-req') || el.classList.contains('ad-req') ? 'grid' : 'block';
     el.setAttribute('aria-hidden', 'false');
     Array.from(el.querySelectorAll('*')).forEach(c => { c.style.display = ''; });
   }
@@ -1157,28 +1466,32 @@ function goToStep2(type) {
   if (type === 'FERI') {
     showElement(feriBlock);
     hideElement(adBlock);
-    const fxi = document.getElementById('input-fxi'); if (fxi) fxi.style.display = '';
+    const fxi = document.getElementById('btn-ed') || document.getElementById('input-fxi'); if (fxi) fxi.style.display = '';
   } else if (type === 'AD') {
     hideElement(feriBlock);
     showElement(adBlock);
-    const fxi = document.getElementById('input-fxi'); if (fxi) fxi.style.display = 'none';
+    const fxi = document.getElementById('btn-ed') || document.getElementById('input-fxi'); if (fxi) fxi.style.display = 'none';
     // Ensure Numéro FERI field is visible for AD-only flows
     try {
       const feriInput = document.getElementById('input-feri');
       const feriLabel = document.querySelector('label[for="input-feri"]');
+      const feriField = feriInput && feriInput.closest('.request-modal-field');
       if (feriInput) feriInput.style.display = '';
       if (feriLabel) feriLabel.style.display = '';
+      if (feriField) feriField.style.display = '';
     } catch (e) {}
   } else { // FERI + AD
     showElement(feriBlock);
     showElement(adBlock);
-    const fxi = document.getElementById('input-fxi'); if (fxi) fxi.style.display = '';
+    const fxi = document.getElementById('btn-ed') || document.getElementById('input-fxi'); if (fxi) fxi.style.display = '';
     // For combined FERI + AD, remove (hide) the Numéro FERI field per request
     try {
       const feriInput = document.getElementById('input-feri');
       const feriLabel = document.querySelector('label[for="input-feri"]');
+      const feriField = feriInput && feriInput.closest('.request-modal-field');
       if (feriInput) feriInput.style.display = 'none';
       if (feriLabel) feriLabel.style.display = 'none';
+      if (feriField) feriField.style.display = 'none';
     } catch (e) {}
   }
   // show submit button when on step 2
@@ -1190,6 +1503,12 @@ function goToStep2(type) {
 function updateFileName(input, labelId) {
   const labelSpan = labelId ? document.getElementById(labelId) : input.parentElement.querySelector('span');
   if (!labelSpan) return;
+  const uploadCard = input.closest('.doc-upload-btn');
+  const setCardState = (state, enabled) => {
+    if (uploadCard) uploadCard.classList.toggle(state, enabled);
+    else if (labelSpan.parentElement) labelSpan.parentElement.classList.toggle(state, enabled);
+  };
+  const fileHint = uploadCard && uploadCard.querySelector('.upload-file-hint [data-i18n="no_file_selected"]');
 
   if (input.files && input.files.length > 0) {
     const file = input.files[0];
@@ -1197,29 +1516,30 @@ function updateFileName(input, labelId) {
     if (file.size > MAX_BYTES) {
       labelSpan.innerText = `Fichier trop volumineux (${Math.round(file.size / 1024 / 1024)}MB)`;
       input.value = '';
+      setCardState('file-selected', false);
+      setCardState('scanning', false);
       return;
     }
 
     const fileName = file.name;
+    if (fileHint) fileHint.textContent = fileName;
 
     if (labelSpan.id === 'label-bl') {
       labelSpan.innerHTML = `<i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Scanning...`;
-      if (labelSpan.parentElement) labelSpan.parentElement.classList.add('scanning');
+      setCardState('scanning', true);
 
       setTimeout(() => {
         extractedBL = "BL" + Math.floor(100000 + Math.random() * 900000);
         // Do not display the extracted BL value in the UI — show only the filename
         labelSpan.innerHTML = `<strong>${escapeHtml(fileName)}</strong>`;
-        if (labelSpan.parentElement) {
-          labelSpan.parentElement.classList.remove('scanning');
-          labelSpan.parentElement.classList.add('file-selected');
-        }
+        setCardState('scanning', false);
+        setCardState('file-selected', true);
         const submitBtn = document.getElementById('submit-btn');
         if (submitBtn) submitBtn.style.display = 'block';
       }, 1200);
     } else {
       labelSpan.innerText = fileName;
-      if (labelSpan.parentElement) labelSpan.parentElement.classList.add('file-selected');
+      setCardState('file-selected', true);
       if (extractedBL) {
         const submitBtn = document.getElementById('submit-btn');
         if (submitBtn) submitBtn.style.display = 'block';
@@ -1403,38 +1723,58 @@ function resetModalForm() {
   const refInput = document.getElementById('refInput');
   if (refInput) refInput.value = "";
   const title = document.getElementById('modal-title');
-  if (title) title.innerText = "Select Request Type";
+  if (title) title.innerText = window.i18n && typeof window.i18n.t === 'function'
+    ? window.i18n.t('new_request')
+    : 'New Request';
+  const stepBadge = document.getElementById('modal-step-badge');
+  if (stepBadge) stepBadge.innerText = window.i18n && typeof window.i18n.t === 'function'
+    ? window.i18n.t('modal_step_initial')
+    : 'STEP 1 / 2';
 
   const labels = [
-    { id: 'label-bl', txt: 'Bill of Lading' },
-    { id: 'label-fi', txt: 'Freight Invoice' },
-    { id: 'label-ci', txt: 'Commercial Invoice' },
+    { id: 'label-bl', key: 'bill_of_lading', fallback: 'Bill of Lading' },
+    { id: 'label-fi', key: 'freight_invoice', fallback: 'Freight Invoice' },
+    { id: 'label-ci', key: 'commercial_invoice', fallback: 'Commercial Invoice' },
+    { id: 'label-im8', key: 'customs_declaration', fallback: 'Customs declaration (IM8)' },
+    { id: 'label-road-inv', key: 'road_freight_invoice', fallback: 'Land freight invoice' },
+    { id: 'label-river-inv', key: 'river_freight_invoice', fallback: 'River freight invoice' },
     // Export Declaration replaced by FXI input field
   ];
 
   labels.forEach(item => {
     const el = document.getElementById(item.id);
     if (el) {
-      el.innerText = item.txt;
-      if (el.parentElement) {
-        el.parentElement.classList.remove('file-selected', 'scanning');
-      }
+      el.innerText = window.i18n && typeof window.i18n.t === 'function'
+        ? window.i18n.t(item.key)
+        : item.fallback;
+      const uploadCard = el.closest('.doc-upload-btn');
+      if (uploadCard) uploadCard.classList.remove('file-selected', 'scanning', 'is-dragover');
+      const hint = uploadCard && uploadCard.querySelector('.upload-file-hint [data-i18n="no_file_selected"]');
+      if (hint) hint.textContent = window.i18n && typeof window.i18n.t === 'function'
+        ? window.i18n.t('no_file_selected')
+        : 'No file selected';
     }
   });
 
   document.querySelectorAll('.doc-upload-btn input[type="file"]').forEach(i => i.value = '');
   const fxi = document.getElementById('input-fxi');
   if (fxi) fxi.value = '';
+  const fxiField = document.getElementById('btn-ed');
+  if (fxiField) fxiField.style.display = '';
   // Reset optional inputs including FERI number
   const feri = document.getElementById('input-feri');
   if (feri) feri.value = '';
+  const feriField = feri && feri.closest('.request-modal-field');
+  if (feriField) feriField.style.display = '';
+  const feriLabel = document.querySelector('label[for="input-feri"]');
+  if (feriLabel) feriLabel.style.display = '';
   const vehicle = document.getElementById('input-vehicle');
   if (vehicle) vehicle.value = '';
   extractedBL = "";
     // reset requirement blocks visibility: default to FERI visible, AD hidden
     const feriBlock = document.querySelector('.feri-req');
     const adBlock = document.querySelector('.ad-req');
-    if (feriBlock) feriBlock.style.display = 'block';
+    if (feriBlock) feriBlock.style.display = 'grid';
     if (adBlock) adBlock.style.display = 'none';
 }
 

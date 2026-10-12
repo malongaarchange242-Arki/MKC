@@ -22,6 +22,22 @@ export interface Document {
   type?: string;
 }
 
+export interface ListedDocument {
+  id: string;
+  request_id: string;
+  file_name: string;
+  created_at?: string;
+  uploaded_by?: string;
+  file_size?: number;
+  mime_type: string;
+  version?: number;
+  uploaded_at?: string;
+  type?: string;
+  file_path?: string;
+  bucket?: string;
+  category?: string;
+}
+
 export interface UploadDocumentInput {
   requestId: string;
   file: Express.Multer.File;
@@ -356,24 +372,11 @@ export class DocumentsService {
     filters: DocumentListFilters,
     userId: string,
     userRole: 'CLIENT' | 'ADMIN' | 'SYSTEM'
-  ): Promise<{ documents: Document[]; count: number }> {
+  ): Promise<{ documents: ListedDocument[]; count: number }> {
     logger.info('Listing documents', { filters, userId, userRole });
 
-    // Select a concise set of fields and use created_at as the canonical timestamp
-    let query = supabase
-      .from('documents')
-      .select(`
-        id,
-        request_id,
-        created_at,
-        uploaded_by,
-        file_name,
-        file_size,
-        mime_type,
-        type
-      `, { count: 'exact' });
-
     // Filtres selon le rôle
+    let requestIds: string[] | null = null;
     if (userRole === 'CLIENT') {
       // Les clients voient uniquement les documents de leurs demandes
       // Récupérer d'abord les IDs des demandes du client
@@ -383,8 +386,7 @@ export class DocumentsService {
         .eq('user_id', userId);
 
       if (userRequests && userRequests.length > 0) {
-        const requestIds = userRequests.map(r => r.id);
-        query = query.in('request_id', requestIds);
+        requestIds = userRequests.map(r => r.id);
       } else {
         // Si le client n'a aucune demande, retourner un tableau vide
         return { documents: [], count: 0 };
@@ -394,29 +396,61 @@ export class DocumentsService {
     if (filters.requestId) {
       // Vérifier l'accès à la demande
       await this.checkRequestAccess(filters.requestId, userId, userRole);
-      query = query.eq('request_id', filters.requestId);
     }
 
+    let query = supabase
+      .from('documents')
+      .select('*', { count: 'exact' });
+    if (requestIds) query = query.in('request_id', requestIds);
+    if (filters.requestId) query = query.eq('request_id', filters.requestId);
     query = query.order('created_at', { ascending: false });
+    if (filters.limit) query = query.limit(filters.limit);
+    if (filters.offset) query = query.range(filters.offset, filters.offset + (filters.limit || 50) - 1);
 
-    if (filters.limit) {
-      query = query.limit(filters.limit);
-    }
+    const result = await query;
 
-    if (filters.offset) {
-      query = query.range(filters.offset, filters.offset + (filters.limit || 50) - 1);
-    }
-
-    const { data, error, count } = await query;
-
-    if (error) {
-      logger.error('Failed to list documents', { error });
+    if (result.error) {
+      logger.error('Failed to list documents', { error: result.error });
       throw new Error('Failed to list documents');
     }
 
+    const documents = ((result.data || []) as unknown[]).map((row): ListedDocument => {
+      if (!row || typeof row !== 'object') {
+        throw new Error('Invalid document metadata returned by database');
+      }
+      const record = Object.fromEntries(Object.entries(row));
+      const id = record.id;
+      const requestId = record.request_id;
+      const fileName = record.file_name;
+      if (typeof id !== 'string' || typeof requestId !== 'string' || typeof fileName !== 'string') {
+        throw new Error('Invalid document metadata returned by database');
+      }
+
+      const type = [record.type, record.doc_type, record.kind].find(
+        (value): value is string => typeof value === 'string'
+      );
+      return {
+        id,
+        request_id: requestId,
+        file_name: fileName,
+        created_at: typeof record.created_at === 'string' ? record.created_at : undefined,
+        uploaded_by: typeof record.uploaded_by === 'string' ? record.uploaded_by : undefined,
+        file_size: typeof record.file_size === 'number' ? record.file_size : undefined,
+        mime_type: typeof record.mime_type === 'string' ? record.mime_type : 'application/octet-stream',
+        version: typeof record.version === 'number' ? record.version : undefined,
+        uploaded_at: typeof record.uploaded_at === 'string' ? record.uploaded_at : undefined,
+        type,
+        file_path: userRole === 'ADMIN'
+          ? [record.file_path, record.storage_path].find((value): value is string => typeof value === 'string')
+          : undefined,
+        bucket: userRole === 'ADMIN' && typeof record.bucket === 'string' ? record.bucket : undefined,
+        category: userRole === 'ADMIN' && typeof record.category === 'string' ? record.category : undefined
+      };
+    });
+
     return {
-      documents: (data || []) as Document[],
-      count: count || 0
+      documents,
+      count: result.count || 0
     };
   }
 
@@ -424,10 +458,14 @@ export class DocumentsService {
   // CREATE FINAL DOCUMENT (from existing metadata/file)
   // ===============================
   static async createFinalDocumentFromExisting(
-    existing: Document,
+    existing: ListedDocument,
     adminId: string,
     type: 'FERI' | 'AD' | null = null
   ): Promise<Document> {
+    if (!existing.file_path) {
+      throw new Error('Existing document has no storage path');
+    }
+
     logger.info('Creating final document entry from existing file', { existing: existing.id, adminId });
 
     const documentId = uuidv4();
