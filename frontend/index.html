@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="api-base" content="https://mkc-ymuo.onrender.com" />
+  <meta name="api-base" content="https://mkc-ijms.onrender.com" />
   <title>Connexion — Maritime Kargo Consulting</title>
   <link rel="icon" href="Logotype_mkc_bon-removebg-preview.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -23,6 +23,7 @@
     <div class="bg-overlay"></div>
     <div class="bg-overlay-right"></div>
   </div>
+  <canvas id="ripple-canvas" class="ripple-canvas" aria-hidden="true"></canvas>
 
   <!-- ─── HEADER ─── -->
   <header class="site-header" role="banner">
@@ -417,6 +418,139 @@
     setTimeout(function () { if (card)  card.classList.add('visible');  }, 180);
     setTimeout(function () { if (feats) feats.classList.add('visible'); }, 320);
   });
+</script>
+
+<script>
+(function () {
+  'use strict';
+
+  var loginPage = document.getElementById('loginPage');
+  var canvas = document.getElementById('ripple-canvas');
+  if (!loginPage || !canvas || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+
+  var card = document.querySelector('.login-card');
+  var ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  var canvasWidth = 0;
+  var canvasHeight = 0;
+  var pixelRatio = 1;
+
+  function resize() {
+    var rect = loginPage.getBoundingClientRect();
+    pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+    canvasWidth = rect.width;
+    canvasHeight = rect.height;
+    canvas.width = Math.round(canvasWidth * pixelRatio);
+    canvas.height = Math.round(canvasHeight * pixelRatio);
+    ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+  }
+  resize();
+  window.addEventListener('resize', resize, { passive: true });
+
+  var ripples = [];
+  var MAX_RADIUS = 72;
+  var DURATION = 900;
+  var THROTTLE_MS = 42;
+  var lastSpawn = -THROTTLE_MS;
+  var pendingX = 0, pendingY = 0, hasPending = false;
+  var rafId = null;
+
+  function scheduleFrame() {
+    if (rafId === null && !document.hidden) {
+      rafId = requestAnimationFrame(tick);
+    }
+  }
+
+  loginPage.addEventListener('mousemove', function (e) {
+    var rect = loginPage.getBoundingClientRect();
+    if (card) {
+      var cardRect = card.getBoundingClientRect();
+      if (e.clientX >= cardRect.left && e.clientX <= cardRect.right &&
+          e.clientY >= cardRect.top && e.clientY <= cardRect.bottom) {
+        hasPending = false;
+        return;
+      }
+    }
+    pendingX = e.clientX - rect.left;
+    pendingY = e.clientY - rect.top;
+    hasPending = true;
+  }, { passive: true });
+
+  var PALETTE = [
+    { r: 18, g: 107, b: 138 },
+    { r: 11, g: 41, b: 69 },
+    { r: 7, g: 29, b: 51 },
+    { r: 245, g: 130, b: 32 }
+  ];
+  var paletteWeights = [5, 4, 4, 1];
+  var paletteTotal = paletteWeights.reduce(function (a, b) { return a + b; }, 0);
+
+  function pickColour() {
+    var roll = Math.random() * paletteTotal;
+    var acc = 0;
+    for (var i = 0; i < PALETTE.length; i++) {
+      acc += paletteWeights[i];
+      if (roll < acc) return PALETTE[i];
+    }
+    return PALETTE[0];
+  }
+
+  function spawnRipple(x, y, now) {
+    ripples.push({
+      x: x,
+      y: y,
+      born: now,
+      maxR: MAX_RADIUS * (0.82 + Math.random() * 0.36),
+      opacityBase: 0.12 + Math.random() * 0.08,
+      col: pickColour()
+    });
+  }
+
+  function tick(now) {
+    rafId = null;
+    if (hasPending && now - lastSpawn >= THROTTLE_MS) {
+      spawnRipple(pendingX, pendingY, now);
+      lastSpawn = now;
+      hasPending = false;
+    }
+
+    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+    var alive = [];
+    for (var i = 0; i < ripples.length; i++) {
+      var rp = ripples[i];
+      var elapsed = now - rp.born;
+      if (elapsed >= DURATION) continue;
+
+      var progress = elapsed / DURATION;
+      var eased = 1 - Math.pow(1 - progress, 2.2);
+      var radius = rp.maxR * eased;
+      var opacity = rp.opacityBase * (1 - Math.pow(progress, 1.4));
+      if (opacity < 0.005) continue;
+      var col = rp.col;
+
+      ctx.beginPath();
+      ctx.arc(rp.x, rp.y, radius, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(' + col.r + ',' + col.g + ',' + col.b + ',' + (opacity * 0.9).toFixed(3) + ')';
+      ctx.lineWidth = 1.2 + (1 - progress) * 0.8;
+      ctx.stroke();
+
+      alive.push(rp);
+    }
+    ripples = alive;
+    if (ripples.length || hasPending) scheduleFrame();
+  }
+
+  loginPage.addEventListener('mousemove', scheduleFrame, { passive: true });
+
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden && rafId !== null) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+    } else if (!document.hidden && (ripples.length || hasPending)) {
+      scheduleFrame();
+    }
+  });
+})();
 </script>
 
 </body>

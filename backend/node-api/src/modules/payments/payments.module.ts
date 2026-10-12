@@ -112,6 +112,7 @@ export const paymentsModule = () => {
 
       const insertPayload: any = {
         id: uuidv4(),
+        user_id: authUserId,
         reference,
         client_name: clientName,
         invoice_date: invoiceDate || null,
@@ -140,6 +141,7 @@ export const paymentsModule = () => {
           const itemsToInsert = items.map((it: any) => ({
             id: uuidv4(),
             carte_id: inserted.id,
+            carte_chargeur_id: inserted.id,
             description: it.description || null,
             validity_type: it.validity_type || null,
             validity_value: it.validity_value || null,

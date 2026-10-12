@@ -270,7 +270,15 @@ ALTER TABLE feri_documents ENABLE ROW LEVEL SECURITY;
 -- =========================
 CREATE TABLE carte_chargeur (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+    reference TEXT,
+    client_name TEXT,
+    invoice_date DATE,
+    objet_ref TEXT,
+    doc_type TEXT NOT NULL DEFAULT 'FACTURE',
+    items JSONB,
+    total_amount NUMERIC,
+    created_by TEXT,
     card_name TEXT,
     status TEXT NOT NULL DEFAULT 'ACTIVE',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -283,14 +291,18 @@ ALTER TABLE carte_chargeur ENABLE ROW LEVEL SECURITY;
 -- =========================
 CREATE TABLE carte_chargeur_items (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    carte_chargeur_id UUID NOT NULL REFERENCES carte_chargeur(id) ON DELETE CASCADE,
-    description TEXT NOT NULL,
+    carte_id UUID REFERENCES carte_chargeur(id) ON DELETE CASCADE,
+    carte_chargeur_id UUID REFERENCES carte_chargeur(id) ON DELETE CASCADE,
+    description TEXT,
+    validity_type TEXT,
+    validity_value TEXT,
     quantity NUMERIC(10,2) NOT NULL DEFAULT 1,
     unit_price NUMERIC(12,2) NOT NULL DEFAULT 0,
     amount NUMERIC(12,2) NOT NULL DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX idx_carte_chargeur_items_carte_chargeur_id ON carte_chargeur_items(carte_chargeur_id);
+CREATE INDEX idx_carte_chargeur_items_carte_id ON carte_chargeur_items(carte_id);
 ALTER TABLE carte_chargeur_items ENABLE ROW LEVEL SECURITY;
 
 -- =========================

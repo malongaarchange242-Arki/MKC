@@ -272,7 +272,15 @@ CREATE INDEX idx_feri_documents_delivery_id ON feri_documents(delivery_id);
 -- =========================
 CREATE TABLE carte_chargeur (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+    reference TEXT,
+    client_name TEXT,
+    invoice_date DATE,
+    objet_ref TEXT,
+    doc_type TEXT NOT NULL DEFAULT 'FACTURE',
+    items JSONB,
+    total_amount NUMERIC,
+    created_by TEXT,
     card_name TEXT,
     status TEXT NOT NULL DEFAULT 'ACTIVE',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -285,8 +293,11 @@ CREATE INDEX idx_carte_chargeur_user_id ON carte_chargeur(user_id);
 -- =========================
 CREATE TABLE carte_chargeur_items (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    carte_chargeur_id UUID NOT NULL REFERENCES carte_chargeur(id) ON DELETE CASCADE,
-    description TEXT NOT NULL,
+    carte_id UUID REFERENCES carte_chargeur(id) ON DELETE CASCADE,
+    carte_chargeur_id UUID REFERENCES carte_chargeur(id) ON DELETE CASCADE,
+    description TEXT,
+    validity_type TEXT,
+    validity_value TEXT,
     quantity NUMERIC(10,2) NOT NULL DEFAULT 1,
     unit_price NUMERIC(12,2) NOT NULL DEFAULT 0,
     amount NUMERIC(12,2) NOT NULL DEFAULT 0,
@@ -294,6 +305,7 @@ CREATE TABLE carte_chargeur_items (
 );
 
 CREATE INDEX idx_carte_chargeur_items_carte_chargeur_id ON carte_chargeur_items(carte_chargeur_id);
+CREATE INDEX idx_carte_chargeur_items_carte_id ON carte_chargeur_items(carte_id);
 
 -- =========================
 -- Updated-at trigger helper
