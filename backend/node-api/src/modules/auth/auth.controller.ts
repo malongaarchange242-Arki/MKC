@@ -115,6 +115,7 @@ export class AuthController {
 
       return res.status(200).json({
         success: true,
+        role: result.role,
         user: result.user,
         session: result.session
       });

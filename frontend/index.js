@@ -96,6 +96,50 @@
     if (msgEl) { msgEl.style.color = ''; msgEl.textContent = ''; }
   }
 
+  function getRoleFromToken(token) {
+    if (typeof token !== 'string') return '';
+    try {
+      const payload = token.split('.')[1];
+      if (!payload) return '';
+      const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+      const decoded = decodeURIComponent(atob(normalized).split('').map(char =>
+        `%${char.charCodeAt(0).toString(16).padStart(2, '0')}`
+      ).join(''));
+      return String(JSON.parse(decoded)?.role || '').toUpperCase();
+    } catch {
+      return '';
+    }
+  }
+
+  function getRoleFromAuthResponse(response) {
+    const session = response?.session || response?.data?.session;
+    const user = response?.user || response?.data?.user || session?.user;
+    const explicitRole = response?.role
+      || response?.profile?.role
+      || response?.data?.role
+      || response?.data?.profile?.role;
+    if (explicitRole) return String(explicitRole).toUpperCase();
+
+    const token = session?.access_token
+      || session?.accessToken
+      || response?.access_token
+      || response?.accessToken
+      || response?.token
+      || response?.jwt
+      || response?.data?.access_token
+      || response?.data?.token;
+    const tokenRole = getRoleFromToken(token);
+    if (tokenRole) return tokenRole;
+
+    const role = user?.role
+      || user?.user_metadata?.role
+      || user?.app_metadata?.role
+      || session?.user?.role
+      || session?.user?.user_metadata?.role
+      || session?.user?.app_metadata?.role;
+    return String(role || '').toUpperCase();
+  }
+
   function setLoading(loading) {
     submitBtn.disabled = loading;
     submitBtn.style.opacity = loading ? '0.75' : '1';
@@ -170,7 +214,7 @@
 
       // Auto-login after register to get token
       let loginData = {};
-      let userRole = data.user?.user_metadata?.role || data.session?.user?.user_metadata?.role || data.role;
+      let userRole = getRoleFromAuthResponse(data);
       if (mode === 'register') {
         try {
           const loginResp = await fetch(`${API_BASE}/login`, {
@@ -181,7 +225,7 @@
           const loginRaw = await loginResp.text();
           try { loginData = loginRaw ? JSON.parse(loginRaw) : {}; } catch { loginData = { _text: loginRaw }; }
           if (!loginResp.ok) throw new Error(loginData?.message || 'Auto-login failed');
-          userRole = loginData.user?.user_metadata?.role || loginData.session?.user?.user_metadata?.role || loginData.role || userRole;
+          userRole = getRoleFromAuthResponse(loginData) || userRole;
           const session = loginData.session || loginData?.data?.session;
           const token   = session?.access_token || session?.accessToken || loginData.token || loginData.access_token;
           if (token) {
@@ -199,6 +243,10 @@
         }
       }
 
+      if (!userRole) {
+        throw new Error('Connexion réussie, mais le rôle du compte n’a pas été reçu. Vérifiez le rôle ADMIN dans Supabase puis reconnectez-vous.');
+      }
+
       setMessage(
         mode === 'login'
           ? (window.i18n ? window.i18n.t('sign_in_success') : 'Connexion réussie. Redirection…')
@@ -207,12 +255,12 @@
       );
 
       setTimeout(() => {
-        const role = String(userRole || '').toUpperCase();
-        const destination = role === 'CLIENT'
+        const destination = userRole === 'CLIENT'
           ? 'dashboard_client.html'
-          : role === 'ADMIN'
+          : userRole === 'ADMIN'
             ? 'dashboard_admin.html'
             : 'facture_carte.html';
+        console.info('Redirection après connexion', { role: userRole, destination });
         window.location.href = destination;
       }, 700);
 

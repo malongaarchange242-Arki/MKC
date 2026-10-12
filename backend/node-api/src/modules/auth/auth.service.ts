@@ -120,20 +120,28 @@ export class AuthService {
       logger.warn('Ensure profile on login failed', { error: e });
     }
 
-    // Récupérer le rôle depuis user_metadata (évite la récursion RLS)
-    // On évite d'appeler getProfile() qui peut déclencher une récursion infinie dans RLS
+    // The profiles table is the authoritative source for authorization roles.
     let role: 'CLIENT' | 'ADMIN' | 'SYSTEM' = 'CLIENT';
-    
-    // Utiliser d'abord user_metadata (déjà disponible, pas besoin de requête DB)
-    if (data.user.user_metadata?.role) {
-      role = data.user.user_metadata.role as 'CLIENT' | 'ADMIN' | 'SYSTEM';
-      logger.info('Role from user_metadata', { userId: data.user.id, role });
-    } else {
-      // Si pas dans metadata, utiliser CLIENT par défaut
-      // Le rôle sera mis à jour lors de la prochaine connexion si le profil existe
-      logger.warn('Role not found in user_metadata, using default CLIENT', { 
-        userId: data.user.id 
-      });
+    try {
+      const profile = await UsersService.getMe(data.user.id);
+      if (['CLIENT', 'ADMIN', 'SYSTEM'].includes(profile.role)) {
+        role = profile.role;
+      }
+      logger.info('Role from user profile', { userId: data.user.id, role });
+    } catch (profileError) {
+      const metadataRole = data.user.user_metadata?.role;
+      if (['CLIENT', 'ADMIN', 'SYSTEM'].includes(metadataRole)) {
+        role = metadataRole as AuthRole;
+        logger.warn('Using auth metadata role because profile role lookup failed', {
+          userId: data.user.id,
+          profileError
+        });
+      } else {
+        logger.warn('Role not found in profile or auth metadata; using default CLIENT', {
+          userId: data.user.id,
+          profileError
+        });
+      }
     }
 
     // Générer un token JWT personnalisé avec expiration de 24h
@@ -155,6 +163,7 @@ export class AuthService {
 
     return {
       user: data.user,
+      role,
       session: customSession
     };
   }
