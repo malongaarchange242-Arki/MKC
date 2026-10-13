@@ -72,6 +72,7 @@ CREATE TABLE documents (
     kind document_kind NOT NULL DEFAULT 'OTHER',
     file_name TEXT NOT NULL,
     storage_path TEXT NOT NULL UNIQUE,
+    bucket TEXT,
     mime_type TEXT,
     file_size BIGINT,
     checksum TEXT,

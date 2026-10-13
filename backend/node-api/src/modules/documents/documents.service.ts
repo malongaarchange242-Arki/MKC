@@ -15,7 +15,7 @@ export interface Document {
   bucket?: string;
   file_size: number;
   mime_type: string;
-  version: number;
+  version?: number;
   uploaded_by: string;
   uploaded_at: string;
   created_at: string;
@@ -89,17 +89,68 @@ const ALLOWED_DOCUMENT_TYPES = [
 // DOCUMENTS SERVICE
 // ===============================
 export class DocumentsService {
-  private static async insertDocumentPayload(payload: any) {
-    // Try inserting payload; if the DB schema is older and missing 'category', retry without it
-    const { data, error } = await supabase.from('documents').insert(payload).select().single();
-    if (error && (error as any).code === 'PGRST204' && payload && Object.prototype.hasOwnProperty.call(payload, 'category')) {
-      const fallback = { ...payload };
-      delete fallback.category;
-      const { data: d2, error: e2 } = await supabase.from('documents').insert(fallback).select().single();
-      return { data: d2, error: e2 };
+  private static documentKind(type: string | null): 'INVOICE' | 'BL' | 'PROOF_OF_PAYMENT' | 'CUSTOMS' | 'OTHER' {
+    const normalizedType = (type || '').toUpperCase();
+    if (normalizedType.includes('BILL_OF_LADING') || normalizedType === 'BL') return 'BL';
+    if (normalizedType.includes('INVOICE')) return 'INVOICE';
+    if (normalizedType.includes('PAYMENT') || normalizedType === 'PROOF') return 'PROOF_OF_PAYMENT';
+    if (normalizedType.includes('CUSTOMS') || normalizedType.includes('EXPORT')) return 'CUSTOMS';
+    return 'OTHER';
+  }
+
+  private static mapDocumentRecord(record: any): Document {
+    const type = [record.doc_type, record.type, record.kind].find(
+      (value): value is string => typeof value === 'string'
+    );
+    const filePath = [record.storage_path, record.file_path].find(
+      (value): value is string => typeof value === 'string'
+    );
+    if (!filePath) {
+      throw new Error('Document storage path is missing');
     }
 
-    return { data, error };
+    return {
+      ...record,
+      file_path: filePath,
+      bucket: typeof record.bucket === 'string' ? record.bucket : STORAGE_BUCKET,
+      ...(typeof record.version === 'number' ? { version: record.version } : {}),
+      uploaded_at: typeof record.uploaded_at === 'string'
+        ? record.uploaded_at
+        : record.created_at,
+      type
+    } as Document;
+  }
+
+  private static async insertDocumentPayload(payload: Record<string, any>) {
+    const type = typeof payload.doc_type === 'string'
+      ? payload.doc_type
+      : typeof payload.type === 'string'
+        ? payload.type
+        : null;
+    const storagePath = payload.storage_path ?? payload.file_path;
+    if (typeof storagePath !== 'string' || !storagePath) {
+      throw new Error('Document storage path is required');
+    }
+
+    const databasePayload = {
+      id: payload.id,
+      request_id: payload.request_id,
+      uploaded_by: payload.uploaded_by,
+      doc_type: type,
+      kind: payload.kind || this.documentKind(type),
+      file_name: payload.file_name,
+      storage_path: storagePath,
+      mime_type: payload.mime_type ?? null,
+      file_size: payload.file_size ?? null,
+      checksum: payload.checksum ?? null,
+      bucket: payload.bucket || STORAGE_BUCKET,
+      created_at: payload.created_at
+    };
+    const { data, error } = await supabase.from('documents').insert(databasePayload).select().single();
+    return {
+      data: data ? this.mapDocumentRecord(data) : null,
+      error
+    };
   }
   // Helper to fetch a request row with a small retry/backoff to handle
   // transient schema/cache/visibility issues observed in production.
@@ -262,19 +313,6 @@ export class DocumentsService {
       throw new Error('Storage upload verification failed');
     }
 
-    // Récupérer la version actuelle du document (si existe)
-    const { data: existingDocs } = await supabase
-      .from('documents')
-      .select('version')
-      .eq('request_id', requestId)
-      .eq('file_name', file.originalname)
-      .order('version', { ascending: false })
-      .limit(1);
-
-    const nextVersion = existingDocs && existingDocs.length > 0 
-      ? existingDocs[0].version + 1 
-      : 1;
-
     // 2. Enregistrer en base de données avec le champ 'type'
     const documentId = uuidv4();
     const { data: documentData, error: dbError } = await this.insertDocumentPayload({
@@ -285,7 +323,6 @@ export class DocumentsService {
       bucket: STORAGE_BUCKET,
       file_size: file.size,
       mime_type: file.mimetype,
-      version: nextVersion,
       uploaded_by: uploadedBy,
       // store the normalized, validated type matching Postgres ENUM
       type: normalizedType
@@ -331,7 +368,7 @@ export class DocumentsService {
     // Vérifier l'accès
     await this.checkRequestAccess(document.request_id, userId, userRole);
 
-    return document as Document;
+    return this.mapDocumentRecord(document);
   }
 
   // ===============================
@@ -347,7 +384,7 @@ export class DocumentsService {
 
     // Télécharger le fichier depuis Storage
     const { data: fileData, error: downloadError } = await supabase.storage
-      .from(STORAGE_BUCKET)
+      .from(document.bucket || STORAGE_BUCKET)
       .download(document.file_path);
 
     if (downloadError || !fileData) {
@@ -426,9 +463,17 @@ export class DocumentsService {
         throw new Error('Invalid document metadata returned by database');
       }
 
-      const type = [record.type, record.doc_type, record.kind].find(
+      const type = [record.doc_type, record.type, record.kind].find(
         (value): value is string => typeof value === 'string'
       );
+      const filePath = [record.storage_path, record.file_path].find(
+        (value): value is string => typeof value === 'string'
+      );
+      const category = typeof record.category === 'string'
+        ? record.category
+        : typeof type === 'string' && /_(FINAL)$/.test(type)
+          ? 'FINAL'
+          : undefined;
       return {
         id,
         request_id: requestId,
@@ -438,13 +483,15 @@ export class DocumentsService {
         file_size: typeof record.file_size === 'number' ? record.file_size : undefined,
         mime_type: typeof record.mime_type === 'string' ? record.mime_type : 'application/octet-stream',
         version: typeof record.version === 'number' ? record.version : undefined,
-        uploaded_at: typeof record.uploaded_at === 'string' ? record.uploaded_at : undefined,
+        uploaded_at: typeof record.uploaded_at === 'string'
+          ? record.uploaded_at
+          : typeof record.created_at === 'string' ? record.created_at : undefined,
         type,
         file_path: userRole === 'ADMIN'
-          ? [record.file_path, record.storage_path].find((value): value is string => typeof value === 'string')
+          ? filePath
           : undefined,
         bucket: userRole === 'ADMIN' && typeof record.bucket === 'string' ? record.bucket : undefined,
-        category: userRole === 'ADMIN' && typeof record.category === 'string' ? record.category : undefined
+        category: userRole === 'ADMIN' ? category : undefined
       };
     });
 
@@ -468,34 +515,19 @@ export class DocumentsService {
 
     logger.info('Creating final document entry from existing file', { existing: existing.id, adminId });
 
-    const documentId = uuidv4();
-
     const { data, error } = await supabase
       .from('documents')
-      .insert({
-        id: documentId,
-        request_id: existing.request_id,
-        file_name: existing.file_name,
-        file_path: existing.file_path,
-        bucket: (existing as any).bucket || STORAGE_BUCKET,
-        file_size: existing.file_size,
-        mime_type: existing.mime_type,
-        version: (existing.version || 1) + 1,
-        uploaded_by: adminId,
-        category: 'FINAL',
-        type: type || (existing as any).type || null,
-        format: 'PDF',
-        is_public: false
-      })
+      .update({ doc_type: type ? `${type}_FINAL` : existing.type || null })
+      .eq('id', existing.id)
       .select()
       .single();
 
     if (error || !data) {
-      logger.error('Failed to create final document record', { error });
-      throw new Error('Failed to create final document');
+      logger.error('Failed to mark existing document as final', { error, documentId: existing.id });
+      throw new Error('Failed to mark existing document as final');
     }
 
-    return data as Document;
+    return this.mapDocumentRecord(data);
   }
 
   // ===============================
@@ -521,16 +553,16 @@ export class DocumentsService {
 ) {
   const { data: document, error } = await (supabase as any)
     .from('documents')
-    .select('file_path, bucket')
+    .select('storage_path, bucket')
     .eq('id', documentId)
     .single();
 
-  if (error || !document?.file_path) {
-    logger.error('Document file_path not found', { documentId, error });
-    throw new Error('Document file_path not found');
+  if (error || !document?.storage_path) {
+    logger.error('Document storage_path not found', { documentId, error });
+    throw new Error('Document storage_path not found');
   }
 
-  const filePath = document.file_path as string;
+  const filePath = document.storage_path as string;
   const bucket = document.bucket || STORAGE_BUCKET;
   // Create signed URL using the exact path stored in DB — no reconstruction, no polling, no retries
   const { data: signData, error: signError } = await supabase.storage
@@ -724,7 +756,6 @@ export class DocumentsService {
       bucket: STORAGE_BUCKET,
       file_size: file.size,
       mime_type: file.mimetype,
-      version: 1,
       uploaded_by: uploadedBy,
       uploaded_by_role: 'ADMIN',
       category: 'DRAFT',
@@ -805,7 +836,6 @@ export class DocumentsService {
       bucket: STORAGE_BUCKET,
       file_size: file.size,
       mime_type: file.mimetype,
-      version: 1,
       uploaded_by: uploadedBy,
       uploaded_by_role: 'CLIENT',
       category: 'PROOF',
@@ -882,7 +912,6 @@ export class DocumentsService {
       bucket: STORAGE_BUCKET,
       file_size: buffer.length,
       mime_type: mimeType,
-      version: 1,
       uploaded_by: adminId,
       uploaded_by_role: 'ADMIN',
       category: 'FINAL',
@@ -929,7 +958,7 @@ export class DocumentsService {
 
     // Supprimer le fichier du storage
     const { error: storageError } = await supabase.storage
-      .from(STORAGE_BUCKET)
+      .from(document.bucket || STORAGE_BUCKET)
       .remove([document.file_path]);
 
     if (storageError) {

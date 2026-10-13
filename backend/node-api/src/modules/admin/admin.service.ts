@@ -494,7 +494,7 @@ export class AdminService {
       }
     }
 
-    const pythonUrlBase = process.env.PYTHON_SERVICE_URL || 'https://mkc-8s1l.onrender.com';
+    const pythonUrlBase = process.env.PYTHON_SERVICE_URL || 'https://mkc-ijms.onrender.com';
     const endpoint = kind === 'FERI'
       ? (pythonUrlBase.includes('/api/') ? `${pythonUrlBase.replace(/\/$/, '')}/generate/feri` : `${pythonUrlBase.replace(/\/$/, '')}/api/v1/generate/feri`)
       : (pythonUrlBase.includes('/api/') ? `${pythonUrlBase.replace(/\/$/, '')}/generate/ad` : `${pythonUrlBase.replace(/\/$/, '')}/api/v1/generate/ad`);

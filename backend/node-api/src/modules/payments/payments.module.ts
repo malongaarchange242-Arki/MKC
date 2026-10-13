@@ -359,13 +359,13 @@ export const paymentsModule = () => {
         id: documentId,
         request_id: requestId,
         file_name: origName,
-        file_path: storagePath,
+        storage_path: storagePath,
         bucket: 'payment_proofs',
+        doc_type: 'PAYMENT_PROOF',
+        kind: 'PROOF_OF_PAYMENT',
         file_size: req.file.size || (req.file.buffer ? req.file.buffer.length : null),
         mime_type: req.file.mimetype || 'application/octet-stream',
-        version: 1,
         uploaded_by: authUserId,
-        uploaded_at: new Date().toISOString(),
         created_at: new Date().toISOString()
       };
 
@@ -467,7 +467,16 @@ export const paymentsModule = () => {
         return res.status(500).json({ success: false, message: 'Failed to transition request status', error: transitionErr?.message ?? String(transitionErr) });
       }
 
-      return res.json({ success: true, proof: inserted, document: docInserted });
+      return res.json({
+        success: true,
+        proof: inserted,
+        document: {
+          ...docInserted,
+          file_path: docInserted.storage_path,
+          type: docInserted.doc_type,
+          uploaded_at: docInserted.created_at
+        }
+      });
     } catch (err: any) {
       return res.status(500).json({ success: false, message: err.message || String(err) });
     }

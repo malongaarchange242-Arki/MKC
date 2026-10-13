@@ -6,4 +6,6 @@ ADD COLUMN IF NOT EXISTS bucket text NULL;
 -- Optional: set existing rows to default bucket name 'documents'
 UPDATE documents SET bucket = 'documents' WHERE bucket IS NULL;
 
+NOTIFY pgrst, 'reload schema';
+
 -- Done

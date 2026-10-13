@@ -2,24 +2,33 @@
 -- DOCUMENTS TABLE SCHEMA
 -- ===============================
 
+DO $$
+BEGIN
+  CREATE TYPE document_kind AS ENUM ('INVOICE', 'BL', 'PROOF_OF_PAYMENT', 'CUSTOMS', 'OTHER');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
 -- Table documents
 CREATE TABLE IF NOT EXISTS documents (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   request_id UUID NOT NULL REFERENCES requests(id) ON DELETE CASCADE,
+  uploaded_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  doc_type TEXT,
+  kind document_kind NOT NULL DEFAULT 'OTHER',
   file_name TEXT NOT NULL,
-  file_path TEXT NOT NULL UNIQUE,
-  file_size BIGINT NOT NULL,
-  mime_type TEXT NOT NULL,
-  version INTEGER NOT NULL DEFAULT 1,
-  uploaded_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  uploaded_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  storage_path TEXT NOT NULL UNIQUE,
+  bucket TEXT,
+  file_size BIGINT,
+  mime_type TEXT,
+  checksum TEXT,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
 -- Index pour améliorer les performances
 CREATE INDEX IF NOT EXISTS idx_documents_request_id ON documents(request_id);
 CREATE INDEX IF NOT EXISTS idx_documents_uploaded_by ON documents(uploaded_by);
-CREATE INDEX IF NOT EXISTS idx_documents_uploaded_at ON documents(uploaded_at DESC);
+CREATE INDEX IF NOT EXISTS idx_documents_created_at ON documents(created_at DESC);
 
 -- ===============================
 -- RLS POLICIES
@@ -82,7 +91,6 @@ USING (
 
 -- Note: Le backend utilise SERVICE_ROLE_KEY qui contourne RLS
 -- Ces politiques sont pour les accès directs depuis le client (si nécessaire)
-
 
 
 
