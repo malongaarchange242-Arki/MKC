@@ -103,11 +103,19 @@ ALTER TABLE document_extractions ENABLE ROW LEVEL SECURITY;
 CREATE TABLE request_drafts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     request_id UUID NOT NULL REFERENCES requests(id) ON DELETE CASCADE,
-    payload JSONB NOT NULL,
+    uploaded_by UUID,
+    issued_by UUID,
+    file_name TEXT,
+    file_path TEXT,
+    type TEXT,
+    visibility TEXT,
+    invoice_id UUID REFERENCES invoices(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
 CREATE INDEX idx_request_drafts_request_id ON request_drafts(request_id);
+CREATE INDEX idx_request_drafts_invoice_id ON request_drafts(invoice_id);
 ALTER TABLE request_drafts ENABLE ROW LEVEL SECURITY;
 
 -- =========================

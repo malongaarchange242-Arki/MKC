@@ -412,7 +412,8 @@ function renderRequestRow(row) {
   const type = getRequestType(row).toUpperCase();
   const typeLabel = type === 'AD_ONLY' || type === 'AD' ? 'AD' : type === 'FERI_AND_AD' ? 'FERI + AD' : type === 'FERI_ONLY' ? 'FERI' : type || '—';
   const typeClass = type.includes('AD') && !type.includes('FERI') ? 'badge-ad' : 'badge-feri';
-  const reference = row.ref || row.reference || row.customer_reference || row.feri_ref || '—';
+  const reference = row.ref || row.reference || row.customer_reference || row.feri_ref ||
+    row.bl_number || row.extracted_bl || row.manual_bl || '—';
   const status = String(row.status || row.state || 'UNKNOWN');
   const statusLabel = translateStatus(status) || '—';
   const category = getStatusCategory(status);
@@ -670,7 +671,8 @@ function openRequestDetails(requestId, trigger = null) {
   const category = getStatusCategory(status);
   const rawType = getRequestType(row).toUpperCase();
   const type = rawType === 'FERI_ONLY' ? 'FERI' : rawType === 'AD_ONLY' ? 'AD' : rawType === 'FERI_AND_AD' ? 'FERI + AD' : rawType || '—';
-  const reference = row.ref || row.reference || row.customer_reference || row.feri_ref || '—';
+  const reference = row.ref || row.reference || row.customer_reference || row.feri_ref ||
+    row.bl_number || row.extracted_bl || row.manual_bl || '—';
   const profile = getRelatedProfile(row);
   const rejected = category === 'rejected';
   activeDetailRequestId = requestKey;

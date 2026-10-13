@@ -103,7 +103,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     fileInput.addEventListener('change', function () {
       const label = document.getElementById('label-draft');
       if (this.files.length > 0) {
-        label.innerHTML = `<strong>${this.files[0].name}</strong>`;
+        label.textContent = this.files[0].name;
         this.parentElement.style.background = "#DCFCE7"; // Success light green
         this.parentElement.style.borderColor = "#16A34A";
         const icon = this.parentElement.querySelector('i');
@@ -118,7 +118,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     adFileInput.addEventListener('change', function () {
       const label = document.getElementById('label-ad');
       if (this.files.length > 0) {
-        if (label) label.innerHTML = `<strong>${this.files[0].name}</strong>`;
+        if (label) label.textContent = this.files[0].name;
         if (this.parentElement) {
           this.parentElement.style.background = "#DCFCE7";
           this.parentElement.style.borderColor = "#16A34A";
@@ -420,6 +420,8 @@ async function refreshAdminOnce() {
 }
 function startAdminAutoRefresh() {
   if (_adminAutoRefreshTimer) return;
+  const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+  if (!token) return;
   _adminAutoRefreshTimer = setInterval(() => {
     refreshAdminOnce();
   }, ADMIN_POLL_INTERVAL_MS);
@@ -592,13 +594,23 @@ Object.assign(i18n, {
 
 // Load requests from backend to ensure admin sees same data as client
 async function loadAdminRequests() {
+  const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+  if (!token) {
+    try {
+      requests = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+    } catch (e) {
+      requests = [];
+    }
+    renderAdminTable();
+    return;
+  }
+
   try {
     const metaApi = document.querySelector('meta[name="api-base"]')?.content || '';
     const defaultLocal = 'https://mkc-ymuo.onrender.com';
     const API_BASE = metaApi || defaultLocal;
 
-    const token = localStorage.getItem('token') || localStorage.getItem('access_token');
-    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const headers = { Authorization: `Bearer ${token}` };
     const resp = await fetch(`${API_BASE.replace(/\/$/,'')}/admin/requests`, { headers });
     if (resp.ok) {
       const data = await resp.json();
@@ -770,17 +782,32 @@ function openAdminModal(bl, mode, requestId = null) {
 
     if (mode === 'DRAFT') {
       if (title) title.innerText = (i18n.issue_draft_price && (i18n.issue_draft_price[(document.getElementById('lang-select') && document.getElementById('lang-select').value) || 'en'] || i18n.issue_draft_price.en)) || "Issue Draft & Pricing";
-      if (btnSubmit) btnSubmit.innerText = (i18n.send_draft_to_client && (i18n.send_draft_to_client[(document.getElementById('lang-select') && document.getElementById('lang-select').value) || 'en'] || i18n.send_draft_to_client.en)) || "SEND DRAFT TO CLIENT";
+      if (btnSubmit) {
+        const label = (i18n.send_draft_to_client && (i18n.send_draft_to_client[(document.getElementById('lang-select') && document.getElementById('lang-select').value) || 'en'] || i18n.send_draft_to_client.en)) || "SEND DRAFT TO CLIENT";
+        const buttonText = btnSubmit.querySelector('span');
+        if (buttonText) buttonText.textContent = label;
+        else btnSubmit.innerText = label;
+      }
     } else {
       if (title) title.innerText = (i18n.deliver_final_feri && (i18n.deliver_final_feri[(document.getElementById('lang-select') && document.getElementById('lang-select').value) || 'en'] || i18n.deliver_final_feri.en)) || "Deliver Official FERI";
-      if (btnSubmit) btnSubmit.innerText = (i18n.validate_and_deliver_final && (i18n.validate_and_deliver_final[(document.getElementById('lang-select') && document.getElementById('lang-select').value) || 'en'] || i18n.validate_and_deliver_final.en)) || "VALIDATE & DELIVER FINAL";
+      if (btnSubmit) {
+        const label = (i18n.validate_and_deliver_final && (i18n.validate_and_deliver_final[(document.getElementById('lang-select') && document.getElementById('lang-select').value) || 'en'] || i18n.validate_and_deliver_final.en)) || "VALIDATE & DELIVER FINAL";
+        const buttonText = btnSubmit.querySelector('span');
+        if (buttonText) buttonText.textContent = label;
+        else btnSubmit.innerText = label;
+      }
     }
 
   modal.style.display = 'flex';
+  modal.setAttribute('aria-hidden', 'false');
 }
 
 function closeAdminModal() {
-  document.getElementById('admin-modal').style.display = 'none';
+  const modal = document.getElementById('admin-modal');
+  if (modal) {
+    modal.style.display = 'none';
+    modal.setAttribute('aria-hidden', 'true');
+  }
   document.getElementById('admin-file-draft').value = '';
   const adEl = document.getElementById('admin-file-ad');
   if (adEl) adEl.value = '';
@@ -808,8 +835,13 @@ async function handleAdminSubmit() {
   if (!fileInp || !fileInp.files || fileInp.files.length === 0) return alert('Please attach the PDF file.');
 
   const btnSubmit = document.getElementById('admin-submit-btn');
-  const origText = btnSubmit ? btnSubmit.innerText : '';
-  if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.innerText = 'Processing...'; }
+  const submitLabel = btnSubmit?.querySelector('span');
+  const origText = submitLabel ? submitLabel.textContent : btnSubmit ? btnSubmit.innerText : '';
+  if (btnSubmit) {
+    btnSubmit.disabled = true;
+    if (submitLabel) submitLabel.textContent = 'Processing...';
+    else btnSubmit.innerText = 'Processing...';
+  }
 
   try {
     // Be lenient when matching BL: some rows may store BL in different fields
@@ -950,7 +982,11 @@ async function handleAdminSubmit() {
     console.warn('handleAdminSubmit error', e);
     alert(String(e.message || e));
   } finally {
-    if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerText = origText; }
+    if (btnSubmit) {
+      btnSubmit.disabled = false;
+      if (submitLabel) submitLabel.textContent = origText;
+      else btnSubmit.innerText = origText;
+    }
   }
 }
 
@@ -1531,12 +1567,23 @@ function openSidePanel(req) {
       const actionLabel = document.createElement('span');
       actionLabel.textContent = documentLocale === 'en' ? 'Open' : 'Consulter';
       action.append(actionIcon, actionLabel);
-      const href = doc.url || doc.file_path || doc.storage_path || doc.pdf_url;
-      action.disabled = !href && !doc.id;
+      const urlCandidate = doc.downloadUrl || doc.signedUrl || doc.signed_url || doc.url || doc.pdf_url;
+      let externalUrl = null;
+      if (typeof urlCandidate === 'string') {
+        try {
+          const parsedUrl = new URL(urlCandidate);
+          if (parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:') {
+            externalUrl = parsedUrl.href;
+          }
+        } catch (_) {
+          // Storage paths are not browser URLs; use the authenticated document endpoint instead.
+        }
+      }
+      action.disabled = !externalUrl && !doc.id;
       if (!action.disabled) {
         action.addEventListener('click', event => {
           event.stopPropagation();
-          if (href) window.open(href, '_blank', 'noopener,noreferrer');
+          if (externalUrl) window.open(externalUrl, '_blank', 'noopener,noreferrer');
           else downloadDocumentId(doc.id, fileName);
         });
       }

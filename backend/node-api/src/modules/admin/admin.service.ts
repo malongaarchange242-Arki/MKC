@@ -223,7 +223,7 @@ export class AdminService {
         const storagePath = `${requestId}/${uuidv4()}.${ext}`;
 
         // Upload to private bucket 'feri_documents' (buffer only sent to Supabase SDK)
-        const { data: uploadData, error: uploadErr } = await supabase.storage
+        const { data: uploadData, error: uploadErr } = await supabaseAdmin.storage
           .from('feri_documents')
           .upload(storagePath, file.buffer as Buffer, { contentType: file.mimetype || 'application/pdf', upsert: false });
 
@@ -254,7 +254,7 @@ export class AdminService {
 
         if (insertErr || !inserted) {
           // rollback storage
-          await supabase.storage.from('feri_documents').remove([storagePath]).catch(() => null);
+          await supabaseAdmin.storage.from('feri_documents').remove([storagePath]).catch(() => null);
           logger.error('Failed to insert feri_deliveries record', { requestId, err: insertErr });
           throw new Error('Failed to record final delivery');
         }
@@ -276,7 +276,7 @@ export class AdminService {
         const extA = origA.includes('.') ? origA.split('.').pop() : 'pdf';
         const storagePathA = `${requestId}/ad_${uuidv4()}.${extA}`;
 
-        const { data: uploadDataA, error: uploadErrA } = await supabase.storage
+        const { data: uploadDataA, error: uploadErrA } = await supabaseAdmin.storage
           .from('feri_documents')
           .upload(storagePathA, adFile.buffer as Buffer, { contentType: adFile.mimetype || 'application/pdf', upsert: false });
 
@@ -304,7 +304,7 @@ export class AdminService {
           .single();
 
         if (insertErrA || !insertedA) {
-          await supabase.storage.from('feri_documents').remove([storagePathA]).catch(() => null);
+          await supabaseAdmin.storage.from('feri_documents').remove([storagePathA]).catch(() => null);
           logger.error('Failed to insert feri_deliveries record for AD', { requestId, err: insertErrA });
           throw new Error('Failed to record AD final delivery');
         }
@@ -386,7 +386,7 @@ export class AdminService {
           const bucket = 'feri_documents';
           const path = d.pdf_url;
           try {
-            const { data: signed, error: signedErr } = await supabase.storage.from(bucket).createSignedUrl(path, 60 * 60);
+            const { data: signed, error: signedErr } = await supabaseAdmin.storage.from(bucket).createSignedUrl(path, 60 * 60);
             if (signedErr || !signed || !signed.signedUrl) {
               logger.warn('Failed to create signed url for feri_delivery', { requestId, path, err: signedErr });
             } else {
@@ -428,7 +428,7 @@ export class AdminService {
           // feri_deliveries entry: download from feri_documents bucket
           const bucket = 'feri_documents';
           const path = d.pdf_url;
-          const { data: fileData, error: downloadErr } = await supabase.storage.from(bucket).download(path);
+          const { data: fileData, error: downloadErr } = await supabaseAdmin.storage.from(bucket).download(path);
           if (downloadErr || !fileData) {
             logger.warn('Failed to download feri_delivery file for attachment', { requestId, path, downloadErr });
           } else {
