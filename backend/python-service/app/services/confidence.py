@@ -55,7 +55,7 @@ def confidence_trace(text: str, candidate: str, keywords: List[str]) -> Dict[str
     signals['frequency'] = raw.count(candidate)
 
     # ocr_fragmented: look for spaced form in raw (e.g., 'M E D U 9 0 2')
-    spaced_pattern = r"\b(?:%s)\b" % ('\s+'.join(list(candidate)))
+    spaced_pattern = r"\b(?:%s)\b" % (r'\s+'.join(list(candidate)))
     try:
         signals['ocr_fragmented'] = bool(re.search(spaced_pattern, raw, flags=re.IGNORECASE))
     except Exception:

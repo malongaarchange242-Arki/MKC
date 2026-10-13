@@ -650,27 +650,28 @@ export class DocumentsService {
         }
 
         const reqUpdate: any = {};
-        if (blNumber) reqUpdate.bl_number = blNumber;
-        if (blConfidence != null) reqUpdate.bl_confidence = blConfidence;
-
-        try {
-          const normalized = extraction && (extraction.extraction || extraction) ? (extraction.extraction || extraction) : null;
-          if (normalized && typeof normalized === 'object') {
-            if (normalized.vessel) reqUpdate.vessel = normalized.vessel;
-            if (normalized.voyage) reqUpdate.voyage = normalized.voyage;
-            if (normalized.port_of_loading) reqUpdate.port_of_loading = normalized.port_of_loading;
-            if (normalized.port_of_discharge) reqUpdate.port_of_discharge = normalized.port_of_discharge;
-            if (normalized.shipped_on_board_date) reqUpdate.shipped_on_board_date = normalized.shipped_on_board_date;
-            if (normalized.booking_no) reqUpdate.booking_no = normalized.booking_no;
-          }
-        } catch (e) {
-          logger.warn('Failed to build request update payload from extraction', { e });
+        if (blNumber) {
+          reqUpdate.bl_number = blNumber;
+          reqUpdate.extracted_bl = blNumber;
         }
 
         if (Object.keys(reqUpdate).length > 0) {
           try {
-            await supabase.from('requests').update(reqUpdate).eq('id', requestId);
-            logger.info('Propagated extraction fields to request', { requestId, reqUpdate });
+            const { error: requestUpdateError } = await supabase
+              .from('requests')
+              .update(reqUpdate)
+              .eq('id', requestId);
+            if (requestUpdateError) {
+              logger.warn('Failed to propagate extracted BL to request', {
+                requestId,
+                error: requestUpdateError
+              });
+              return insertData;
+            }
+            logger.info('Propagated extracted BL to request', {
+              requestId,
+              fields: Object.keys(reqUpdate)
+            });
             if (blNumber) {
               logger.info('[BL-DETECTED] ' + `requestId=${requestId} bl=${blNumber} confidence=${blConfidence}`);
             }

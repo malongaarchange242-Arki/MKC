@@ -202,7 +202,7 @@ export class DocumentsController {
                 // Save BL fields
                 const { error: saveErr } = await supabase
                   .from('requests')
-                  .update({ bl_number: blValue, bl_confidence: blConfidence })
+                  .update({ bl_number: blValue, extracted_bl: blValue })
                   .eq('id', requestId);
                 if (saveErr) logger.error('Failed to save BL fields', saveErr);
 
