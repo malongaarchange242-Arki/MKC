@@ -248,6 +248,13 @@ ALTER TABLE payment_proofs ENABLE ROW LEVEL SECURITY;
 CREATE TABLE feri_deliveries (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     request_id UUID NOT NULL REFERENCES requests(id) ON DELETE CASCADE,
+    pdf_url TEXT,
+    file_name TEXT,
+    file_size BIGINT,
+    mime_type TEXT,
+    admin_id UUID,
+    feri_ref TEXT,
+    delivered_at TIMESTAMPTZ,
     status delivery_status NOT NULL DEFAULT 'PENDING',
     pickup_location TEXT,
     delivery_location TEXT,

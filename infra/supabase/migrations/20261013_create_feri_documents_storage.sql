@@ -25,4 +25,13 @@ CREATE POLICY feri_documents_service_role_access
   USING (bucket_id = 'feri_documents')
   WITH CHECK (bucket_id = 'feri_documents');
 
+ALTER TABLE public.feri_deliveries
+  ADD COLUMN IF NOT EXISTS pdf_url text,
+  ADD COLUMN IF NOT EXISTS file_name text,
+  ADD COLUMN IF NOT EXISTS file_size bigint,
+  ADD COLUMN IF NOT EXISTS mime_type text,
+  ADD COLUMN IF NOT EXISTS admin_id uuid,
+  ADD COLUMN IF NOT EXISTS feri_ref text,
+  ADD COLUMN IF NOT EXISTS delivered_at timestamptz;
+
 COMMIT;

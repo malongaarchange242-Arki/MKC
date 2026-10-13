@@ -242,7 +242,7 @@ export class AdminService {
           mime_type: file.mimetype || 'application/pdf',
           admin_id: adminId,
           feri_ref: opts.feri_ref || null,
-          status: 'COMPLETED',
+          status: 'DELIVERED',
           delivered_at: new Date().toISOString()
         } as any;
 
@@ -293,7 +293,7 @@ export class AdminService {
           mime_type: adFile.mimetype || 'application/pdf',
           admin_id: adminId,
           feri_ref: null,
-          status: 'COMPLETED',
+          status: 'DELIVERED',
           delivered_at: new Date().toISOString()
         } as any;
 

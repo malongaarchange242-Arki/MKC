@@ -174,7 +174,7 @@ export class RequestsService {
       logger.warn('Failed to emit debug logs for listRequests', { err: (e as any)?.message ?? String(e) });
     }
 
-    // If there are results, enrich them with latest COMPLETED feri_deliveries.feri_ref where available
+    // If there are results, enrich them with the latest delivered FERI metadata where available
     try {
       const ids = rows.map((r: any) => r.id).filter(Boolean);
       if (ids.length > 0) {
@@ -182,7 +182,7 @@ export class RequestsService {
           .from('feri_deliveries')
           .select('request_id, feri_ref, pdf_url, status, delivered_at')
           .in('request_id', ids)
-          .eq('status', 'COMPLETED')
+          .eq('status', 'DELIVERED')
           .order('delivered_at', { ascending: false });
 
         if (!dErr && Array.isArray(deliveries) && deliveries.length > 0) {

@@ -11,7 +11,8 @@ through signed URLs.
 
 Final FERI and AD delivery uploads use the separate private `feri_documents`
 Storage bucket. Apply `20261013_create_feri_documents_storage.sql` before
-publishing final documents in production.
+publishing final documents in production. It also adds the delivery metadata
+columns used by the API; final deliveries are recorded with status `DELIVERED`.
 
 Example using psql:
 
