@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "smoke-test": "node scripts/smoke_test.js",
-    "create-bucket": "ts-node scripts/create-storage-bucket.ts"
+    "create-bucket": "ts-node scripts/create-storage-bucket.ts",
+    "create-admin": "ts-node scripts/create-admin.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.91.0",

@@ -117,6 +117,7 @@ def classify_document(hint: Optional[str], text_or_filename: str) -> str:
     if any(x in lower for x in (
         "bill_of_lading",
         "bill-of-lading",
+        "_bill",
         "_bl",
         "/bl/",
         "b_l",

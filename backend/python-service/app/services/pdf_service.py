@@ -1,14 +1,19 @@
 from io import BytesIO
-from typing import Dict, Any
+from typing import Any, Dict, Optional
 from reportlab.lib.pagesizes import LETTER
 from reportlab.pdfgen import canvas
 
 
 def generate_pdf_from_template(
-    kind: str,
+    template_name: str,
     data: Dict[str, Any],
-    output_filename: str = None
+    output_filename: Optional[str] = None,
 ) -> bytes:
+    """Render a simple key/value PDF for the given template.
+
+    `output_filename` is accepted for interface compatibility; the caller is
+    responsible for naming the response since this function returns raw bytes.
+    """
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=LETTER)
 
@@ -17,12 +22,12 @@ def generate_pdf_from_template(
 
     # Title
     c.setFont("Helvetica-Bold", 14)
-    c.drawString(50, y, kind)
+    c.drawString(50, y, (template_name or "").upper())
     y -= 30
 
     # Content
     c.setFont("Helvetica", 10)
-    for key, value in data.items():
+    for key, value in (data or {}).items():
         c.drawString(50, y, f"{key}: {value}")
         y -= 18
         if y < 50:

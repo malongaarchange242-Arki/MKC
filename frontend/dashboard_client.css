@@ -479,7 +479,7 @@ body {
   min-width: 0;
 }
 
-.hamburger-btn {
+.top-header .hamburger-btn {
   display: none;
   flex-shrink: 0;
 }
@@ -1742,11 +1742,12 @@ body {
 @media (max-width: 860px) {
   .sidebar {
     position: fixed;
-    left: -100%;
+    left: 0;
     height: 100%;
     width: 280px;
     min-width: 280px;
     box-shadow: none;
+    transform: translateX(-100%);
   }
 
   .sidebar::before {
@@ -1755,12 +1756,12 @@ body {
   }
 
   .sidebar.show {
-    left: 0;
+    transform: translateX(0);
     box-shadow: 8px 0 32px rgba(9,40,68,0.22);
   }
 
   .sidebar-mobile-header { display: flex; }
-  .hamburger-btn { display: flex; }
+  .top-header .hamburger-btn { display: flex; }
 
   .page-hero {
     flex-direction: column;

@@ -16,7 +16,7 @@
 
   const isLocalHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
   const configuredApiBase = document.querySelector('meta[name="api-base"]')?.content?.trim();
-  const API_BASE = `${(window.__API_BASE__ || configuredApiBase || (isLocalHost ? 'http://localhost:3000' : 'https://mkc-ijms.onrender.com')).replace(/\/+$/, '')}/auth`;
+  const API_BASE = `${(window.__API_BASE__ || configuredApiBase || (isLocalHost ? 'http://localhost:3000' : 'https://mkc-ymuo.onrender.com')).replace(/\/+$/, '')}/auth`;
   let mode = 'login'; // 'login' | 'register'
 
   /* ═══════ PASSWORD TOGGLE ═══════ */

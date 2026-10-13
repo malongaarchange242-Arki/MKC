@@ -1,17 +1,25 @@
+import os
+import sys
+
 import requests
 import json
+
 from core.supabase import create_signed_url
 
-url = 'http://127.0.0.1:8000/api/v1/parse/document'
+url = os.environ.get('PARSE_ENDPOINT', 'http://127.0.0.1:8000/api/v1/parse/document')
 
 # Provide the object path inside the documents bucket (do NOT manually construct /storage/v1 URLs)
-object_path = '0199fb7e-d3f6-42a9-a3fb-f80279cebed3/0ba9f6ae-ad18-4a24-8516-77cf197b0dad.pdf'
+object_path = os.environ.get('TEST_OBJECT_PATH', '')
+if not object_path:
+    sys.exit('Set TEST_OBJECT_PATH to the object path inside the documents bucket')
 
 # Create a signed URL via the centralized supabase client
-file_url = create_signed_url(object_path, expires=60*60)
+file_url = create_signed_url(object_path, expires=60 * 60)
 
-# Token provided by user (will be sent as Bearer in Authorization header)
-user_token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjMWQ5OTQ1NS1jOGJjLTRlNjktYjM4My1iY2IyYmU5ZjE0OTciLCJlbWFpbCI6ImNsaWVudEBleGFtcGxlLmNvbSIsInJvbGUiOiJDTElFTlQiLCJpYXQiOjE3NjcyNTgzMzMsImV4cCI6MTc2NzM0NDczMywiYXVkIjoiZmVyaS1hZC1jbGllbnQiLCJpc3MiOiJmZXJpLWFkLWJhY2tlbmQifQ.c8n2ql8pRsAfZtIO6IS6fJqqi-2KrbbVh6z0rHSjZUM'
+# Internal service key (keep secrets out of the repository; read from the environment)
+api_key = os.environ.get('PYTHON_SERVICE_API_KEY', '')
+if not api_key:
+    sys.exit('Set PYTHON_SERVICE_API_KEY before running this script')
 
 payload = {
     'document_id': 'test-parse-002',
@@ -21,8 +29,7 @@ payload = {
 
 headers = {
     'Content-Type': 'application/json',
-    'x-api-key': 'changeme',
-    'Authorization': f'Bearer {user_token}'
+    'x-api-key': api_key,
 }
 
 print('Posting to', url)

@@ -1,59 +1,31 @@
-# services/bl_parser.py
+﻿# services/bl_parser.py
 import re
 from typing import List, Optional
 from core.logging import get_logger
 
 log = get_logger()
 
-# =========================
-# BL CONTEXT DETECTION
-# =========================
-
-def looks_like_bl(text: str) -> bool:
-    if not text:
-        return False
-
-    T = text.lower()
-
-    patterns = [
-        r"bill\s*of\s*lading",  # Normal spacing
-        r"billoflading",  # Compacted from OCR-spaced text (B I L L   O F   L A D I N G)
-        r"b\s*[/|]?\s*l",
-        r"bl\s*(no|number)?",
-        r"blno",  # Compacted BL NO
-        r"ocean\s*bill",
-        r"oceanbill",  # Compacted
-        r"house\s*bill",
-        r"housebill",  # Compacted
-        r"master\s*bill",
-        r"masterbill",  # Compacted
-    ]
-
-    return any(re.search(p, T) for p in patterns)
-
-
-# =========================
-# BL EXTRACTION
+# =========================\r?\n# BL EXTRACTION
 # =========================
 
 BL_LABEL_TOKEN_RE = r"(?:B\s*[/\\|I1L]?\s*L|BL|BIL|BILL\s+OF\s+LADING|BILLOFLADING)"
-BL_LABEL_QUALIFIER_RE = r"(?:NO|N[O0]|N°|NUMBER|NUM|REF|REFERENCE)"
+BL_LABEL_QUALIFIER_RE = r"(?:NO|N[O0]|NÂ°|NUMBER|NUM|REF|REFERENCE)"
 BL_VALUE_RE = r"([A-Z0-9][A-Z0-9\-_/\.]{5,24})"
 
 BL_REGEXES = [
     # ========================================
-    # PATTERNS EXPLICITES (avec labels) - PRIORITÉ HAUTE
+    # PATTERNS EXPLICITES (avec labels) - PRIORITÃ‰ HAUTE
     # ========================================
-    # B/L NO., BL NO., B/L NUMBER, etc. (avec tous les séparateurs possibles)
-    r"B\s*[/\\|\-]?\s*L\s*\.?\s*(?:NO|N[O0]|N°|NUMBER|NUM|REF|REFERENCE)[:#,\-\.\s]*([A-Z0-9\-_/\.]{6,25})",
+    # B/L NO., BL NO., B/L NUMBER, etc. (avec tous les sÃ©parateurs possibles)
+    r"B\s*[/\\|\-]?\s*L\s*\.?\s*(?:NO|N[O0]|NÂ°|NUMBER|NUM|REF|REFERENCE)[:#,\-\.\s]*([A-Z0-9\-_/\.]{6,25})",
     
     # BILL OF LADING NO., NUMBER, etc.
-    r"BILL\s+OF\s+LADING\s*(?:NO|N[O0]|N°|NUMBER|NUM|REF|REFERENCE)[:#,\-\.\s]*([A-Z0-9\-_/\.]{6,25})",
-    r"BILLOFLADING\s*(?:NO|N[O0]|N°|NUMBER|NUM|REF|REFERENCE)[:#,\-\.\s]*([A-Z0-9\-_/\.]{6,25})",  # Compacted
+    r"BILL\s+OF\s+LADING\s*(?:NO|N[O0]|NÂ°|NUMBER|NUM|REF|REFERENCE)[:#,\-\.\s]*([A-Z0-9\-_/\.]{6,25})",
+    r"BILLOFLADING\s*(?:NO|N[O0]|NÂ°|NUMBER|NUM|REF|REFERENCE)[:#,\-\.\s]*([A-Z0-9\-_/\.]{6,25})",  # Compacted
     
     # OCEAN BILL, HOUSE BILL, MASTER BILL
-    r"(?:OCEAN|HOUSE|MASTER)\s+BILL\s*(?:NO|N[O0]|N°|NUMBER|NUM)[:#,\-\.\s]*([A-Z0-9\-_/\.]{6,25})",
-    r"(?:OCEAN|HOUSE|MASTER)BILL\s*(?:NO|N[O0]|N°|NUMBER|NUM)[:#,\-\.\s]*([A-Z0-9\-_/\.]{6,25})",  # Compacted
+    r"(?:OCEAN|HOUSE|MASTER)\s+BILL\s*(?:NO|N[O0]|NÂ°|NUMBER|NUM)[:#,\-\.\s]*([A-Z0-9\-_/\.]{6,25})",
+    r"(?:OCEAN|HOUSE|MASTER)BILL\s*(?:NO|N[O0]|NÂ°|NUMBER|NUM)[:#,\-\.\s]*([A-Z0-9\-_/\.]{6,25})",  # Compacted
     
     # BL NO: (compacted variants)
     r"BL\s*N[O0][:#,\-\.\s]*([A-Z0-9\-_/\.]{6,25})",
@@ -63,22 +35,22 @@ BL_REGEXES = [
     r"BL\s+REF(?:ERENCE)?[:#,\-\.\s]+([A-Z0-9\-_/\.]{6,25})",
     
     # ========================================
-    # PATTERNS DE FORMAT (sans label explicite) - PRIORITÉ MOYENNE
+    # PATTERNS DE FORMAT (sans label explicite) - PRIORITÃ‰ MOYENNE
     # ========================================
     # Format standard : 2-4 lettres + 6-15 chiffres (CMAU1234567, EID0911671)
     r"\b[A-Z]{2,4}\d{6,15}\b",
         # More permissive pattern: 3-4 letters followed by 6+ alphanumeric (covers variants like MEDU1234567, MAEU1234A67)
         r"\b[A-Z]{3,4}[A-Z0-9]{6,20}\b",
     
-    # Format avec préfixe numérique : 1-2 chiffres + 2-4 lettres + 6-15 chiffres (00LU2164215810)
+    # Format avec prÃ©fixe numÃ©rique : 1-2 chiffres + 2-4 lettres + 6-15 chiffres (00LU2164215810)
     r"\b\d{1,2}[A-Z]{2,4}\d{6,15}\b",
     
-    # Format avec tirets/slashes dans le numéro : MAEU-1234567, CMAU/1234567
+    # Format avec tirets/slashes dans le numÃ©ro : MAEU-1234567, CMAU/1234567
     r"\b[A-Z]{2,4}[\-/_]\d{6,15}\b",
     r"\b\d{1,2}[A-Z]{2,4}[\-/_]\d{6,15}\b",
     
-    # Format purement numérique (8-15 chiffres) - seulement si contexte BL
-    # Note: Ce pattern est moins spécifique, sera filtré par is_false_positive si hors contexte
+    # Format purement numÃ©rique (8-15 chiffres) - seulement si contexte BL
+    # Note: Ce pattern est moins spÃ©cifique, sera filtrÃ© par is_false_positive si hors contexte
     r"\b\d{8,15}\b",
 ]
 
@@ -121,7 +93,7 @@ def extract_explicit_bl_label_values(text: str) -> List[str]:
                 seen.add(cleaned)
                 found.append(cleaned)
 
-    log.info('extract_explicit_bl_label_values.found', extra={'count': len(found), 'samples': found[:5]})
+    log.info('extract_explicit_bl_label_values.found', extra={'count': len(found)})
     return found
 
 
@@ -145,26 +117,26 @@ def extract_bl_numbers(text: str, only_explicit: bool = False) -> List[str]:
             # Ignore obvious container numbers (ISO 6346) so we don't mistake
             # them for BL numbers
             if is_iso6346(v):
-                log.info('extract_bl_numbers.container_like', extra={'value': v})
+                log.debug('extract_bl_numbers.container_like')
                 # do not hard-reject here; leave decision to scoring
 
             # Skip if the token appears inside a container-list section
             if is_within_container_section(text, v):
-                log.info('extract_bl_numbers.within_container_section', extra={'value': v})
+                log.debug('extract_bl_numbers.within_container_section')
                 # do not hard-reject here; leave decision to scoring
 
             # structural and false-positive filter
             if is_structurally_invalid_bl(v):
-                log.info('extract_bl_numbers.filtered_structural', extra={'value': v})
+                log.debug('extract_bl_numbers.filtered_structural')
                 continue
             if is_false_positive(v):
-                log.info('extract_bl_numbers.filtered_false_positive', extra={'value': v})
+                log.debug('extract_bl_numbers.filtered_false_positive')
                 continue
             if 6 <= len(v) <= 20 and v not in seen:
                 seen.add(v)
                 found.append(v)
 
-    log.info('extract_bl_numbers.found', extra={'count': len(found), 'samples': found[:5]})
+    log.info('extract_bl_numbers.found', extra={'count': len(found)})
     return found
 
 
@@ -180,10 +152,10 @@ def extract_bl_candidates(text: str) -> List[str]:
         if 6 <= len(c) <= 20:
             # structural filter: skip obvious non-BL tokens
             if is_structurally_invalid_bl(c):
-                log.info('extract_bl_candidates.filtered_structural', extra={'value': c})
+                log.debug('extract_bl_candidates.filtered_structural')
                 continue
             if is_false_positive(c):
-                log.info('extract_bl_candidates.filtered_false_positive', extra={'value': c})
+                log.debug('extract_bl_candidates.filtered_false_positive')
                 continue
             candidates.append(c)
 
@@ -227,125 +199,6 @@ def is_false_positive(c: str) -> bool:
     return False
 
 
-# -------------------------
-# OCR reconstruction & scoring helpers
-# -------------------------
-def _ocr_reconstruct(text: str) -> str:
-    """
-    Conservative OCR reconstruction:
-    - Join short broken lines likely split by OCR
-    - Collapse spaces between digits
-    - Remove intrusive punctuation inside tokens
-    """
-    if not text:
-        return ''
-
-    s = text.replace('\r', '\n')
-    lines = s.split('\n')
-    out_lines = []
-    i = 0
-    while i < len(lines):
-        ln = lines[i].strip()
-        if i + 1 < len(lines):
-            nxt = lines[i+1].strip()
-            if ln and nxt and len(ln) <= 4 and len(nxt) <= 6 and re.match(r'^[A-Za-z0-9\-_/]+$', ln) and re.match(r'^[A-Za-z0-9\-_/]+$', nxt):
-                out_lines.append(ln + nxt)
-                i += 2
-                continue
-        out_lines.append(ln)
-        i += 1
-
-    s2 = ' '.join([l for l in out_lines if l])
-    s2 = re.sub(r'(?<=\d)\s+(?=\d)', '', s2)
-    s2 = re.sub(r'(?<=[A-Za-z0-9])[\.,](?=[A-Za-z0-9])', '', s2)
-    s2 = re.sub(r'[-]{2,}', '-', s2)
-    s2 = re.sub(r'[/]{2,}', '/', s2)
-    return s2
-
-
-def _generate_candidates(text: str, min_len: int = 6, max_len: int = 20) -> List[str]:
-    """
-    Permissive candidate extraction: tokens of letters/digits and -_/ chars.
-    Returns unique uppercase tokens filtered by normalized length.
-    """
-    if not text:
-        return []
-    token_rx = re.compile(r"[A-Za-z0-9][A-Za-z0-9\-_/]{%d,%d}" % (min_len-1, max_len-1))
-    seen = set(); out = []
-    for m in token_rx.finditer(text):
-        tok = m.group(0).upper().strip('-_/')
-        tok = re.sub(r'[^A-Z0-9\-_/]', '', tok)
-        norm = re.sub(r'[^A-Z0-9]', '', tok)
-        if not (min_len <= len(norm) <= max_len):
-            continue
-        if tok in seen:
-            continue
-        seen.add(tok); out.append(tok)
-    return out
-
-
-def _detect_context_score(text: str, token: str) -> int:
-    """Score proximity to BL keywords (explainable buckets)."""
-    score = 0
-    if not text or not token:
-        return 0
-    T = text.upper(); token_u = token.upper()
-    pos = T.find(token_u)
-    if pos == -1:
-        return 0
-    window = T[max(0, pos-80): pos + len(token_u) + 80]
-    if re.search(r'\bB\s*[/\\-]?\s*L\b|BILL\s+OF\s+LADING|BL\s*(NO|NUMBER|REF|REFERENCE)', window):
-        score += 60
-    elif re.search(r'\bBL\s+REF|REFERENCE|REF\b', window):
-        score += 30
-    if re.search(r'\bBILL\s+OF\s+LADING|B\/L|OCEAN\s+BILL|HOUSE\s+BILL', T):
-        score += 15
-    return score
-
-
-def _score_candidate(token: str, text: str) -> (float, List[str]):
-    """Explainable scoring for a candidate token."""
-    reasons = []; base = 0.0
-    raw = re.sub(r'[^A-Z0-9]', '', token.upper()); L = len(raw)
-    if 6 <= L <= 12:
-        base += 0.20; reasons.append('valid_length')
-    elif 13 <= L <= 20:
-        base += 0.05; reasons.append('long_but_possible')
-    else:
-        reasons.append('invalid_length')
-    has_alpha = bool(re.search(r'[A-Z]', raw)); has_digit = bool(re.search(r'\d', raw))
-    if has_alpha and has_digit:
-        base += 0.20; reasons.append('alpha_numeric')
-    elif has_digit and not has_alpha:
-        base += 0.05; reasons.append('numeric_only')
-    else:
-        reasons.append('alpha_only')
-    try:
-        if is_iso6346(raw):
-            reasons.append('is_container_number'); return 0.0, reasons
-    except Exception:
-        pass
-    # local weight/seal penalty
-    txt_up = text.upper()
-    idx = txt_up.find(token.upper())
-    local = txt_up[max(0, idx-40): idx + len(token) + 40] if idx != -1 else ''
-    if re.search(r'\bKG\b|\bKGS\b|\bTONS?\b|\bWEIGHT\b|\bSEAL\b', local):
-        reasons.append('near_weight_or_seal'); base -= 0.4
-    ctx = _detect_context_score(text, token)
-    if ctx >= 60: reasons.append('near_bl_keyword')
-    elif ctx >= 30: reasons.append('near_bl_reference')
-    base += (ctx / 200.0)
-    occurrences = len(re.findall(re.escape(token), text, flags=re.IGNORECASE))
-    if occurrences == 1:
-        base += 0.10; reasons.append('unique')
-    else:
-        base -= min(0.1, 0.02 * (occurrences - 1)); reasons.append(f'occurrences:{occurrences}')
-    score = max(0.0, min(1.0, base))
-    reasons.append(f'raw_len={L}')
-    return score, reasons
-
-
-
 def extract_containers(text: str) -> List[str]:
     """Extract container numbers like HASU5143253 or MSKU1234567."""
     containers = []
@@ -355,7 +208,7 @@ def extract_containers(text: str) -> List[str]:
         if is_iso6346(cand):
             containers.append(cand)
         else:
-            log.info('extract_containers.invalid_iso', extra={'candidate': cand})
+            log.debug('extract_containers.invalid_iso')
 
     # fallback patterns e.g. HASU5143253 or with separators - validate ISO6346
     for m in re.finditer(r'\b([A-Z0-9]{4,12}[-_ ]?[0-9]{4,8})\b', text or '', flags=re.IGNORECASE):
@@ -370,7 +223,7 @@ def extract_containers(text: str) -> List[str]:
         if c not in seen:
             seen.add(c); out.append(c)
 
-    log.info('extract_containers.found', extra={'count': len(out), 'samples': out[:5]})
+    log.info('extract_containers.found', extra={'count': len(out)})
     return out
 
 
@@ -430,39 +283,6 @@ def is_iso6346(c: str) -> bool:
     remainder = total % 11
     computed = remainder if remainder != 10 else 0
     return computed == check_digit
-
-
-def has_explicit_bl_label_near(text: str, token: str, window: int = 80) -> bool:
-    T = (text or '').upper()
-    tok = token.upper()
-    idx = T.find(tok)
-    if idx == -1:
-        return False
-
-    start = max(0, idx - window)
-    end = min(len(T), idx + len(tok) + window)
-    context = T[start:end]
-
-    # ⚠️ UNIQUEMENT les labels BL légitimes
-    labels = [
-        "BILL OF LADING",
-        "BILLOFLADING",
-        "B/L",
-        "BIL NO",
-        "BIL N0",
-        "BL NO",
-        "BL N0",
-        "BL NUMBER",
-        "BLNO",
-        "OCEAN BILL",
-        "HOUSE BILL",
-        "MASTER BILL",
-    ]
-
-    if any(lbl in context for lbl in labels):
-        return True
-
-    return bool(re.search(rf"{BL_LABEL_TOKEN_RE}\s*\.?\s*(?:{BL_LABEL_QUALIFIER_RE})?", context, flags=re.IGNORECASE))
 
 
 def is_in_forbidden_bl_context(text: str, token: str, window: int = 80) -> bool:
@@ -561,7 +381,7 @@ def extract_seals(text: str) -> List[str]:
     for m in re.finditer(r'\bSEAL\b[:#\-\s]*([A-Z0-9\-_/]{3,20})', text or '', flags=re.IGNORECASE):
         seals.append(m.group(1).upper())
 
-    # generic tokens that may be seals — only accept if surrounding context suggests a Seal
+    # generic tokens that may be seals â€” only accept if surrounding context suggests a Seal
     for m in re.finditer(r'\b([A-Z]{2,4}[-_]?[A-Z0-9]{4,12})\b', text or '', flags=re.IGNORECASE):
         token = m.group(1).upper()
         if is_seal_number_context(text, token):
@@ -572,7 +392,7 @@ def extract_seals(text: str) -> List[str]:
         if s not in seen:
             seen.add(s); out.append(s)
 
-    log.info('extract_seals.found', extra={'count': len(out), 'samples': out[:5]})
+    log.info('extract_seals.found', extra={'count': len(out)})
     return out
 
 
@@ -585,26 +405,12 @@ def extract_weight(text: str) -> Optional[str]:
         if 'KGS' in line.upper() or 'KG' in line.upper():
             if re.search(r'[0-9]', line):
                 return line.strip()
-    log.info('extract_weight.found', extra={'value': m.group(0).replace('\n', ' ').strip()}) if m else log.info('extract_weight.none')
+    log.info('extract_weight.found') if m else log.info('extract_weight.none')
     return None
-
-
-import re
-from typing import Optional
 
 # ===================== CONSTANTES =====================
 
 BLACKLIST = {'RECEIVED', 'COPY', 'DRAFT', 'ORIGINAL', 'SIGNED', 'PAGE', 'PAGES'}
-
-DRAFT_CONTEXT = [
-    'VERIFY COPY',
-    'DRAFT BILL',
-    'NOT FINAL',
-    'FINAL B/L WILL BE READY',
-    'FINAL BL WILL BE READY',
-    'PRECONDITION',
-    'PRECONDITIONS',
-]
 
 BL_LABELS = [
     'BILL OF LADING NUMBER',
@@ -643,6 +449,13 @@ def candidate_near_phrase(text: str, token: str, phrase: str, window: int = 60) 
     end = min(len(T), idx + len(tok) + window)
     context = T[start:end]
     return ph in context
+
+
+def has_explicit_bl_label_near(text: str, token: str, window: int = 120) -> bool:
+    return any(
+        candidate_near_phrase(text, token, label, window)
+        for label in BL_LABELS
+    )
 
 
 def is_structurally_invalid_bl(token: str) -> bool:
@@ -692,64 +505,6 @@ def is_structurally_invalid_bl(token: str) -> bool:
     return False
 
 
-def pick_best_bl_v2(text: str) -> Optional[dict]:
-    """
-    Robust BL extraction pipeline returning a traceable decision.
-
-    Returns a dict with keys:
-      - bl: the selected BL string or None
-      - score: float in [0,1]
-      - reasons: list of strings explaining the top candidate
-      - candidates: list of {candidate, score, reasons} objects
-    """
-    try:
-        if not text:
-            return None
-        reconstructed = _ocr_reconstruct(text)
-        # candidate pool
-        candidates = extract_bl_numbers(reconstructed, only_explicit=False) + extract_bl_candidates(reconstructed)
-        # add permissive candidates
-        for c in _generate_candidates(reconstructed):
-            if c not in candidates:
-                candidates.append(c)
-
-        # include repaired tokens if helper available
-        try:
-            for r in repair_broken_candidates(text):
-                if r and r not in candidates:
-                    candidates.append(r)
-        except Exception:
-            pass
-
-        scored = []
-        for c in candidates:
-            s, reasons = _score_candidate(c, reconstructed)
-            scored.append({'candidate': c, 'score': s, 'reasons': reasons})
-
-        scored.sort(key=lambda x: x['score'], reverse=True)
-        if not scored:
-            log.info('pick_best_bl_v2.no_candidates')
-            return None
-
-        top = scored[0]
-        threshold = 0.35
-        if top['score'] < threshold:
-            log.info('pick_best_bl_v2.below_threshold', extra={'top_score': top['score']})
-            return None
-
-        result = {
-            'bl': top['candidate'],
-            'score': round(float(top['score']), 2),
-            'reasons': top['reasons'],
-            'candidates': scored
-        }
-        log.info('pick_best_bl_v2.selected', extra={'bl': result['bl'], 'score': result['score']})
-        return result
-    except Exception as e:
-        log.exception('pick_best_bl_v2.error', exc_info=e)
-        return None
-
-
 def detect_scac(text: str) -> Optional[str]:
     """Detect a global SCAC prefix in the document, even if isolated on its own line.
     
@@ -768,7 +523,7 @@ def detect_scac(text: str) -> Optional[str]:
     for scac in KNOWN_SCACS:
         # Match SCAC as standalone token (word boundary or on its own line)
         if re.search(rf'\b{scac}\b', header):
-            log.info('detect_scac.found', extra={'scac': scac})
+            log.debug('detect_scac.found')
             return scac
     
     return None
@@ -799,11 +554,7 @@ def repair_broken_candidates(text: str) -> List[str]:
         if current in KNOWN_SCACS and re.match(r'^\d{6,15}$', next_line):
             reconstructed = current + next_line
             repaired.append(reconstructed)
-            log.info('repair_broken_candidates.scac_digits', extra={
-                'scac': current,
-                'digits': next_line,
-                'result': reconstructed,
-            })
+            log.debug('repair_broken_candidates.scac_digits')
 
         # Case 2: SCAC and digits on the same line but separated by spaces/tabs
         # Example: "MAEU          262802788"
@@ -813,11 +564,7 @@ def repair_broken_candidates(text: str) -> List[str]:
                 if tokens[j] in KNOWN_SCACS and re.match(r'^\d{6,15}$', tokens[j+1]):
                     reconstructed = tokens[j] + tokens[j+1]
                     repaired.append(reconstructed)
-                    log.info('repair_broken_candidates.same_line', extra={
-                        'scac': tokens[j],
-                        'digits': tokens[j+1],
-                        'result': reconstructed,
-                    })
+                    log.debug('repair_broken_candidates.same_line')
 
         # Case 3: Current line contains a SCAC and next line contains digits
         scac_match = scac_rx.search(current)
@@ -826,21 +573,13 @@ def repair_broken_candidates(text: str) -> List[str]:
             if re.match(r'^\d{6,15}$', next_line):
                 reconstructed = scac + next_line
                 repaired.append(reconstructed)
-                log.info('repair_broken_candidates.scac_followed_by_digits', extra={
-                    'scac': scac,
-                    'digits': next_line,
-                    'result': reconstructed,
-                })
+                log.debug('repair_broken_candidates.scac_followed_by_digits')
 
             # SCAC on one line, explicit B/L label on next line, digits on following line
             if bl_label_rx.search(next_line) and re.match(r'^\d{6,15}$', next_next_line):
                 reconstructed = scac + next_next_line
                 repaired.append(reconstructed)
-                log.info('repair_broken_candidates.scac_bl_label_digits', extra={
-                    'scac': scac,
-                    'digits': next_next_line,
-                    'result': reconstructed,
-                })
+                log.debug('repair_broken_candidates.scac_bl_label_digits')
 
             # SCAC on one line, digits appear on a B/L label line
             if bl_label_rx.search(next_line):
@@ -848,11 +587,7 @@ def repair_broken_candidates(text: str) -> List[str]:
                 if label_digit_match:
                     reconstructed = scac + label_digit_match.group(1)
                     repaired.append(reconstructed)
-                    log.info('repair_broken_candidates.scac_bl_label_inline_digits', extra={
-                        'scac': scac,
-                        'digits': label_digit_match.group(1),
-                        'result': reconstructed,
-                    })
+                    log.debug('repair_broken_candidates.scac_bl_label_inline_digits')
 
         # Case 4: B/L label line followed by SCAC then digits
         if bl_label_rx.search(current):
@@ -860,11 +595,7 @@ def repair_broken_candidates(text: str) -> List[str]:
             if scac_match_2 and re.match(r'^\d{6,15}$', next_next_line):
                 reconstructed = scac_match_2.group(1) + next_next_line
                 repaired.append(reconstructed)
-                log.info('repair_broken_candidates.label_scac_digits', extra={
-                    'scac': scac_match_2.group(1),
-                    'digits': next_next_line,
-                    'result': reconstructed,
-                })
+                log.debug('repair_broken_candidates.label_scac_digits')
     # Deduplicate preserving order
     seen = set()
     out = []
@@ -889,33 +620,33 @@ def pick_best_bl(text: str) -> Optional[str]:
 
     log.info('pick_best_bl.start', extra={'text_len': text_len})
 
-    # 🆕 ÉTAPE 1 : Reconstruction SCAC + numéro
+    # ðŸ†• Ã‰TAPE 1 : Reconstruction SCAC + numÃ©ro
     repaired = repair_broken_candidates(text)
 
     # explicit: only labelled patterns (B/L, BILL OF LADING, BL NO, etc.)
     explicit = extract_bl_numbers(text, only_explicit=True)
     candidates = extract_bl_candidates(text)
 
-    # 🆕 DEBUG : Afficher tous les candidats bruts
-    log.warning('pick_best_bl.debug_candidates', extra={
-        'repaired': repaired,
-        'explicit': explicit[:10],
-        'candidates': candidates[:10]
+    # ðŸ†• DEBUG : Afficher tous les candidats bruts
+    log.debug('pick_best_bl.candidates_found', extra={
+        'repaired_count': len(repaired),
+        'explicit_count': len(explicit),
+        'candidate_count': len(candidates),
     })
 
-    # 🆕 ÉTAPE 3 : Fusion avec priorité aux candidats reconstruits
+    # ðŸ†• Ã‰TAPE 3 : Fusion avec prioritÃ© aux candidats reconstruits
     merged, seen = [], set()
-    # Priorité 1 : candidats reconstruits (SCAC + digits)
+    # PrioritÃ© 1 : candidats reconstruits (SCAC + digits)
     for c in repaired:
         if c and c not in seen:
             seen.add(c)
             merged.append(c)
-    # Priorité 2 : candidats explicites
+    # PrioritÃ© 2 : candidats explicites
     for c in explicit:
         if c and c not in seen:
             seen.add(c)
             merged.append(c)
-    # Priorité 3 : autres candidats
+    # PrioritÃ© 3 : autres candidats
     for c in candidates:
         if c and c not in seen:
             seen.add(c)
@@ -928,13 +659,12 @@ def pick_best_bl(text: str) -> Optional[str]:
     filtered = []
     for t in merged:
         if is_structurally_invalid_bl(t):
-            log.info('pick_best_bl.structural_reject', extra={'token': t})
+            log.debug('pick_best_bl.structural_reject')
             continue
         filtered.append(t)
     merged = filtered
 
-    # do not perform absolute rejections here for seal/container proximity;
-    # scoring will penalize those contexts instead so explicit labels can win
+    # Keep container-section matches out unless an explicit BL label supports them.
 
     # ===================== HELPERS =====================
     
@@ -978,7 +708,7 @@ def pick_best_bl(text: str) -> Optional[str]:
         if is_tax_or_fiscal_context(text, token):
             return -999, ['tax_or_fiscal_identifier']
 
-        # 🆕 BLOCK: port/voyage context (nouveau filtre absolu)
+        # ðŸ†• BLOCK: port/voyage context (nouveau filtre absolu)
         if is_in_port_or_voyage_context(text, token):
             return -999, ['port_or_voyage_context']
 
@@ -997,7 +727,7 @@ def pick_best_bl(text: str) -> Optional[str]:
         if token.isdigit():
             if len(token) < 8 or len(token) > 15:
                 return -999, ['numeric_invalid_length']
-            # 🆕 Si numérique ET pas reconstruit → pénalité forte
+            # ðŸ†• Si numÃ©rique ET pas reconstruit â†’ pÃ©nalitÃ© forte
             if token not in repaired:
                 # orphan numeric tokens (not part of a reconstructed SCAC+digits)
                 score -= 50
@@ -1009,12 +739,12 @@ def pick_best_bl(text: str) -> Optional[str]:
         # The draft context is still detectable via `is_draft_context()` but
         # we treat it as a soft signal rather than an absolute rejection.
 
-        # 🔥 explicite
+        # ðŸ”¥ explicite
         if token in explicit:
             score += 60
             reasons.append('explicit_match')
 
-        # 🔥 libellé BL exact
+        # ðŸ”¥ libellÃ© BL exact
         if has_explicit_bl_label(token):
             score += 40
             reasons.append('explicit_bl_label')
@@ -1022,7 +752,7 @@ def pick_best_bl(text: str) -> Optional[str]:
         # If explicit BL label exists nearby, prefer it and avoid heavy penalties
         explicit_label_present = has_explicit_bl_label(token)
 
-        # 🔥 Boost massif pour "B/L No." explicite
+        # ðŸ”¥ Boost massif pour "B/L No." explicite
         if candidate_near_phrase(text, token, 'B/L NO', window=30):
             score += 100
             reasons.append('explicit_bl_no_label')
@@ -1032,12 +762,12 @@ def pick_best_bl(text: str) -> Optional[str]:
             score += 100
             reasons.append('bill_of_lading_no_boost')
 
-        # 🔥 proximité BL
+        # ðŸ”¥ proximitÃ© BL
         if candidate_near_bl_keyword(text, token, window=150):
             score += 25
             reasons.append('near_bl_keyword')
 
-        # 🔥 formats
+        # ðŸ”¥ formats
         if re.match(r'^[A-Z]{2,4}\d{6,15}$', token):
             score += 35
             reasons.append('strong_format')
@@ -1048,7 +778,7 @@ def pick_best_bl(text: str) -> Optional[str]:
             score += 15
             reasons.append('fallback_alpha_digits')
 
-        # 🔥 alpha + digits
+        # ðŸ”¥ alpha + digits
         if any(c.isalpha() for c in token) and any(c.isdigit() for c in token):
             score += 5
             reasons.append('alpha_digits')
@@ -1061,17 +791,17 @@ def pick_best_bl(text: str) -> Optional[str]:
         except Exception:
             pass
 
-        # 🔥 longueur idéale
+        # ðŸ”¥ longueur idÃ©ale
         if 8 <= len(token) <= 20:
             score += 5
             reasons.append('good_length')
 
-        # 🔥 header
+        # ðŸ”¥ header
         if token in header_zone:
             score += 20
             reasons.append('header_zone')
 
-        # 🆕 Boost massif pour candidats reconstruits SCAC + digits
+        # ðŸ†• Boost massif pour candidats reconstruits SCAC + digits
         if token in repaired:
             score += 70
             reasons.append('reconstructed_scac_digits')
@@ -1084,13 +814,13 @@ def pick_best_bl(text: str) -> Optional[str]:
         except re.error:
             pass
 
-        # 🔥 fréquence
+        # ðŸ”¥ frÃ©quence
         freq = text.count(token)
         if freq > 1:
             score += min(5, freq)
             reasons.append(f'freq_{freq}')
 
-        # ❌ penalties for risky contexts (soft signals)
+        # âŒ penalties for risky contexts (soft signals)
         if is_booking_number(token) and not explicit_label_present:
             score -= 30
             reasons.append('booking_penalty')
@@ -1100,8 +830,7 @@ def pick_best_bl(text: str) -> Optional[str]:
             reasons.append('seal_context_penalty')
 
         if is_within_container_section(text, token) and not explicit_label_present:
-            score -= 40
-            reasons.append('container_section_penalty')
+            return -999, ['container_section_without_bl_label']
 
         if is_in_forbidden_bl_context(text, token) and not explicit_label_present:
             score -= 30
@@ -1134,14 +863,10 @@ def pick_best_bl(text: str) -> Optional[str]:
         log.warning(
             'pick_best_bl.ambiguous',
             extra={
-                'best_token': best_token,
                 'best_score': best_score,
                 'second_score': second_score,
                 'margin': best_score - second_score,
-                'candidates': [
-                    {'token': t, 'score': s, 'reasons': r}
-                    for t, s, r in scored[:5]
-                ]
+                'candidate_count': len(scored),
             }
         )
 
@@ -1155,7 +880,7 @@ def pick_best_bl(text: str) -> Optional[str]:
         best_token, best_score, best_reasons = labelled[0]
         best_reasons = list(best_reasons) if isinstance(best_reasons, list) else [best_reasons]
         best_reasons.append('resolved_by_label')
-        log.info('pick_best_bl.resolved_by_label', extra={'token': best_token, 'score': best_score})
+        log.info('pick_best_bl.resolved_by_label', extra={'score': best_score})
 
     # Golden rule: numeric-only BL values are allowed when they are explicitly labeled.
     scac = detect_scac(text)
@@ -1168,7 +893,7 @@ def pick_best_bl(text: str) -> Optional[str]:
             best_reasons.append(f'prepended_scac:{scac}')
             reason_text = 'reconstructed_with_scac'
         else:
-            log.info('pick_best_bl.rejected_numeric_no_scac', extra={'token': best_token})
+            log.info('pick_best_bl.rejected_numeric_no_scac')
             return {'bl_number': None, 'confidence': 'low', 'reason': 'numeric_without_scac'}
     else:
         final_token = best_token
@@ -1187,60 +912,13 @@ def pick_best_bl(text: str) -> Optional[str]:
     log.info(
         'pick_best_bl.chosen',
         extra={
-            'value': final_token,
             'score': best_score,
-            'reasons': best_reasons,
-            'candidates': [
-                {'token': t, 'score': s, 'reasons': r}
-                for t, s, r in scored
-            ],
+            'candidate_count': len(scored),
         }
     )
 
     return {'bl_number': final_token, 'confidence': confidence, 'reason': ';'.join(map(str, best_reasons or [reason_text]))}
 
-
-# Lightweight wrapper that matches the requested signature in the specification:
-def pick_best_bl_v2_simple(text: str) -> Optional[str]:
-    """
-    Deterministic wrapper around the verbose engine that returns the best BL
-    as a simple string or None. It logs selection reasons for debugging and
-    returns only the canonical BL value (SCAC+NUMBER when applicable).
-
-    - Input: raw OCR text (string)
-    - Output: best BL candidate string or None
-    """
-    try:
-        verbose = pick_best_bl_v2(text) if 'pick_best_bl_v2' in globals() else None
-        # If the verbose engine returns a dict with 'bl', use it
-        if isinstance(verbose, dict):
-            bl = verbose.get('bl') or verbose.get('bl_number')
-            # If numeric-only and detect_scac finds a SCAC, reconstruct
-            if bl and bl.isdigit():
-                scac = detect_scac(text)
-                if scac:
-                    bl = scac + bl
-            if bl:
-                log.info('pick_best_bl_v2_simple.selected', extra={'bl': bl, 'score': verbose.get('score'), 'reasons': verbose.get('reasons')})
-                return bl
-        # Fallback: try existing pick_best_bl (legacy) which returns dict with bl_number
-        legacy = None
-        try:
-            legacy = pick_best_bl(text)
-        except Exception:
-            legacy = None
-        if isinstance(legacy, dict):
-            bln = legacy.get('bl') or legacy.get('bl_number')
-            if bln:
-                log.info('pick_best_bl_v2_simple.fallback_legacy', extra={'bl': bln})
-                return bln
-        return None
-    except Exception as e:
-        log.exception('pick_best_bl_v2_simple.error', exc_info=e)
-        return None
-
-# Provide a convenient alias matching the requested simple name
-pick_best_bl_v2_plain = pick_best_bl_v2_simple
 
 def candidate_near_bl_keyword(text: str, token: str, window: int = 60) -> bool:
     """Return True if token occurs within `window` chars of a BL keyword."""

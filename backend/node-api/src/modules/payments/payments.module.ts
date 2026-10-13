@@ -332,8 +332,21 @@ export const paymentsModule = () => {
       const authUserId = (req as any).authUserId ?? null;
       const { requestId } = req.params;
 
+      if (!authUserId) return res.status(401).json({ success: false, message: 'Unauthorized' });
       if (!requestId) return res.status(400).json({ success: false, message: 'requestId required' });
       if (!req.file) return res.status(400).json({ success: false, message: 'file required' });
+
+      const request = await RequestsService.getRequestById(requestId);
+      if (!request) return res.status(404).json({ success: false, message: 'Request not found' });
+      if (request.user_id !== authUserId) {
+        return res.status(403).json({ success: false, message: 'Access denied: not the owner of the request' });
+      }
+      if (!['DRAFT_SENT', 'PROFORMAT_SENT', 'AWAITING_PAYMENT', 'PAYMENT_CONFIRMED'].includes(request.status)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Payment proof can only be uploaded while payment is pending or when a confirmed payment needs review'
+        });
+      }
 
       // preserve extension if possible
       const documentId = uuidv4();

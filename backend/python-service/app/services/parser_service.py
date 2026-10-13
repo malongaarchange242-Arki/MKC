@@ -114,30 +114,23 @@ def parse_document_text(text: str, doc_type: str) -> List[Field]:
                     continue
                 # If candidate is inside a container-list section and there is no explicit
                 # BL label nearby, skip it to avoid false positives from container lists.
-                try:
-                    if bl_parser.is_within_container_section(text, c) and not bl_parser.has_explicit_bl_label_near(text, c):
-                        log.info('fallback.skip_container_section', extra={'token': c})
-                        continue
-                except Exception:
-                    pass
+                if bl_parser.is_within_container_section(text, c) and not bl_parser.has_explicit_bl_label_near(text, c):
+                    log.info('fallback.skip_container_section', extra={'token': c})
+                    continue
                 # lightweight scoring
                 score = 0
                 # proximity to explicit BL labels
-                try:
-                    if bl_parser.has_explicit_bl_label_near(text, c):
-                        score += 50
-                    if bl_parser.candidate_near_bl_keyword(text, c, window=80):
-                        score += 25
-                    # prefer longer / more structured tokens
-                    score += min(len(c), 30)
-                    # penalize if in seal/container contexts but do not reject
-                    if bl_parser.is_seal_number_context(text, c):
-                        score -= 40
-                    if bl_parser.is_within_container_section(text, c):
-                        score -= 30
-                except Exception:
-                    # defensive: if helper not available, rely on length
-                    score = len(c)
+                if bl_parser.has_explicit_bl_label_near(text, c):
+                    score += 50
+                if bl_parser.candidate_near_bl_keyword(text, c, window=80):
+                    score += 25
+                # prefer longer / more structured tokens
+                score += min(len(c), 30)
+                # penalize if in seal/container contexts but do not reject
+                if bl_parser.is_seal_number_context(text, c):
+                    score -= 40
+                if bl_parser.is_within_container_section(text, c):
+                    score -= 30
                 valid_candidates.append((c, score))
 
             if valid_candidates:

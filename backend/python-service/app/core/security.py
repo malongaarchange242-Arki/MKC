@@ -1,4 +1,5 @@
 # core/security.py
+import hmac
 from typing import Optional
 from fastapi import Header, HTTPException, status
 from core.config import get_settings
@@ -24,7 +25,10 @@ def verify_api_key(x_api_key: Optional[str] = Header(None), authorization: Optio
     elif authorization and authorization.lower().startswith('bearer '):
         provided_key = authorization.split(' ', 1)[1]
 
-    if not provided_key or provided_key.strip() != settings.PYTHON_SERVICE_API_KEY.strip():
+    if not provided_key or not hmac.compare_digest(
+        provided_key.strip().encode("utf-8"),
+        settings.PYTHON_SERVICE_API_KEY.strip().encode("utf-8"),
+    ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid API key"

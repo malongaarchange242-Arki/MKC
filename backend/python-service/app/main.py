@@ -44,24 +44,30 @@ _service_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
 _anon_key = os.environ.get("SUPABASE_ANON_KEY")
 
 if _supabase_url:
-    key_preview = (
-        f"{_service_key[:8]} (service)"
-        if _service_key
-        else f"{_anon_key[:8]} (anon)" if _anon_key else "no-key"
+    _logger.info(
+        "Supabase configuration loaded",
+        extra={
+            "url_configured": True,
+            "service_key_configured": bool(_service_key),
+            "anon_key_configured": bool(_anon_key),
+        },
     )
-    _logger.info(f"Supabase config: url={_supabase_url} key={key_preview}")
 
 # Import and initialize centralized Supabase client (will validate access)
+supabase_ready = False
 try:
     # Import here to ensure env loaded
     from core import supabase as supabase_core  # type: ignore
 except Exception as e:
     _logger.error('Failed to initialize Python Supabase client', exc_info=e)
+else:
+    supabase_ready = True
 
 # ------------------------------------------------------------------
 # FastAPI app
 # ------------------------------------------------------------------
 app = FastAPI(title=settings.APP_NAME)
+app.state.supabase_ready = supabase_ready
 app.include_router(api_router, prefix="/api/v1")
 
 @app.get("/health")

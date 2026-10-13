@@ -46,7 +46,12 @@ const configuredOrigins = (env.CORS_ORIGINS || env.CORS_ORIGIN || 'http://localh
   .split(',')
   .map(origin => origin.trim())
   .filter(Boolean);
-const localFrontendOrigins = ['http://localhost:5501', 'http://127.0.0.1:5501'];
+const localFrontendOrigins = [
+  'http://localhost:5501',
+  'http://127.0.0.1:5501',
+  'http://localhost:5508',
+  'http://127.0.0.1:5508'
+];
 const productionOrigins = ['https://feri-mkc.com'];
 const allowedOrigins = [...new Set([...configuredOrigins, ...localFrontendOrigins, ...productionOrigins])];
 

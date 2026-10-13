@@ -3,7 +3,7 @@ import re
 from models.document import DocumentInput
 from models.extraction import ExtractionResponse, Field
 from services.classifier import classify_document
-from services.ocr_service import ocr_from_url
+from services.ocr_service import OCRServiceError, ocr_from_url
 from services.bl_parser import (
     pick_best_bl,
     extract_containers,
@@ -41,7 +41,7 @@ def _extract_after(text: str, key: str, limit: int = 240) -> str | None:
 # Route
 # ---------------------------------------------------------
 @router.post("/parse/document", response_model=ExtractionResponse)
-async def parse_document(payload: DocumentInput):
+def parse_document(payload: DocumentInput):
     try:
         # -------------------------------------------------
         # 0️⃣ HINT NORMALISATION
@@ -91,19 +91,33 @@ async def parse_document(payload: DocumentInput):
 
         try:
             ocr_text = ocr_from_url(payload.file_url) or ""
-        except Exception as e:
-            log.exception("ocr.failed", extra={"url": payload.file_url})
-            ocr_text = ""
+        except OCRServiceError as exc:
+            log.warning(
+                "ocr.failed",
+                extra={"document_id": payload.document_id, "error_code": exc.code},
+            )
+            raise HTTPException(
+                status_code=exc.status_code,
+                detail={"code": exc.code, "message": str(exc)},
+            ) from exc
+        except Exception as exc:
+            log.exception("ocr.unexpected_failure", extra={"document_id": payload.document_id})
+            raise HTTPException(
+                status_code=500,
+                detail={"code": "OCR_INTERNAL_ERROR", "message": "Document processing failed"},
+            ) from exc
 
         if not ocr_text.strip():
-            log.warning("ocr.empty", extra={"document_id": payload.document_id})
+            raise HTTPException(
+                status_code=422,
+                detail={"code": "DOCUMENT_UNREADABLE", "message": "No readable text was found"},
+            )
 
         log.info(
             "ocr.done",
             extra={
                 "document_id": payload.document_id,
                 "text_len": len(ocr_text),
-                "preview": ocr_text[:400],
             },
         )
 
@@ -116,9 +130,7 @@ async def parse_document(payload: DocumentInput):
         # -------------------------------------------------
         bl_value = pick_best_bl(text)
         # Backwards-compat: pick_best_bl may return a dict {bl_number, confidence, reason}
-        bl_result = None
         if isinstance(bl_value, dict):
-            bl_result = bl_value
             bl_value = bl_value.get('bl_number')
         fields: list[Field] = []
         extraction = None
@@ -129,14 +141,10 @@ async def parse_document(payload: DocumentInput):
             conf = final_confidence(text, bl_value, ["BL", "B/L", "BILL"])
             fields.append(Field(key="bl_number", value=bl_value, confidence=conf))
             # attach reason from new parser if available
-            if bl_result and 'reason' in bl_result:
-                log.info('bl.parser_reason', extra={'reason': bl_result.get('reason')})
-
             log.info(
                 "bl.detected",
                 extra={
                     "document_id": payload.document_id,
-                    "bl": bl_value,
                     "confidence": conf,
                 },
             )
@@ -194,13 +202,15 @@ async def parse_document(payload: DocumentInput):
             "parse.done",
             extra={
                 "document_id": payload.document_id,
-                "bl": bl_value,
-                "fields": [f.dict() for f in fields],
+                "field_count": len(fields),
+                "bl_detected": bool(bl_value),
             },
         )
 
         return response
 
+    except HTTPException:
+        raise
     except Exception:
         log.exception("parse.unhandled_exception")
         raise HTTPException(status_code=500, detail="Document parsing failed")

@@ -178,7 +178,7 @@ function renderClientPayments() {
 
     // Montrer uniquement les dossiers en attente de paiement (AWAITING_PAYMENT).
     // Les lignes dont la preuve a été uploadée (PAYMENT_PROOF_UPLOADED) seront retirées immédiatement.
-    const unpaid = requests.filter(req => req.status === STATUS.AWAITING_PAYMENT || req.status === STATUS.DRAFT_SENT);
+    const unpaid = requests.filter(req => [STATUS.AWAITING_PAYMENT, STATUS.DRAFT_SENT, STATUS.PROFORMAT_SENT].includes(req.status));
 
     if (unpaid.length === 0) {
         tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:40px;">${escapeHtml(t('no_pending_payments','No pending payments. All set!'))}</td></tr>`;
@@ -269,7 +269,7 @@ async function fetchRequests() {
     try {
         const token = localStorage.getItem('access_token') || localStorage.getItem('token') || null;
         const metaApi = document.querySelector('meta[name="api-base"]')?.content || '';
-        const defaultLocal = 'https://mkc-backend-qx7r.onrender.com';
+        const defaultLocal = 'https://mkc-ymuo.onrender.com';
         const API_BASE = metaApi || defaultLocal;
 
         // The requests listing endpoint is mounted at `/requests/me` on the backend
@@ -323,7 +323,7 @@ async function fetchInvoices() {
     try {
         const token = localStorage.getItem('access_token') || localStorage.getItem('token') || null;
         const metaApi = document.querySelector('meta[name="api-base"]')?.content || '';
-            const defaultLocal = 'https://mkc-backend-qx7r.onrender.com';
+            const defaultLocal = 'https://mkc-ymuo.onrender.com';
             const API_BASE = metaApi || defaultLocal;
 
         const resp = await fetch(`${API_BASE.replace(/\/$/, '')}/api/client/invoices`, {
@@ -429,7 +429,7 @@ function handleSubmitProof() {
         try {
             const token = localStorage.getItem('access_token') || localStorage.getItem('token') || null;
             const metaApi = document.querySelector('meta[name="api-base"]')?.content || '';
-            const defaultLocal = 'https://mkc-backend-qx7r.onrender.com';
+            const defaultLocal = 'https://mkc-ymuo.onrender.com';
             const API_BASE = metaApi || defaultLocal;
 
             // resolve request id for this BL
@@ -505,7 +505,7 @@ async function handlePaymentModeChange(blValue, selectedMode) {
     try {
         const token = localStorage.getItem('access_token') || localStorage.getItem('token') || null;
         const metaApi = document.querySelector('meta[name="api-base"]')?.content || '';
-        const defaultLocal = 'https://mkc-backend-qx7r.onrender.com';
+        const defaultLocal = 'https://mkc-ymuo.onrender.com';
         const API_BASE = metaApi || defaultLocal;
 
         // Refresh server state to avoid stale local cache, then find the request
@@ -746,7 +746,7 @@ function populateHeaderFromSession() {
                 const hasName = Boolean(profile && (profile.prenom || profile.nom));
                 if (!hasName) {
                     const metaApi = document.querySelector('meta[name="api-base"]')?.content || '';
-                    const defaultLocal = 'https://mkc-backend-qx7r.onrender.com';
+                    const defaultLocal = 'https://mkc-ymuo.onrender.com';
                     const API_BASE = metaApi || defaultLocal;
                     const token = localStorage.getItem('access_token') || localStorage.getItem('token') || null;
                     if (token) {

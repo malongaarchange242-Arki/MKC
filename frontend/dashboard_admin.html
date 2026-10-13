@@ -4,138 +4,158 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="api-base" content="https://mkc-ymuo.onrender.com">
     <title>LOGI-RDC | Administration</title>
     <link rel="stylesheet" href="dashboard_client.css">
+    <link rel="stylesheet" href="dashboard_admin.css">
     <link rel="stylesheet" href="components/slide_pro.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-      /* Small compatibility CSS to position the slide as a right-side panel
-         Keeps JS unchanged (toggling .show on #side-panel) while using PRO styles */
-            #side-panel.slide { position: fixed; right: -100%; top: 0; height: 100%; width: 980px; max-width: 92vw; transition: right 240ms ease-in-out; z-index: 10000; display: flex; flex-direction: column; }
-            /* Allow internal scrolling while keeping header/footer visible */
-            #side-panel.slide #side-content { display: flex; flex-direction: column; height: 100%; }
-            #side-panel.slide .slide-body { overflow: auto; flex: 1 1 auto; padding: 18px 24px; }
-            #side-panel.slide .slide-footer { flex-shrink: 0; }
-      #side-panel.slide.show { right: 0; }
       tr.clickable-row { cursor: pointer; }
       tr.clickable-row:hover { background: #FFF4E6; transition: background 120ms ease-in-out; }
-            /* Header action buttons styling: orange theme */
-            .slide-header .header-actions .btn {
-                background: #f59e0b;
-                color: #fff;
-                border: 1px solid #f59e0b;
-                padding: 6px 10px;
-                border-radius: 6px;
-                display: inline-flex;
-                align-items: center;
-                gap: 8px;
-                font-weight: 600;
-                cursor: pointer;
-            }
-            .slide-header .header-actions .btn svg { color: currentColor; }
-            .slide-header .header-actions .btn:hover { filter: brightness(0.95); }
-            .slide-header .header-actions .btn.disabled,
-            .slide-header .header-actions .btn[disabled] {
-                background: #f3f4f6; /* gray-100 */
-                color: #9ca3af; /* gray-400 */
-                border-color: #f3f4f6;
-                cursor: not-allowed;
-                opacity: 0.9;
-                pointer-events: none;
-            }
     </style>
 </head>
 
 <body>
     <div class="app-container">
-        <nav class="sidebar" id="sidebar">
-            <div class="logo desktop-logo">
-                <h2>MARITIME KARGO</h2>
-                <span class="subtitle">Consulting</span>
+        <nav class="sidebar" id="sidebar" aria-label="Navigation principale">
+            <div class="sidebar-mobile-header">
+                <button class="sidebar-close-btn" id="close-sidebar-btn" aria-label="Fermer le menu" type="button">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
             </div>
-            <ul role="menu">
-                <li class="active" role="menuitem"><i class="fas fa-tray-full"></i> <span data-i18n="incoming_requests">Incoming Requests</span></li>
-                <li role="menuitem"><i class="fas fa-file-invoice-dollar"></i> <span data-i18n="pending_payments">Pending Payments</span></li>
-                <li role="menuitem" id="menu-create-invoice" onclick="window.location.href='creat_facture.html?manual=1'"><i class="fas fa-file-invoice"></i> <span data-i18n="menu_create_invoice">Création facture</span></li>
-                <li role="menuitem" id="menu-create-carte" onclick="window.location.href='facture_carte.html'"><i class="fas fa-id-card"></i> <span data-i18n="menu_create_carte_chargeur">Création de la carte chargeur</span></li>
+            <div class="sidebar-logo">
+                <img src="Logotype_mkc_bon-removebg-preview.png" alt="Maritime Kargo Consulting" class="sidebar-logo-img" width="46" height="46">
+                <div class="sidebar-logo-text">
+                    <div class="sidebar-brand"><span class="sb-maritime">MARITIME </span><span class="sb-kargo">KARGO</span></div>
+                    <div class="sb-consulting">CONSULTING</div>
+                    <div class="sb-tagline">FERI · AD · INTERNATIONAL TRADE</div>
+                </div>
+            </div>
+            <div class="sidebar-section-label">ESPACE ADMINISTRATEUR</div>
+            <ul class="sidebar-nav" role="menu">
+                <li class="nav-item active" role="menuitem" tabindex="0">
+                    <span class="nav-active-bar" aria-hidden="true"></span>
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                    <span data-i18n="incoming_requests">Incoming Requests</span>
+                </li>
+                <li class="nav-item" role="menuitem" tabindex="0">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                    <span data-i18n="pending_payments">Pending Payments</span>
+                </li>
+                <li class="nav-item" role="menuitem" tabindex="0" id="menu-create-invoice" onclick="window.location.href='creat_facture.html?manual=1'">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6M9 13h8M9 17h8"/></svg>
+                    <span data-i18n="menu_create_invoice">Création facture</span>
+                </li>
+                <li class="nav-item" role="menuitem" tabindex="0" id="menu-create-carte" onclick="window.location.href='facture_carte.html'">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M2 9h3M19 9h3M2 15h3M19 15h3"/></svg>
+                    <span data-i18n="menu_create_carte_chargeur">Création de la carte chargeur</span>
+                </li>
             </ul>
-            <div class="logout" onclick="window.location.href='index.html'">
-                <i class="fas fa-sign-out-alt"></i> <span data-i18n="logout">Logout</span>
+            <div class="sidebar-logout" role="button" tabindex="0" onclick="localStorage.removeItem('token'); localStorage.removeItem('access_token'); window.location.href='index.html'">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                <span data-i18n="logout">Logout</span>
             </div>
 
         </nav>
 
-        <main class="main-content">
+        <main class="main-content admin-main">
             <header class="top-header">
                 <div class="header-left">
-                    <button class="fas fa-bars menu-trigger icon-btn" id="menu-trigger"></button>
+                    <button class="hamburger-btn icon-btn" id="menu-trigger" type="button" aria-label="Ouvrir le menu">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+                    </button>
                 </div>
-                                <div class="header-right">
-                                        <label for="lang-select" style="font-size:12px; color:#6b7280; margin-right:6px; align-self:center;">EN/FR</label>
-                                        <select id="lang-select" aria-label="Language switch" style="padding:6px; border-radius:4px; margin-right:8px;">
-                                            <option value="en">EN</option>
-                                            <option value="fr">FR</option>
-                                        </select>
-                                        <button class="far fa-bell icon-btn"></button>
+                <div class="header-right">
+                    <label for="lang-select" class="admin-language-label">EN/FR</label>
+                    <select id="lang-select" class="admin-language-select" aria-label="Language switch">
+                        <option value="en">EN</option>
+                        <option value="fr">FR</option>
+                    </select>
+                    <button class="far fa-bell icon-btn admin-notification-btn" type="button" aria-label="Notifications"></button>
                     <div class="user-profile">
                         <div class="user-info">
-                            <span class="name">Admin Michael</span>
+                            <span class="name">Espace administrateur</span>
                             <span class="role">Administrator</span>
                         </div>
                         <div class="avatar-placeholder"
                             style="width:36px; height:36px; background:var(--primary-orange); border-radius:50%; display:flex; align-items:center; justify-content:center; color:white; font-weight:bold;">
-                            AM</div>
+                            A</div>
                     </div>
                 </div>
             </header>
 
-            <section class="action-bar">
-                <div class="actions-left">
-                    <h3 style="margin:0; color:var(--text-dark);" data-i18n="feri_ad_queue">FERI / AD Queue</h3>
-                </div>
-                <div class="actions-right">
-                    <button class="btn-white" onclick="location.reload()"><i class="fas fa-sync-alt"></i>
-                        Refresh</button>
-                </div>
-            </section>
+            <div class="admin-content-scroll">
+                <section class="admin-page-heading">
+                    <div>
+                        <h1 data-i18n="requests_title">Requests</h1>
+                        <p data-i18n="admin_queue_intro">Review incoming files and manage request processing.</p>
+                    </div>
+                    <button class="admin-refresh-btn" type="button" onclick="location.reload()">
+                        <i class="fas fa-rotate" aria-hidden="true"></i>
+                        <span data-i18n="refresh">Refresh</span>
+                    </button>
+                </section>
 
-            <section class="filter-bar" style="display: flex; gap: 16px; align-items: center; margin-bottom: 16px;">
-                <label for="filter-date" style="font-size: 14px; font-weight: bold;" data-i18n="filter_date">Date:</label>
-                <input type="date" id="filter-date" class="filter-input" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                <section class="admin-filter-card" aria-label="Request filters">
+                    <div class="admin-card-heading">
+                        <div>
+                            <h2 data-i18n="filter_requests">Filter requests</h2>
+                            <p data-i18n="filter_requests_help">Refine the queue by date, status or document stage.</p>
+                        </div>
+                        <i class="fas fa-sliders" aria-hidden="true"></i>
+                    </div>
+                    <div class="filter-bar">
+                        <div class="admin-filter-field">
+                            <label for="filter-date" data-i18n="filter_date">Date:</label>
+                            <input type="date" id="filter-date" class="filter-input">
+                        </div>
+                        <div class="admin-filter-field">
+                            <label for="filter-status" data-i18n="filter_status">Status:</label>
+                            <select id="filter-status" class="filter-input">
+                                <option value="" data-i18n="filter_all">All</option>
+                                <option value="INITIATED" data-i18n="filter_initiated">Initiated</option>
+                                <option value="CREATED" data-i18n="filter_created">Created</option>
+                                <option value="AWAITING_DOCUMENTS" data-i18n="filter_awaiting_documents">Awaiting Documents</option>
+                                <option value="PROCESSING" data-i18n="filter_processing">Processing</option>
+                                <option value="COMPLETED" data-i18n="filter_completed">Completed</option>
+                            </select>
+                        </div>
+                        <div class="admin-filter-field">
+                            <label for="filter-type" data-i18n="filter_type">Type:</label>
+                            <select id="filter-type" class="filter-input">
+                                <option value="" data-i18n="filter_all">All</option>
+                                <option value="DRAFT" data-i18n="filter_draft">Draft</option>
+                                <option value="FINAL" data-i18n="filter_final">Final</option>
+                            </select>
+                        </div>
+                    </div>
+                </section>
 
-                <label for="filter-status" style="font-size: 14px; font-weight: bold;" data-i18n="filter_status">Status:</label>
-                <select id="filter-status" class="filter-input" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-                    <option value="" data-i18n="filter_all">All</option>
-                    <option value="INITIATED" data-i18n="filter_initiated">Initiated</option>
-                    <option value="CREATED" data-i18n="filter_created">Created</option>
-                    <option value="AWAITING_DOCUMENTS" data-i18n="filter_awaiting_documents">Awaiting Documents</option>
-                    <option value="PROCESSING" data-i18n="filter_processing">Processing</option>
-                    <option value="COMPLETED" data-i18n="filter_completed">Completed</option>
-                </select>
-
-                <label for="filter-type" style="font-size: 14px; font-weight: bold;" data-i18n="filter_type">Type:</label>
-                <select id="filter-type" class="filter-input" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-                    <option value="" data-i18n="filter_all">All</option>
-                    <option value="DRAFT" data-i18n="filter_draft">Draft</option>
-                    <option value="FINAL" data-i18n="filter_final">Final</option>
-                </select>
-            </section>
-
-            <div class="table-responsive">
-                <table class="dashboard-table">
-                    <thead>
-                        <tr>
-                            <th data-i18n="bl_number">BL Number</th>
-                            <th data-i18n="date">Date</th>
-                            <th data-i18n="status">Status</th>
-                            <th data-i18n="client_name">Client Name</th>
-                            <th data-i18n="client_docs">Client Docs</th>
-                            <th data-i18n="admin_action">Admin Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="admin-table-body">
-                    </tbody>
-                </table>
+                <section class="admin-requests-card" aria-labelledby="admin-requests-title">
+                    <div class="admin-card-heading admin-table-heading">
+                        <div>
+                            <h2 id="admin-requests-title" data-i18n="incoming_requests">Incoming requests</h2>
+                            <p data-i18n="incoming_requests_help">Open a request to review its details and take action.</p>
+                        </div>
+                        <span class="admin-queue-badge"><i class="fas fa-inbox" aria-hidden="true"></i> FERI / AD</span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="dashboard-table">
+                            <thead>
+                                <tr>
+                                    <th data-i18n="bl_number">BL Number</th>
+                                    <th data-i18n="date">Date</th>
+                                    <th data-i18n="status">Status</th>
+                                    <th data-i18n="client_name">Client Name</th>
+                                    <th data-i18n="client_docs">Client Docs</th>
+                                    <th data-i18n="admin_action">Admin Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-table-body"></tbody>
+                        </table>
+                    </div>
+                </section>
             </div>
         </main>
     </div>
@@ -193,19 +213,47 @@
         </div>
     </div>
 
-        <!-- Side panel: request details (PRO design integrated) -->
-        <aside id="side-panel" class="slide" role="dialog" aria-modal="true" aria-hidden="true">
-            <button class="close" aria-label="Fermer" onclick="closeSidePanel()"><i class="fas fa-times"></i></button>
+        <div id="side-panel-backdrop" aria-hidden="true"></div>
+        <!-- Side panel: request details -->
+        <aside id="side-panel" class="slide admin-detail-drawer" role="dialog" aria-modal="true" aria-labelledby="side-title" aria-hidden="true">
             <div id="side-content">
-                <header class="slide-header">
+                <header class="slide-header admin-detail-header">
+                    <span class="detail-heading-icon" aria-hidden="true"><i class="fas fa-ship"></i></span>
                     <div class="title-wrap">
-                        <h3 id="side-bl">--</h3>
+                        <h2 id="side-title">Détails de la demande</h2>
+                        <div class="admin-detail-identifier"><h3 id="side-bl">--</h3><span id="side-type-badge" class="admin-type-badge">—</span></div>
                     </div>
-                    <div class="status-wrap">
-                        <span id="side-status" class="status badge">--</span>
-                    </div>
-                    <div class="header-actions" style="margin-left:auto; display:flex; gap:8px; align-items:center;">
-                        <button id="btn-dispute" class="btn btn-outline-danger" title="Contester">
+                    <button class="close admin-detail-close" type="button" aria-label="Fermer le panneau" onclick="closeSidePanel()"><i class="fas fa-times" aria-hidden="true"></i></button>
+                </header>
+
+                <div class="slide-body admin-detail-scroll">
+                    <section class="admin-detail-card admin-voyage-card" aria-labelledby="admin-voyage-title">
+                        <h3 id="admin-voyage-title" class="admin-detail-section-title"><i class="fas fa-route" aria-hidden="true"></i>Parcours du dossier</h3>
+                        <div class="voyage-ocean admin-voyage-ocean" aria-hidden="true">
+                            <svg class="voyage-waves" viewBox="0 0 600 125" preserveAspectRatio="none">
+                                <path d="M0 66 C80 44 120 87 200 64 S320 43 400 65 520 86 600 60 V125 H0Z" fill="#cdeaff"/>
+                                <path d="M0 83 C75 65 130 101 210 80 S340 63 420 83 530 101 600 79 V125 H0Z" fill="#a8d9fb" opacity=".82"/>
+                                <path d="M0 101 C90 84 150 112 240 96 S380 84 460 101 540 115 600 97 V125 H0Z" fill="#83c5f3" opacity=".64"/>
+                                <path d="M52 72 C150 25 215 91 300 53 S450 39 548 68" fill="none" stroke="#1684df" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="2 7"/>
+                            </svg>
+                            <i id="admin-voyage-ship" class="fas fa-ship" aria-hidden="true"></i>
+                            <span class="voyage-port voyage-port-start" aria-hidden="true"><i class="fas fa-anchor"></i></span>
+                            <span class="voyage-port voyage-port-review" aria-hidden="true"><i class="fas fa-file-circle-check"></i></span>
+                            <span class="voyage-port voyage-port-process" aria-hidden="true"><i class="fas fa-gears"></i></span>
+                            <span class="voyage-port voyage-port-finish" aria-hidden="true"><i class="fas fa-flag"></i></span>
+                        </div>
+                        <ol class="voyage-steps admin-voyage-steps" id="admin-voyage-steps">
+                            <li data-step="0"><span class="voyage-step-icon"><i class="fas fa-anchor" aria-hidden="true"></i></span><strong>Demande créée</strong><small id="admin-voyage-date-created">—</small></li>
+                            <li data-step="1"><span class="voyage-step-icon"><i class="fas fa-file-circle-check" aria-hidden="true"></i></span><strong>En vérification</strong><small id="admin-voyage-date-review">—</small></li>
+                            <li data-step="2"><span class="voyage-step-icon"><i class="fas fa-gears" aria-hidden="true"></i></span><strong>En traitement</strong><small id="admin-voyage-date-processing">—</small></li>
+                            <li data-step="3"><span class="voyage-step-icon"><i class="fas fa-flag" aria-hidden="true"></i></span><strong>Terminée</strong><small id="admin-voyage-date-completed">—</small></li>
+                        </ol>
+                        <p class="voyage-caption">Progression administrative du dossier — ne représente pas la position réelle d'un navire.</p>
+                        <div id="admin-detail-status-notice" class="detail-status-notice" hidden></div>
+                    </section>
+
+                    <div class="header-actions admin-detail-actions" aria-label="Actions de la demande">
+                        <button id="btn-dispute" class="btn btn-outline-danger" type="button" title="Contester">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
                               <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
                               <path d="M12 9v4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -214,27 +262,30 @@
                             <span data-i18n="btn_dispute">Contester</span>
                         </button>
 
-                        <button id="btn-message" class="btn btn-outline-secondary" title="Message">
+                        <button id="btn-message" class="btn btn-outline-secondary" type="button" title="Message">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
                               <path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
                             </svg>
                             <span data-i18n="btn_message">Message</span>
                         </button>
                         
-                        <button id="btn-send-proforma" class="btn" title="Envoyer la proforma" data-i18n="btn_send_proforma" style="background:#f59e0b; color:#fff; border:1px solid #f59e0b; padding:6px 10px; border-radius:6px; font-weight:600;">
-                            Envoyer la proforma
+                        <button id="btn-send-proforma" class="btn admin-proforma-action" type="button" title="Envoyer la proforma">
+                            <i class="fas fa-paper-plane" aria-hidden="true"></i><span data-i18n="btn_send_proforma">Envoyer la proforma</span>
                         </button>
-                        <!-- Invoice button removed -->
                     </div>
-                </header>
 
-                <div class="slide-body">
-                    <section class="info-grid" aria-label="Informations">
+                    <section class="admin-detail-card" aria-labelledby="admin-general-title">
+                        <h3 id="admin-general-title" class="admin-detail-section-title"><i class="fas fa-file-lines" aria-hidden="true"></i>Informations générales</h3>
+                        <div class="info-grid admin-detail-grid" aria-label="Informations générales">
                         <div class="info-row">
+                            <div class="label">Numéro de BL</div>
+                            <div class="value" id="side-bl-detail">--</div>
+                        </div>
+                        <div class="info-row admin-bl-edit-row">
                             <div class="label">BL SAISI</div>
-                            <div style="display:flex; gap:6px; align-items:center;">
-                                <input type="text" id="side-bl-saisi-input" style="flex:1; padding:6px; border:1px solid #ccc; border-radius:4px; font-size:13px;" placeholder="Entrer le BL réel">
-                                <button id="btn-save-bl-saisi" class="btn-green" style="padding:6px 12px; font-size:12px;">Sauvegarder</button>
+                            <div class="admin-bl-edit">
+                                <input type="text" id="side-bl-saisi-input" placeholder="Entrer le BL réel">
+                                <button id="btn-save-bl-saisi" class="admin-save-bl" type="button"><i class="fas fa-floppy-disk" aria-hidden="true"></i>Sauvegarder</button>
                             </div>
                         </div>
                         <div class="info-row">
@@ -246,20 +297,40 @@
                             <div class="value" id="side-client">--</div>
                         </div>
                         <div class="info-row">
-                            <div class="label">FXI</div>
-                            <div class="value" id="side-fxi">--</div>
+                            <div class="label">Pays de destination</div>
+                            <div class="value" id="side-country">--</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="label">Statut</div>
+                            <div class="value"><span id="side-status" class="status badge admin-detail-status">--</span></div>
                         </div>
                         <div class="info-row">
                             <div class="label">Type</div>
                             <div class="value" id="side-type">--</div>
                         </div>
+                        </div>
+                    </section>
+
+                    <section class="admin-detail-card" aria-labelledby="admin-extra-title">
+                        <h3 id="admin-extra-title" class="admin-detail-section-title"><i class="fas fa-paperclip" aria-hidden="true"></i>Informations complémentaires</h3>
+                        <div class="info-grid admin-detail-grid" aria-label="Informations complémentaires">
+                            <div class="info-row">
+                                <div class="label">Numéro FXI</div>
+                                <div class="value" id="side-fxi">--</div>
+                            </div>
+                            <div class="info-row">
+                                <div class="label" data-i18n="carte_chargeur_label">Numéro carte chargeur</div>
+                                <div class="value" id="side-carte-chargeur">--</div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="admin-detail-card" aria-labelledby="admin-transport-title">
+                        <h3 id="admin-transport-title" class="admin-detail-section-title"><i class="fas fa-truck-fast" aria-hidden="true"></i>Informations transport</h3>
+                        <div class="info-grid admin-detail-grid" aria-label="Informations transport">
                         <div class="info-row">
                             <div class="label">Transporteur</div>
                             <div class="value" id="side-carrier">--</div>
-                        </div>
-                        <div class="info-row">
-                            <div class="label" data-i18n="carte_chargeur_label">Numéro carte chargeur</div>
-                            <div class="value" id="side-carte-chargeur">--</div>
                         </div>
                         <div class="info-row">
                             <div class="label">Immatriculation</div>
@@ -277,40 +348,33 @@
                             <div class="label">Mode paiement</div>
                             <div class="value" id="side-payment-mode">--</div>
                         </div>
-                    </section>
-
-                    <hr class="divider" />
-
-                    <section class="documents" id="side-docs">
-                        <div class="docs-empty">
-                            <svg class="doc-illus" width="96" height="96" viewBox="0 0 24 24" fill="none" aria-hidden>
-                              <path d="M7 3h7l4 4v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-                              <path d="M13 3v4h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-                              <path d="M9 13h6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-                            </svg>
-                            <div class="empty-title">Aucun document attaché</div>
-                            <div class="empty-sub">Aucun fichier PDF n'a été uploadé pour ce dossier. Vous pouvez demander au client de télécharger le document via la page client.</div>
                         </div>
                     </section>
+
+                    <section class="documents admin-detail-card" id="side-docs" aria-labelledby="admin-docs-title">
+                        <h3 id="admin-docs-title" class="admin-detail-section-title"><i class="fas fa-folder-open" aria-hidden="true"></i>Documents joints</h3>
+                        <div id="side-docs-list" class="admin-documents-list" aria-live="polite"></div>
+                    </section>
+
+                    <section id="admin-history-card" class="admin-detail-card" aria-labelledby="admin-history-title" hidden>
+                        <h3 id="admin-history-title" class="admin-detail-section-title"><i class="fas fa-clock-rotate-left" aria-hidden="true"></i>Historique du dossier</h3>
+                        <ol id="admin-history-list" class="admin-history-list"></ol>
+                    </section>
+
                 </div>
 
-                                <footer class="slide-footer">
-                                </footer>
-
-                <!-- Message / Dispute form (hidden by default) - kept for compatibility -->
-                <div id="side-message-form" style="display:none; margin-top:12px; padding:18px 0">
+                <!-- Existing message and dispute form -->
+                <section id="side-message-form" class="admin-detail-card admin-message-form" hidden>
                     <label for="side-message-text">Votre message</label>
-                    <textarea id="side-message-text" rows="4" style="width:100%; padding:8px; margin-top:6px;"></textarea>
-                    <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
-                        <label class="doc-upload-btn" style="padding:6px; border:1px dashed #ccc; cursor:pointer;">
-                            <input id="side-message-file" type="file" style="display:none;" />
-                             Joindre (optionnel)
-                        </label>
-                        <button id="side-send-message" class="btn-green">Envoyer</button>
-                        <button id="side-cancel-message" class="btn-close">Annuler</button>
+                    <textarea id="side-message-text" rows="4"></textarea>
+                    <div class="admin-message-actions">
+                        <label class="admin-attach-action" for="side-message-file"><i class="fas fa-paperclip" aria-hidden="true"></i>Joindre (optionnel)</label>
+                        <input id="side-message-file" type="file" />
+                        <button id="side-send-message" class="admin-send-message" type="button">Envoyer</button>
+                        <button id="side-cancel-message" class="admin-cancel-message" type="button">Annuler</button>
                     </div>
-                    <div id="side-message-status" style="margin-top:8px; color:green; display:none;">Votre message a été envoyé.</div>
-                </div>
+                    <div id="side-message-status" class="admin-message-status" role="status" hidden>Votre message a été envoyé.</div>
+                </section>
             </div>
         </aside>
 

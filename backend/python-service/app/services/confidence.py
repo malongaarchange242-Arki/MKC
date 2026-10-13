@@ -106,11 +106,14 @@ def final_confidence(text: str, candidate: str, keywords: List[str]) -> float:
     an explainable trace via logs.
     """
     trace = confidence_trace(text, candidate, keywords)
-    # log structured trace for observability (caller can also log)
+    # Log only non-document metadata; candidate values and context are sensitive.
     try:
         from core.logging import get_logger
 
-        get_logger().info('BL_CONFIDENCE_TRACE', extra={'trace': trace})
+        get_logger().info(
+            'BL_CONFIDENCE_TRACE',
+            extra={'score': trace.get('score'), 'signals': trace.get('signals')},
+        )
     except Exception:
         pass
 

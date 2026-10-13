@@ -1,7 +1,9 @@
 const STORAGE_KEY = 'logirdc_requests_v1';
 let requests = [];
 let selectedBL = null;
+let selectedRequestId = null;
 let currentMode = 'DRAFT'; // Logic tracker: 'DRAFT' or 'FINAL'
+let activeAdminDetailTrigger = null;
 
 // Small UI helpers: toast notifications and browser Notification permission
 function ensureNotificationPermission() {
@@ -54,6 +56,32 @@ function showAdminToast(message, timeout = 4500) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+  document.getElementById('side-panel-backdrop')?.addEventListener('click', closeSidePanel);
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && document.getElementById('side-panel')?.classList.contains('show')) closeSidePanel();
+  });
+  const sidebar = document.getElementById('sidebar');
+  const menuTrigger = document.getElementById('menu-trigger');
+  const closeSidebarBtn = document.getElementById('close-sidebar-btn');
+  const toggleSidebar = () => {
+    if (!sidebar) return;
+    const isOpen = sidebar.classList.toggle('show');
+    menuTrigger?.setAttribute('aria-expanded', String(isOpen));
+  };
+  menuTrigger?.addEventListener('click', toggleSidebar);
+  closeSidebarBtn?.addEventListener('click', () => {
+    sidebar?.classList.remove('show');
+    menuTrigger?.setAttribute('aria-expanded', 'false');
+    menuTrigger?.focus();
+  });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && sidebar?.classList.contains('show')) {
+      sidebar.classList.remove('show');
+      menuTrigger?.setAttribute('aria-expanded', 'false');
+      menuTrigger?.focus();
+    }
+  });
+
   // Load requests from backend (fallback to localStorage)
   await loadAdminRequests();
 
@@ -105,9 +133,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   const menuItems = document.querySelectorAll('nav.sidebar ul li');
   if (menuItems && menuItems.length) {
     menuItems.forEach((li, idx) => {
+      li.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          li.click();
+        }
+      });
       li.addEventListener('click', () => {
         menuItems.forEach(x => x.classList.remove('active'));
         li.classList.add('active');
+        if (window.matchMedia('(max-width: 860px)').matches && !li.id) {
+          sidebar?.classList.remove('show');
+          menuTrigger?.setAttribute('aria-expanded', 'false');
+        }
         if (idx === 0) {
           // Incoming Requests
           renderAdminTable();
@@ -166,7 +204,7 @@ document.addEventListener('DOMContentLoaded', async () => {
               // Try to fetch invoices for this request from backend, then open Fac_Prev with invoice_id if found
               (async () => {
                 try {
-                  const API_BASE = (() => { const meta = document.querySelector('meta[name="api-base"]')?.content || ''; return meta ? meta.replace(/\/$/, '') : 'https://mkc-backend-cs7a.onrender.com'; })();
+                  const API_BASE = (() => { const meta = document.querySelector('meta[name="api-base"]')?.content || ''; return meta ? meta.replace(/\/$/, '') : 'https://mkc-ymuo.onrender.com'; })();
                   const token = localStorage.getItem('token') || localStorage.getItem('access_token');
                   const headers = token ? { Authorization: `Bearer ${token}` } : {};
                   const base = API_BASE.replace(/\/api\/?$/,'').replace(/\/$/, '');
@@ -216,7 +254,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           } else {
             // fallback to admin modal if proforma modal missing
             const blArg = blVal && blVal !== '—' ? blVal : '';
-            openAdminModal(blArg, 'DRAFT');
+            openAdminModal(blArg, 'DRAFT', proformaModal.dataset.requestId || null);
           }
         } catch (e) {
           console.warn('btn-send-proforma click error', e);
@@ -258,7 +296,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           if (!token) return alert('Authentification requise.');
 
           const metaApi = document.querySelector('meta[name="api-base"]')?.content || '';
-          const defaultLocal = 'https://mkc-backend-cs7a.onrender.com';
+          const defaultLocal = 'https://mkc-ymuo.onrender.com';
           const API_BASE = metaApi || defaultLocal;
 
           const fd = new FormData();
@@ -463,6 +501,38 @@ const i18n = {
     en: 'Type:',
     fr: 'Type :'
   },
+  requests_title: {
+    en: 'Requests',
+    fr: 'Demandes'
+  },
+  admin_queue_intro: {
+    en: 'Review incoming files and manage request processing.',
+    fr: 'Consultez les nouveaux dossiers et gérez leur traitement.'
+  },
+  refresh: {
+    en: 'Refresh',
+    fr: 'Actualiser'
+  },
+  filter_requests: {
+    en: 'Filter requests',
+    fr: 'Filtrer les demandes'
+  },
+  filter_requests_help: {
+    en: 'Refine the queue by date, status or document stage.',
+    fr: 'Filtrez la file par date, statut ou étape du dossier.'
+  },
+  incoming_requests: {
+    en: 'Incoming requests',
+    fr: 'Demandes reçues'
+  },
+  incoming_requests_help: {
+    en: 'Open a request to review its details and take action.',
+    fr: 'Ouvrez une demande pour consulter ses détails et agir.'
+  },
+  view_request: {
+    en: 'View',
+    fr: 'Voir'
+  },
   filter_all: {
     en: 'All',
     fr: 'Tous'
@@ -524,7 +594,7 @@ Object.assign(i18n, {
 async function loadAdminRequests() {
   try {
     const metaApi = document.querySelector('meta[name="api-base"]')?.content || '';
-    const defaultLocal = 'https://mkc-backend-cs7a.onrender.com';
+    const defaultLocal = 'https://mkc-ymuo.onrender.com';
     const API_BASE = metaApi || defaultLocal;
 
     const token = localStorage.getItem('token') || localStorage.getItem('access_token');
@@ -571,6 +641,9 @@ function renderAdminTable() {
     const statusLabel = (window.i18n && typeof window.i18n.t === 'function') ? (window.i18n.t(status) || displayStatus) : displayStatus;
     // Only allow issuing draft when status is CREATED, AWAITING_DOCUMENTS, PROCESSING or PROFORMAT_SENT
     const isInitiated = ['CREATED', 'AWAITING_DOCUMENTS', 'PROCESSING', 'PROFORMAT_SENT'].includes(status);
+    const lang = (document.getElementById('lang-select') && document.getElementById('lang-select').value) || 'en';
+    const viewLabel = (i18n.view_request && (i18n.view_request[lang] || i18n.view_request.en)) || 'View';
+    const actionRequestId = (row.request && (row.request.id || row.request.request_id)) || row.request_id || row.id || rowId;
 
     // Use same BL selection logic as client but prefer extracted BL when available
     let blValue = '';
@@ -593,6 +666,23 @@ function renderAdminTable() {
 
         const blGenLabel = (window.i18n && typeof window.i18n.t === 'function') ? window.i18n.t('bl_generator') : 'BL generator';
         const displayBl = (row.manual_bl || row.manualBl) ? (blValue + ' (' + blGenLabel + ')') : blValue;
+        const viewButton = `<button class="admin-row-action admin-row-view" type="button" title="${escapeHtml(viewLabel)}" aria-label="${escapeHtml(viewLabel)} ${escapeHtml(displayBl || rowId)}" onclick="event.stopPropagation(); openSidePanelById('${escapeJs(rowId)}')"><i class="fas fa-eye" aria-hidden="true"></i><span>${escapeHtml(viewLabel)}</span></button>`;
+        let adminAction = '';
+
+        if (isInitiated) {
+          const draftLabel = (i18n.issue_draft_price && (i18n.issue_draft_price[lang] || i18n.issue_draft_price.en)) || 'Issue Draft/Price';
+          adminAction = `<button class="admin-row-action admin-row-draft" type="button" onclick="event.stopPropagation(); openAdminModal('${escapeJs(blValue)}', 'DRAFT', '${escapeJs(actionRequestId)}')"><i class="fas fa-file-circle-plus" aria-hidden="true"></i><span>${escapeHtml(draftLabel)}</span></button>`;
+        } else if (status === 'DRAFT_SENT' || status === 'AWAITING_PAYMENT') {
+          adminAction = `<span class="pending-payment">${escapeHtml(translateStatus(status))}</span>`;
+        } else if (status === 'PAYMENT_PROOF_UPLOADED') {
+          adminAction = `<span class="pending-confirmation">${escapeHtml(translateStatus(status))}</span>`;
+        } else if (status === 'COMPLETED') {
+          const finalLabel = (i18n.deliver_final_feri && (i18n.deliver_final_feri[lang] || i18n.deliver_final_feri.en)) || 'Deliver Final FERI';
+          adminAction = `<button class="admin-row-action admin-row-final" type="button" disabled title="${escapeHtml(finalLabel)}">${escapeHtml(finalLabel)}</button>`;
+        } else {
+          const finalLabel = (i18n.deliver_final_feri && (i18n.deliver_final_feri[lang] || i18n.deliver_final_feri.en)) || 'Deliver Final FERI';
+          adminAction = `<button class="admin-row-action admin-row-final" type="button" onclick="event.stopPropagation(); openAdminModal('${escapeJs(blValue)}', 'FINAL', '${escapeJs(actionRequestId)}')"><i class="fas fa-file-circle-check" aria-hidden="true"></i><span>${escapeHtml(finalLabel)}</span></button>`;
+        }
 
         return `
       <tr data-req="${escapeHtml(rowId)}" class="clickable-row">
@@ -603,21 +693,8 @@ function renderAdminTable() {
             <td>
               <button class="icon-btn" title="View Docs" onclick="event.stopPropagation(); viewDocs('${escapeJs(((row.request && (row.request.id || row.request.request_id)) || row.request_id || row.id || blValue) || '')}')"><i class="fas fa-folder-open"></i></button>
             </td>
-            <td>
-              ${String(status) === 'DRAFT_SENT' || String(status) === 'AWAITING_PAYMENT'
-          ? `<span class="pending-payment" style="color:#f59e0b; font-weight:600;">${escapeHtml(translateStatus(String(status) === 'AWAITING_PAYMENT' ? 'AWAITING_PAYMENT' : 'DRAFT_SENT'))}</span>`
-          : (isInitiated ?
-        (() => {
-          const _langBtn = (document.getElementById('lang-select') && document.getElementById('lang-select').value) ? document.getElementById('lang-select').value : 'en';
-          const _label = (i18n.issue_draft_price && (i18n.issue_draft_price[_langBtn] || i18n.issue_draft_price.en)) || 'Issue Draft/Price';
-          return `<button class="btn-green" onclick="openAdminModal('${escapeJs(blValue)}', 'DRAFT')" style="font-size:11px; padding:6px 12px;">${escapeHtml(_label)}</button>`;
-        })() :
-        (String(status) === 'PAYMENT_PROOF_UPLOADED'
-          ? `<span class="pending-confirmation" style="color:#f59e0b; font-weight:600;">${escapeHtml(translateStatus('PAYMENT_PROOF_UPLOADED'))}</span>`
-          : (String(status) === 'COMPLETED'
-              ? `<button class="btn-white" disabled style="font-size:11px; padding:6px 12px; border-color:var(--primary-green); color:var(--primary-green); opacity:0.5; cursor:not-allowed;">${escapeHtml((i18n.deliver_final_feri && (i18n.deliver_final_feri[(document.getElementById('lang-select') && document.getElementById('lang-select').value) || 'en'] || i18n.deliver_final_feri.en)) || 'Deliver Final FERI')}</button>`
-              : `<button class="btn-white" onclick="openAdminModal('${escapeJs(blValue)}', 'FINAL')" style="font-size:11px; padding:6px 12px; border-color:var(--primary-green); color:var(--primary-green);">${escapeHtml((i18n.deliver_final_feri && (i18n.deliver_final_feri[(document.getElementById('lang-select') && document.getElementById('lang-select').value) || 'en'] || i18n.deliver_final_feri.en)) || 'Deliver Final FERI')}</button>`)))
-    }
+            <td class="admin-action-cell" data-label="${lang === 'fr' ? 'Action admin' : 'Admin Action'}">
+              <div class="admin-row-actions">${adminAction}${viewButton}</div>
             </td>
         </tr>
     `;
@@ -629,8 +706,9 @@ function renderAdminTable() {
 /**
  * Opens the same modal but changes text based on mode
  */
-function openAdminModal(bl, mode) {
+function openAdminModal(bl, mode, requestId = null) {
   selectedBL = bl;
+  selectedRequestId = requestId;
   currentMode = mode;
   const modal = document.getElementById('admin-modal');
   if (!modal) return;
@@ -646,12 +724,17 @@ function openAdminModal(bl, mode) {
   try {
     const uploadAdGroup = document.getElementById('upload-ad-group');
     const matchingReqForType = requests.find(r => {
+      const ids = [r.id, r.request_id, r.request && (r.request.id || r.request.request_id)];
+      if (requestId && ids.some(id => id && String(id) === String(requestId))) return true;
       const bls = [r.extracted_bl, r.manual_bl, r.manualBl, r.bl_number, r.bl, r.bill_of_lading];
-      if (r.request) bls.push(r.request.extracted_bl, r.request.manual_bl, r.request.bl_number, r.request.bl);
+      if (r.request) bls.push(r.request.extracted_bl, r.request.manual_bl, r.request.manualBl, r.request.bl_number, r.request.bl, r.request.bill_of_lading);
+      if (Array.isArray(r.documents)) {
+        r.documents.forEach(document => bls.push(document.extracted_bl, document.manual_bl, document.manualBl, document.bl_number, document.bl, document.bill_of_lading));
+      }
       return bls.some(x => x && String(x) === String(bl));
     });
     if (uploadAdGroup) {
-      if (matchingReqForType && String(matchingReqForType.type) === 'FERI_AND_AD') {
+      if (matchingReqForType && String(matchingReqForType.type || matchingReqForType.request?.type) === 'FERI_AND_AD') {
         uploadAdGroup.style.display = '';
       } else {
         uploadAdGroup.style.display = 'none';
@@ -731,31 +814,31 @@ async function handleAdminSubmit() {
   try {
     // Be lenient when matching BL: some rows may store BL in different fields
     // Also selectedBL may include a display suffix like "(Bl saisi manuel)" – strip it
-    const cleanedSelectedBL = (selectedBL || '').replace(/\s*\([^)]+\)\s*$/,'').trim();
+    const cleanedSelectedBL = String(selectedBL || '').trim().replace(/\s*\((?:BL saisi manuel|manual BL|BL generator)\)\s*$/i, '').trim();
+    const normalizedSelectedBL = cleanedSelectedBL.toLocaleLowerCase();
 
     const matching = requests.find(r => {
-      const bls = [r.extracted_bl, r.manual_bl, r.manualBl, r.bl_number, r.bl, r.bill_of_lading];
-      if (r.request) bls.push(r.request.extracted_bl, r.request.manual_bl, r.request.manualBl, r.request.bl_number, r.request.bl);
-
-      // Also consider id/request_id matching (some rows display the UUID instead of BL)
       const ids = [r.id, r.request_id, r.request && (r.request.id || r.request.request_id)];
+      if (selectedRequestId && ids.some(id => id && String(id) === String(selectedRequestId))) return true;
 
-      const s1 = String(selectedBL || '');
-      const s2 = String(cleanedSelectedBL || '');
-
-      if (ids.some(id => id && (String(id) === s1 || String(id) === s2))) return true;
-      return bls.some(x => x && (String(x) === s1 || String(x) === s2));
+      const bls = [r.extracted_bl, r.manual_bl, r.manualBl, r.bl_number, r.bl, r.bill_of_lading];
+      if (r.request) bls.push(r.request.extracted_bl, r.request.manual_bl, r.request.manualBl, r.request.bl_number, r.request.bl, r.request.bill_of_lading);
+      if (Array.isArray(r.documents)) {
+        r.documents.forEach(document => bls.push(document.extracted_bl, document.manual_bl, document.manualBl, document.bl_number, document.bl, document.bill_of_lading));
+      }
+      return bls.some(value => value && String(value).trim().toLocaleLowerCase() === normalizedSelectedBL);
     });
 
-    if (!matching || !(matching.id || matching.request_id)) {
+    if (!matching || !(matching.id || matching.request_id || matching.request?.id || matching.request?.request_id)) {
       const maybeUuid = selectedBL && /^[0-9a-fA-F-]{36}$/.test(selectedBL) ? selectedBL : null;
-      if (!maybeUuid) throw new Error('Impossible de trouver la demande correspondante pour ce BL');
+      if (!maybeUuid && !selectedRequestId) throw new Error('Impossible de trouver la demande correspondante pour ce BL');
+      if (!maybeUuid && selectedRequestId) throw new Error('La demande sélectionnée est introuvable. Actualisez la liste et réessayez.');
     }
 
-    const requestId = (matching && (matching.id || matching.request_id)) || selectedBL;
+    const requestId = (matching && (matching.id || matching.request_id || matching.request?.id || matching.request?.request_id)) || selectedRequestId || selectedBL;
 
     const metaApi = document.querySelector('meta[name="api-base"]')?.content || '';
-    const defaultLocal = 'https://mkc-backend-cs7a.onrender.com';
+    const defaultLocal = 'https://mkc-ymuo.onrender.com';
     const API_BASE = metaApi || defaultLocal;
     const token = localStorage.getItem('token') || localStorage.getItem('access_token');
     if (!token) throw new Error('Token administrateur introuvable. Veuillez vous reconnecter.');
@@ -816,11 +899,11 @@ async function handleAdminSubmit() {
       fd2.append('files', adInputEl.files[0]);
     }
 
-    // Suppress server-side notification for draft upload; notification will be triggered
-    // later explicitly by the admin after the invoice is recorded.
+    // The upload endpoint does not notify the client; notification is triggered later
+    // explicitly by the admin after the invoice is recorded.
     const resp2 = await fetch(`${API_BASE.replace(/\/$/, '')}/admin/requests/${requestId}/upload-draft`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'X-Suppress-Notification': '1' },
+      headers: { Authorization: `Bearer ${token}` },
       body: fd2
     });
 
@@ -838,14 +921,14 @@ async function handleAdminSubmit() {
       const isProforma = drafts.some(d => (d.type || '').toString().toLowerCase().includes('proforma'));
       const newStatus = isProforma ? 'PROFORMAT_SENT' : 'DRAFT_SENT';
       requests = requests.map(req => {
-        if ((req.id || req.request_id) === requestId || [req.extracted_bl, req.bl_number, req.bl].some(x => x && String(x) === selectedBL)) {
+        if ((req.id || req.request_id || req.request?.id || req.request?.request_id) === requestId || [req.extracted_bl, req.manual_bl, req.manualBl, req.bl_number, req.bl, req.request?.extracted_bl, req.request?.manual_bl, req.request?.bl_number, req.request?.bl].some(x => x && String(x).trim().toLocaleLowerCase() === normalizedSelectedBL)) {
           return { ...req, status: newStatus, updated: new Date().toLocaleString() };
         }
         return req;
       });
     } catch (e) {
       // fallback: mark draft sent
-      requests = requests.map(req => ((req.id || req.request_id) === requestId) ? Object.assign({}, req, { status: 'DRAFT_SENT', updated: new Date().toLocaleString() }) : req);
+      requests = requests.map(req => ((req.id || req.request_id || req.request?.id || req.request?.request_id) === requestId) ? Object.assign({}, req, { status: 'DRAFT_SENT', updated: new Date().toLocaleString() }) : req);
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(requests));
     renderAdminTable();
@@ -876,7 +959,8 @@ async function fetchAndRenderUser() {
     const token = localStorage.getItem('token') || localStorage.getItem('access_token');
     if (!token) return;
 
-    const resp = await fetch('https://mkc-backend-cs7a.onrender.com/users/me', {
+    const API_BASE = document.querySelector('meta[name="api-base"]')?.content?.replace(/\/+$/, '') || 'https://mkc-ymuo.onrender.com';
+    const resp = await fetch(`${API_BASE}/users/me`, {
       headers: { Authorization: `Bearer ${token}` }
     });
     let data = null;
@@ -887,6 +971,7 @@ async function fetchAndRenderUser() {
     if (!data) {
       data = decodeTokenFallback(token);
     }
+    data = data?.data?.profile || data?.profile || data?.user || data?.data || data;
     const nameEl = document.querySelector('.user-profile .user-info .name');
     const roleEl = document.querySelector('.user-profile .user-info .role');
     const avatarEl = document.querySelector('.user-profile .avatar-placeholder');
@@ -902,7 +987,7 @@ async function fetchAndRenderUser() {
       // fallback: use email local-part capitalized
       try { fullName = data.email.split('@')[0].replace(/[._\-]/g, ' ').split(' ').map(s=>s.charAt(0).toUpperCase()+s.slice(1)).join(' '); } catch(e){ fullName = data.email; }
     } else {
-      fullName = 'Administrator';
+      fullName = 'Admin';
     }
     const role = (data?.role || data?.user_metadata?.role || 'ADMIN').toString();
 
@@ -1018,7 +1103,7 @@ async function saveBLSaisi(requestId) {
     }
     
     const metaApi = document.querySelector('meta[name="api-base"]')?.content || '';
-    const API_BASE = metaApi || 'https://mkc-backend-cs7a.onrender.com';
+    const API_BASE = metaApi || 'https://mkc-ymuo.onrender.com';
     const token = localStorage.getItem('token') || localStorage.getItem('access_token');
     
     if (!token) {
@@ -1131,7 +1216,7 @@ window.confirmPaymentFor = async function (requestId) {
     const API_BASE = (() => {
     const meta = document.querySelector('meta[name="api-base"]')?.content || '';
     if (meta) return meta.replace(/\/$/, '');
-    return 'https://mkc-backend-cs7a.onrender.com';
+    return 'https://mkc-ymuo.onrender.com';
   })();
   const token = localStorage.getItem('token') || localStorage.getItem('access_token');
   if (!token) return alert('Token administrateur introuvable. Veuillez vous reconnecter.');
@@ -1177,45 +1262,165 @@ function openSidePanelById(id) {
   openSidePanel(req);
 }
 
+function setAdminDetailValue(id, value) {
+  const element = document.getElementById(id);
+  if (!element) return;
+  const missing = value === null || value === undefined || String(value).trim() === '';
+  element.textContent = missing ? 'Non renseigné' : String(value);
+  element.classList.toggle('is-missing', missing);
+}
+
+function formatAdminDetailDate(value) {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  const locale = document.getElementById('lang-select')?.value === 'en' ? 'en-US' : 'fr-FR';
+  return new Intl.DateTimeFormat(locale, { day: '2-digit', month: 'short', year: 'numeric' }).format(date);
+}
+
+function getAdminDetailProgress(status) {
+  const value = String(status || '').toUpperCase();
+  if (['COMPLETED', 'VALIDATED', 'ISSUED'].includes(value)) return 3;
+  if (['PROCESSING', 'DRAFT_SENT', 'PROFORMAT_SENT', 'AWAITING_PAYMENT', 'PAYMENT_PROOF_UPLOADED', 'PAYMENT_CONFIRMED'].includes(value)) return 2;
+  if (['UNDER_REVIEW', 'SUBMITTED'].includes(value)) return 1;
+  if (['CREATED', 'AWAITING_DOCUMENTS'].includes(value)) return 0;
+  return -1;
+}
+
+function renderAdminDetailJourney(req, rawStatus) {
+  const steps = document.getElementById('admin-voyage-steps');
+  const ocean = document.querySelector('#side-panel .admin-voyage-ocean');
+  const notice = document.getElementById('admin-detail-status-notice');
+  const rejected = ['REJECTED', 'CANCELLED'].includes(rawStatus);
+  const previousStatus = req.previous_status || req.status_before_rejection || '';
+  const progress = getAdminDetailProgress(rejected ? previousStatus : rawStatus);
+
+  if (steps) {
+    steps.classList.toggle('is-rejected', rejected);
+    steps.style.setProperty('--route-fill', `${progress >= 0 ? progress * 25 : 0}%`);
+    steps.querySelectorAll('li').forEach((step, index) => {
+      step.classList.toggle('is-complete', progress >= 0 && index < progress);
+      step.classList.toggle('is-current', !rejected && progress >= 0 && index === progress);
+      step.classList.toggle('is-future', progress < 0 || index > progress);
+      step.classList.toggle('is-rejected-step', rejected && progress >= 0 && index === progress);
+    });
+    steps.setAttribute('aria-label', `Parcours administratif — ${translateStatus(rawStatus) || rawStatus || 'Statut inconnu'}`);
+  }
+  if (ocean && progress >= 0) {
+    ocean.style.setProperty('--ship-left', `${Math.max(5, Math.min(95, 5 + progress * 30))}%`);
+  }
+
+  const dates = [
+    ['admin-voyage-date-created', req.created_at || req.createdAt],
+    ['admin-voyage-date-review', req.reviewed_at || req.under_review_at || req.submitted_at],
+    ['admin-voyage-date-processing', req.processing_started_at || req.processed_at],
+    ['admin-voyage-date-completed', req.completed_at || req.issued_at]
+  ];
+  dates.forEach(([id, value]) => {
+    const target = document.getElementById(id);
+    if (target) target.textContent = formatAdminDetailDate(value);
+  });
+
+  if (notice) {
+    const needsAction = ['AWAITING_DOCUMENTS', 'AWAITING_PAYMENT', 'PAYMENT_PROOF_UPLOADED'].includes(rawStatus);
+    notice.hidden = !rejected && !needsAction && progress >= 0;
+    notice.className = `detail-status-notice admin-detail-status-notice${rejected ? '' : ' is-action-required'}`;
+    notice.textContent = rejected
+      ? (rawStatus === 'CANCELLED' ? 'Dossier annulé.' : 'Dossier rejeté.')
+      : needsAction ? (translateStatus(rawStatus) || rawStatus) : `Étape actuelle : ${translateStatus(rawStatus) || rawStatus || 'statut non reconnu'}.`;
+  }
+}
+
+function renderAdminRequestHistory(req) {
+  const card = document.getElementById('admin-history-card');
+  const list = document.getElementById('admin-history-list');
+  if (!card || !list) return;
+  const history = [req.status_history, req.audit_history, req.history, req.events, req.timeline]
+    .find(Array.isArray);
+  list.replaceChildren();
+  if (!history || history.length === 0) {
+    card.hidden = true;
+    return;
+  }
+
+  history.forEach(event => {
+    if (!event || typeof event !== 'object') return;
+    const title = event.title || event.label || event.description || event.message || event.event_type || event.type || event.status;
+    if (!title) return;
+    const item = document.createElement('li');
+    item.className = 'admin-history-item';
+    const marker = document.createElement('span');
+    marker.className = 'admin-history-marker';
+    const icon = document.createElement('i');
+    const eventType = String(event.event_type || event.type || '').toUpperCase();
+    icon.className = `fas ${eventType.includes('DISPUT') ? 'fa-triangle-exclamation' : eventType.includes('MESSAGE') ? 'fa-message' : eventType.includes('STATUS') ? 'fa-arrows-rotate' : eventType.includes('PROFORMA') ? 'fa-file-invoice' : 'fa-circle'}`;
+    icon.setAttribute('aria-hidden', 'true');
+    marker.appendChild(icon);
+    const text = document.createElement('span');
+    text.textContent = String(title).replace(/_/g, ' ');
+    item.append(marker, text);
+    const occurredAt = event.created_at || event.timestamp || event.date || event.createdAt;
+    if (occurredAt) {
+      const time = document.createElement('time');
+      time.dateTime = String(occurredAt);
+      time.textContent = formatAdminDetailDate(occurredAt);
+      item.appendChild(time);
+    }
+    list.appendChild(item);
+  });
+  card.hidden = list.childElementCount === 0;
+}
+
 function openSidePanel(req) {
   const panel = document.getElementById('side-panel');
   if (!panel) return;
   // expose current request id on the side panel for other UI flows (proforma modal, etc.)
   try { panel.dataset.requestId = req.id || req.request_id || ''; } catch (e) {}
-  document.getElementById('side-bl').innerText = formatBLDisplayFromRow(req) || '—';
+  document.getElementById('side-bl').innerText = formatBLDisplayFromRow(req) || req.id || req.request_id || '—';
   // Render status as a styled badge with icon
   const sideStatusEl = document.getElementById('side-status');
-  const rawStatus = (req.status || '').toString().toUpperCase();
+  const rawStatus = (req.status || req.state || '').toString().toUpperCase();
   const statusLabel = translateStatus(rawStatus) || 'UNKNOWN';
-  const icons = {
-    success: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.2"/></svg>',
-    pending: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M12 8v5l3 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.2"/></svg>',
-    rejected: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>'
-  };
 
   let cls = 'pending';
-  if (rawStatus === 'COMPLETED' || rawStatus === 'FINAL') cls = 'success';
-  if (rawStatus === 'REJECTED' || rawStatus === 'DENIED') cls = 'rejected';
+  if (['COMPLETED', 'PAYMENT_CONFIRMED', 'VALIDATED', 'ISSUED', 'FINAL'].includes(rawStatus)) cls = 'success';
+  if (['REJECTED', 'DENIED', 'CANCELLED'].includes(rawStatus)) cls = 'rejected';
 
   if (sideStatusEl) {
-    sideStatusEl.className = 'status badge ' + cls;
-    const iconHtml = cls === 'success' ? icons.success : (cls === 'rejected' ? icons.rejected : icons.pending);
-    sideStatusEl.innerHTML = iconHtml + '<span>' + statusLabel + '</span>';
+    sideStatusEl.className = 'status badge admin-detail-status ' + cls;
+    const icon = document.createElement('i');
+    icon.className = `fas ${cls === 'success' ? 'fa-circle-check' : cls === 'rejected' ? 'fa-circle-xmark' : 'fa-clock'}`;
+    icon.setAttribute('aria-hidden', 'true');
+    const label = document.createElement('span');
+    label.textContent = statusLabel;
+    sideStatusEl.replaceChildren(icon, label);
   }
+  const typeValue = req.type || req.request_type || '';
+  const typeDisplay = ({ FERI_ONLY: 'FERI ONLY', AD_ONLY: 'AD ONLY', FERI_AND_AD: 'FERI + AD' })[String(typeValue).toUpperCase()] || String(typeValue).replace(/_/g, ' ') || 'Non renseigné';
+  setAdminDetailValue('side-bl-detail', formatBLDisplayFromRow(req) || req.id || req.request_id);
+  setAdminDetailValue('side-type', typeDisplay);
+  const typeBadge = document.getElementById('side-type-badge');
+  if (typeBadge) typeBadge.textContent = typeDisplay;
+  setAdminDetailValue('side-country', req.destination_country || req.country || req.destination);
+  renderAdminDetailJourney(req, rawStatus);
+  renderAdminRequestHistory(req);
 
   // Disable the "Envoyer la proforma" button when the request is completed
   try {
     const btnSendProforma = document.getElementById('btn-send-proforma');
     if (btnSendProforma) {
-      if (rawStatus === 'COMPLETED') {
+      if (['COMPLETED', 'ISSUED'].includes(rawStatus)) {
         // Switch to view mode: allow admin to view the generated invoice
         btnSendProforma.disabled = false;
         btnSendProforma.classList.remove('disabled');
         btnSendProforma.dataset.mode = 'view_invoice';
         try {
           const lang = (document.getElementById('lang-select') && document.getElementById('lang-select').value) || 'en';
-          const label = (window.i18n && typeof window.i18n.t === 'function') ? (window.i18n.t('btn_view_invoice') || (i18n.btn_view_invoice && i18n.btn_view_invoice[lang])) : (i18n.btn_view_invoice && i18n.btn_view_invoice[lang]);
-          btnSendProforma.innerText = label || 'Voir la facture';
+          const globalLabel = window.i18n && typeof window.i18n.t === 'function' ? window.i18n.t('btn_view_invoice') : '';
+          const label = globalLabel && globalLabel !== 'btn_view_invoice' ? globalLabel : (i18n.btn_view_invoice && i18n.btn_view_invoice[lang]);
+          const labelEl = btnSendProforma.querySelector('span');
+          if (labelEl) labelEl.textContent = label || 'Voir la facture';
+          else btnSendProforma.textContent = label || 'Voir la facture';
         } catch (e) {}
       } else {
         // Restore original send behavior
@@ -1224,15 +1429,19 @@ function openSidePanel(req) {
         btnSendProforma.dataset.mode = '';
         try {
           const lang = (document.getElementById('lang-select') && document.getElementById('lang-select').value) || 'en';
-          const label = (window.i18n && typeof window.i18n.t === 'function') ? (window.i18n.t('btn_send_proforma') || (i18n.btn_send_proforma && i18n.btn_send_proforma[lang])) : (i18n.btn_send_proforma && i18n.btn_send_proforma[lang]);
-          btnSendProforma.innerText = label || 'Envoyer la proforma';
+          const globalLabel = window.i18n && typeof window.i18n.t === 'function' ? window.i18n.t('btn_send_proforma') : '';
+          const label = globalLabel && globalLabel !== 'btn_send_proforma' ? globalLabel : (i18n.btn_send_proforma && i18n.btn_send_proforma[lang]);
+          const labelEl = btnSendProforma.querySelector('span');
+          if (labelEl) labelEl.textContent = label || 'Envoyer la proforma';
+          else btnSendProforma.textContent = label || 'Envoyer la proforma';
         } catch (e) {}
       }
     }
   } catch (e) {}
 
-  document.getElementById('side-date').innerText = 'Date: ' + (formatDateFromRow(req) || '—');
-  document.getElementById('side-client').innerText = 'Client: ' + (getClientName(req) || '—');
+  const createdAt = req.created_at || req.createdAt;
+  setAdminDetailValue('side-date', createdAt ? formatAdminDetailDate(createdAt) : '');
+  setAdminDetailValue('side-client', getClientName(req) === '---' ? '' : getClientName(req));
   
   // Populate BL saisi field
   const blSaisiInput = document.getElementById('side-bl-saisi-input');
@@ -1247,113 +1456,133 @@ function openSidePanel(req) {
     btnSaveBL.onclick = () => saveBLSaisi(req.id || req.request_id);
   }
   
-  const fxiEl = document.getElementById('side-fxi');
-  if (fxiEl) fxiEl.innerText = 'FXI: ' + (req.fxi_number || '—');
+  setAdminDetailValue('side-fxi', req.fxi_number || req.fxi);
+  setAdminDetailValue('side-carte-chargeur', req.carte_chargeur || req.charger_card_number);
+  setAdminDetailValue('side-carrier', req.carrier_name);
+  setAdminDetailValue('side-vehicle', req.vehicle_registration);
+  setAdminDetailValue('side-road-amount', req.transport_road_amount !== null && req.transport_road_amount !== undefined && req.transport_road_amount !== '' ? `${req.transport_road_amount} XAF` : '');
+  setAdminDetailValue('side-river-amount', req.transport_river_amount !== null && req.transport_river_amount !== undefined && req.transport_river_amount !== '' ? `${req.transport_river_amount} XAF` : '');
+  setAdminDetailValue('side-payment-mode', req.payment_mode);
   
-  // Display request type (FERI, AD, FERI_AND_AD)
-  const typeEl = document.getElementById('side-type');
-  if (typeEl) {
-    const typeValue = req.type || '—';
-    const typeDisplay = typeValue.replace(/_/g, ' ');
-    typeEl.innerText = typeDisplay;
-  }
-  
-  // Populate AD fields (transporteur, immatriculation, montants transport, mode paiement)
-  const carrierEl = document.getElementById('side-carrier');
-  if (carrierEl) carrierEl.innerText = req.carrier_name || '—';
-
-  const carteEl = document.getElementById('side-carte-chargeur');
-  if (carteEl) carteEl.innerText = req.carte_chargeur || '—';
-  
-  const vehicleEl = document.getElementById('side-vehicle');
-  if (vehicleEl) vehicleEl.innerText = req.vehicle_registration || '—';
-  
-  const roadAmountEl = document.getElementById('side-road-amount');
-  if (roadAmountEl) roadAmountEl.innerText = req.transport_road_amount ? (req.transport_road_amount + ' XAF') : '—';
-  
-  const riverAmountEl = document.getElementById('side-river-amount');
-  if (riverAmountEl) riverAmountEl.innerText = req.transport_river_amount ? (req.transport_river_amount + ' XAF') : '—';
-  
-  const paymentModeEl = document.getElementById('side-payment-mode');
-  if (paymentModeEl) paymentModeEl.innerText = req.payment_mode || '—';
-  
-  const docsEl = document.getElementById('side-docs');
-  docsEl.innerHTML = '';
-  let docs = req.documents || req.files || [];
-
-  // Renders a documents array into the side panel using the existing style
-  const renderDocsArray = (docsArr) => {
-    docsEl.innerHTML = '';
-    if (!Array.isArray(docsArr) || docsArr.length === 0) {
-      docsEl.innerHTML = '<p style="color:#666">Aucun document attaché.</p>';
+  const docsEl = document.getElementById('side-docs-list') || document.getElementById('side-docs');
+  if (docsEl) docsEl.replaceChildren();
+  const requestId = req.id || req.request_id || '';
+  const documentLocale = document.getElementById('lang-select')?.value === 'en' ? 'en' : 'fr';
+  const renderDocumentState = (kind, message) => {
+    if (!docsEl || panel.dataset.requestId !== String(requestId)) return;
+    docsEl.replaceChildren();
+    const state = document.createElement('div');
+    state.className = kind === 'error' ? 'admin-doc-error' : 'admin-doc-empty';
+    if (kind === 'empty') {
+      const iconWrap = document.createElement('span');
+      iconWrap.className = 'admin-doc-empty-icon';
+      const icon = document.createElement('i');
+      icon.className = 'fas fa-file-circle-question';
+      icon.setAttribute('aria-hidden', 'true');
+      iconWrap.appendChild(icon);
+      const copy = document.createElement('div');
+      const title = document.createElement('strong');
+      title.textContent = documentLocale === 'en' ? 'No documents attached' : 'Aucun document joint';
+      const description = document.createElement('p');
+      description.textContent = documentLocale === 'en'
+        ? 'No files are currently available for this request.'
+        : "Aucun fichier n'est actuellement disponible pour cette demande.";
+      copy.append(title, description);
+      state.append(iconWrap, copy);
+    } else {
+      state.setAttribute('role', 'alert');
+      state.textContent = message;
+    }
+    docsEl.appendChild(state);
+  };
+  const renderDocsArray = docsArr => {
+    if (!docsEl || panel.dataset.requestId !== String(requestId)) return;
+    const validDocs = Array.isArray(docsArr) ? docsArr.filter(doc => doc && typeof doc === 'object') : [];
+    docsEl.replaceChildren();
+    if (!validDocs.length) {
+      renderDocumentState('empty');
       return;
     }
-    docsArr.forEach(d => {
+    validDocs.forEach(doc => {
+      const fileName = doc.file_name || doc.name || doc.filename || doc.original_name || 'Document';
+      const fileType = doc.type || doc.category || doc.doc_type || doc.kind || (fileName.includes('.') ? fileName.split('.').pop().toUpperCase() : (documentLocale === 'en' ? 'File' : 'Fichier'));
+      const addedAt = doc.created_at || doc.uploaded_at || doc.added_at || doc.createdAt;
       const row = document.createElement('div');
-      row.style.display = 'flex';
-      row.style.justifyContent = 'space-between';
-      row.style.alignItems = 'center';
-      row.style.padding = '8px 0';
-      row.style.borderBottom = '1px solid #f0f0f0';
-
-      const meta = document.createElement('div');
-      meta.style.display = 'flex';
-      meta.style.flexDirection = 'column';
-      meta.innerHTML = `<strong>${d.file_name || d.name || d.filename || 'Document'}</strong><small style="color:#666">${d.type || d.category || d.doc_type || ''}</small>`;
-
-      const actions = document.createElement('div');
-      actions.style.display = 'flex';
-      actions.style.gap = '8px';
-
-      const dl = document.createElement('button');
-      dl.className = 'btn-white';
-      dl.innerText = '⬇️ Télécharger';
-      dl.onclick = (ev) => {
-        ev.stopPropagation();
-        if (d.url || d.file_path || d.pdf_url) {
-          const href = d.url || d.file_path || d.pdf_url;
-          window.open(href, '_blank');
-        } else if (d.id) {
-          downloadDocumentId(d.id, d.file_name || 'document');
-        } else {
-          alert('Aucun lien de téléchargement disponible');
-        }
-      };
-
-      actions.appendChild(dl);
-      row.appendChild(meta);
-      row.appendChild(actions);
+      row.className = 'admin-document-row';
+      const iconWrap = document.createElement('span');
+      iconWrap.className = 'admin-document-icon';
+      const icon = document.createElement('i');
+      icon.className = 'fas fa-file-lines';
+      icon.setAttribute('aria-hidden', 'true');
+      iconWrap.appendChild(icon);
+      const copy = document.createElement('div');
+      copy.className = 'admin-document-copy';
+      const name = document.createElement('strong');
+      name.textContent = fileName;
+      const metadata = document.createElement('small');
+      metadata.textContent = `${fileType}${addedAt ? ` - ${formatAdminDetailDate(addedAt)}` : ''}`;
+      copy.append(name, metadata);
+      const action = document.createElement('button');
+      action.className = 'admin-document-download';
+      action.type = 'button';
+      const actionIcon = document.createElement('i');
+      actionIcon.className = 'fas fa-arrow-up-right-from-square';
+      actionIcon.setAttribute('aria-hidden', 'true');
+      const actionLabel = document.createElement('span');
+      actionLabel.textContent = documentLocale === 'en' ? 'Open' : 'Consulter';
+      action.append(actionIcon, actionLabel);
+      const href = doc.url || doc.file_path || doc.storage_path || doc.pdf_url;
+      action.disabled = !href && !doc.id;
+      if (!action.disabled) {
+        action.addEventListener('click', event => {
+          event.stopPropagation();
+          if (href) window.open(href, '_blank', 'noopener,noreferrer');
+          else downloadDocumentId(doc.id, fileName);
+        });
+      }
+      row.append(iconWrap, copy, action);
       docsEl.appendChild(row);
     });
   };
 
-  // If there are embedded docs, render them. Otherwise fetch via the same backend endpoint and render.
-  if (Array.isArray(docs) && docs.length > 0) {
-    renderDocsArray(docs);
+  const embeddedDocs = req.documents || req.files;
+  if (Array.isArray(embeddedDocs) && embeddedDocs.length > 0) {
+    renderDocsArray(embeddedDocs);
+  } else if (!requestId) {
+    renderDocsArray([]);
   } else {
-    const requestId = req.id || req.request_id;
-    if (!requestId) {
-      renderDocsArray([]);
-    } else {
-      try {
-        const API_BASE = (() => { const meta = document.querySelector('meta[name="api-base"]')?.content || ''; return meta ? meta.replace(/\/$/, '') : 'https://mkc-backend-cs7a.onrender.com'; })();
-        const token = localStorage.getItem('token') || localStorage.getItem('access_token');
-        const headers = token ? { Authorization: `Bearer ${token}` } : {};
-        const base = API_BASE.replace(/\/api\/?$/, '').replace(/\/$/, '');
-        fetch(`${base}/api/requests/${requestId}/documents`, { headers }).then(async (resp) => {
-          if (!resp.ok) return renderDocsArray([]);
-          const json = await resp.json();
-          const remoteDocs = Array.isArray(json) ? json : (Array.isArray(json.documents) ? json.documents : (Array.isArray(json.data) ? json.data : []));
-          renderDocsArray(remoteDocs);
-        }).catch((e) => { console.warn('Failed to load docs for side panel', e); renderDocsArray([]); });
-      } catch (e) {
-        console.warn('Failed to load docs for side panel', e);
-        renderDocsArray([]);
-      }
+    if (docsEl) {
+      const loading = document.createElement('p');
+      loading.className = 'admin-doc-loading';
+      loading.textContent = documentLocale === 'en' ? 'Loading documents...' : 'Chargement des documents...';
+      docsEl.replaceChildren(loading);
     }
+    const apiBase = document.querySelector('meta[name="api-base"]')?.content || 'https://mkc-ymuo.onrender.com';
+    const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const base = apiBase.replace(/\/api\/?$/, '').replace(/\/$/, '');
+    fetch(`${base}/api/requests/${encodeURIComponent(requestId)}/documents`, { headers })
+      .then(async response => {
+        if (!response.ok) {
+          const details = await response.text().catch(() => '');
+          throw new Error(`HTTP ${response.status}${details ? `: ${details}` : ''}`);
+        }
+        return response.json();
+      })
+      .then(json => {
+        const remoteDocs = Array.isArray(json) ? json : (Array.isArray(json?.documents) ? json.documents : (Array.isArray(json?.data) ? json.data : []));
+        renderDocsArray(remoteDocs);
+      })
+      .catch(error => {
+        console.warn('Failed to load documents for admin request details', { requestId, error });
+        renderDocumentState('error', documentLocale === 'en' ? 'Documents could not be loaded. Please try again.' : 'Impossible de charger les documents. Veuillez reessayer.');
+      });
   }
+  if (!panel.classList.contains('show')) activeAdminDetailTrigger = document.activeElement;
   panel.classList.add('show');
-  panel.setAttribute('aria-hidden','false');
+  panel.setAttribute('aria-hidden', 'false');
+  document.getElementById('side-panel-backdrop')?.classList.add('show');
+  document.querySelector('#side-panel .admin-detail-close')?.focus();
 
   // Invoice button removed from UI; no client-facing invoice action here.
 
@@ -1365,9 +1594,28 @@ function openSidePanel(req) {
   const cancelBtn = document.getElementById('side-cancel-message');
   const statusEl = document.getElementById('side-message-status');
 
-  if (btnMsg) btnMsg.onclick = () => { if (msgForm) { msgForm.style.display = 'block'; msgForm.dataset.type = 'MESSAGE'; if (statusEl) statusEl.style.display='none'; }};
-  if (btnDispute) btnDispute.onclick = () => { if (msgForm) { msgForm.style.display = 'block'; msgForm.dataset.type = 'DISPUTE'; if (statusEl) statusEl.style.display='none'; }};
-  if (cancelBtn) cancelBtn.onclick = () => { if (msgForm) { msgForm.style.display = 'none'; }};
+  const showMessageForm = type => {
+    if (!msgForm) return;
+    msgForm.hidden = false;
+    msgForm.style.display = 'block';
+    msgForm.dataset.type = type;
+    const label = msgForm.querySelector('label[for="side-message-text"]');
+    if (label) label.textContent = type === 'DISPUTE' ? 'Motif de contestation' : 'Votre message';
+    if (statusEl) {
+      statusEl.hidden = true;
+      statusEl.style.display = 'none';
+    }
+    msgForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    document.getElementById('side-message-text')?.focus();
+  };
+  if (btnMsg) btnMsg.onclick = () => showMessageForm('MESSAGE');
+  if (btnDispute) btnDispute.onclick = () => showMessageForm('DISPUTE');
+  if (cancelBtn) cancelBtn.onclick = () => {
+    if (msgForm) {
+      msgForm.hidden = true;
+      msgForm.style.display = 'none';
+    }
+  };
 
   if (sendBtn) sendBtn.onclick = async () => {
     try {
@@ -1377,7 +1625,7 @@ function openSidePanel(req) {
       const type = msgForm?.dataset.type || 'MESSAGE';
       if (!text) { alert('Le message est requis'); sendBtn.disabled = false; return; }
 
-      const API_BASE = (() => { const m = document.querySelector('meta[name="api-base"]')?.content || ''; return m || 'https://mkc-backend-cs7a.onrender.com'; })();
+      const API_BASE = (() => { const m = document.querySelector('meta[name="api-base"]')?.content || ''; return m || 'https://mkc-ymuo.onrender.com'; })();
       const token = localStorage.getItem('token') || localStorage.getItem('access_token');
       const fd = new FormData();
       fd.append('type', type);
@@ -1408,10 +1656,10 @@ function openSidePanel(req) {
         throw new Error(`Envoi échoué: ${resp.status} ${txt||''}`);
       }
 
-      if (statusEl) { statusEl.style.display = 'block'; statusEl.innerText = 'Votre message a été envoyé.'; }
+      if (statusEl) { statusEl.hidden = false; statusEl.style.display = 'block'; statusEl.innerText = 'Votre message a été envoyé.'; }
       document.getElementById('side-message-text').value = '';
       if (fileInput) fileInput.value = '';
-      if (msgForm) msgForm.style.display = 'none';
+      if (msgForm) { msgForm.hidden = true; msgForm.style.display = 'none'; }
 
       // Show in-app toast
       const toastMsg = type === 'DISPUTE' ? 'Contestation envoyée au client.' : 'Message envoyé au client.';
@@ -1434,7 +1682,10 @@ function closeSidePanel() {
   const panel = document.getElementById('side-panel');
   if (!panel) return;
   panel.classList.remove('show');
-  panel.setAttribute('aria-hidden','true');
+  panel.setAttribute('aria-hidden', 'true');
+  document.getElementById('side-panel-backdrop')?.classList.remove('show');
+  activeAdminDetailTrigger?.focus?.();
+  activeAdminDetailTrigger = null;
 }
 
 // Find request by id/request_id or BL and open docs modal
@@ -1483,7 +1734,7 @@ async function fetchAndOpenDocsByRequestId(requestId) {
     const API_BASE = (() => {
       const meta = document.querySelector('meta[name="api-base"]')?.content || '';
       if (meta) return meta.replace(/\/$/, '');
-      return 'https://mkc-backend-cs7a.onrender.com';
+      return 'https://mkc-ymuo.onrender.com';
     })();
     const token = localStorage.getItem('token') || localStorage.getItem('access_token');
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
@@ -1508,7 +1759,7 @@ async function downloadDocumentId(documentId, filename) {
     const API_BASE = (() => {
       const meta = document.querySelector('meta[name="api-base"]')?.content || '';
       if (meta) return meta.replace(/\/$/, '');
-      return 'https://mkc-backend-cs7a.onrender.com';
+      return 'https://mkc-ymuo.onrender.com';
     })();
     const token = localStorage.getItem('token') || localStorage.getItem('access_token');
     const headers = token ? { Authorization: `Bearer ${token}` } : {};

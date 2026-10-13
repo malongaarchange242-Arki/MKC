@@ -1,3 +1,5 @@
+from typing import Any, Dict
+
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 from models.generation import GenerationRequest
@@ -6,6 +8,29 @@ from core.logging import get_logger
 
 router = APIRouter()
 log = get_logger()
+
+
+def _build_pdf_data(payload: GenerationRequest) -> Dict[str, Any]:
+    """Resolve the key/value map handed to the PDF renderer.
+
+    Node posts the request record as `request` (plus signed documents), while
+    other callers may post a flat `data` map directly. Scalar fields are kept;
+    nested structures are dropped so the rendered PDF stays readable.
+    """
+    if payload.data is not None:
+        return payload.data
+
+    data: Dict[str, Any] = {}
+    for key, value in (payload.request or {}).items():
+        if value is None or isinstance(value, (dict, list)):
+            continue
+        data[key] = value
+
+    if payload.documents:
+        data["documents"] = ", ".join(
+            str(doc.get("id") or doc.get("url")) for doc in payload.documents
+        )
+    return data
 
 
 def _build_pdf_response(pdf_bytes: bytes, filename: str) -> Response:
@@ -41,7 +66,7 @@ async def generate_feri(payload: GenerationRequest):
 
         pdf_bytes = generate_pdf_from_template(
             template_name="feri",
-            data=payload.data,
+            data=_build_pdf_data(payload),
             output_filename=payload.output_filename,
         )
 
@@ -51,7 +76,7 @@ async def generate_feri(payload: GenerationRequest):
             "generate_feri.success",
             extra={
                 "request_id": payload.request_id,
-                "filename": filename,
+                "pdf_filename": filename,
                 "size": len(pdf_bytes),
             },
         )
@@ -87,7 +112,7 @@ async def generate_ad(payload: GenerationRequest):
 
         pdf_bytes = generate_pdf_from_template(
             template_name="ad",
-            data=payload.data,
+            data=_build_pdf_data(payload),
             output_filename=payload.output_filename,
         )
 
@@ -97,7 +122,7 @@ async def generate_ad(payload: GenerationRequest):
             "generate_ad.success",
             extra={
                 "request_id": payload.request_id,
-                "filename": filename,
+                "pdf_filename": filename,
                 "size": len(pdf_bytes),
             },
         )

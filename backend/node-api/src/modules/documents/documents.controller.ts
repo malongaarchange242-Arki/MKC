@@ -105,6 +105,7 @@ export class DocumentsController {
             },
             userRole
           );
+          let ocrFailure: { status: number | null; code: string } | null = null;
 
             // 2. Trigger parsing (Async)
           // Hoist variables so they are visible in the catch block for richer logging
@@ -145,13 +146,7 @@ export class DocumentsController {
             const maxAttempts = 2;
             let resp: any = null;
             let lastPythonErr: any = null;
-            // Log a masked version of the API key (helps debug mismatched envs without leaking secret)
-              try {
-              const apiKeyMask = apiKey ? `${apiKey.slice(0, 4)}...[masked]` : 'none';
-              logger.info('Calling Python service', { pythonEndpoint: pythonEndpointNormalized, apiKey: apiKeyMask, timeoutMs });
-            } catch (e) {
-              // ignore logging issues
-            }
+            logger.info('Calling Python service', { pythonEndpoint: pythonEndpointNormalized, timeoutMs });
             for (let attempt = 0; attempt < maxAttempts; attempt++) {
               try {
                 // Use normalized endpoint for the actual call to ensure localhost is used in dev
@@ -169,6 +164,14 @@ export class DocumentsController {
                 // small backoff
                 await new Promise(r => setTimeout(r, 300 * (attempt + 1)));
               }
+            }
+
+            if (!resp?.data || typeof resp.data !== 'object' ||
+              (!Array.isArray(resp.data.fields) && !('bl_number' in resp.data))) {
+              if (lastPythonErr) throw lastPythonErr;
+              const invalidResponse = new Error('Python service returned an invalid extraction response') as Error & { code: string };
+              invalidResponse.code = 'OCR_INVALID_RESPONSE';
+              throw invalidResponse;
             }
 
             if (resp && resp.data) {
@@ -337,9 +340,18 @@ export class DocumentsController {
               if (lastPythonErr.response) le.responseStatus = lastPythonErr.response.status;
               logger.warn('Python service last retry error', le);
             }
+            const errorDetail = err?.response?.data?.detail;
+            ocrFailure = {
+              status: typeof err?.response?.status === 'number' ? err.response.status : null,
+              code: typeof errorDetail?.code === 'string'
+                ? errorDetail.code
+                : err?.code === 'OCR_INVALID_RESPONSE' ? err.code : 'OCR_SERVICE_UNAVAILABLE'
+            };
           }
 
-          return document;
+          return ocrFailure
+            ? { ...document, ocr_status: 'failed', ocr_error: ocrFailure }
+            : document;
         } catch (err: any) {
           // Catch any unexpected error during upload/processing to avoid breaking the caller loop
           logger.error('Document processing failed', { message: err?.message ?? err, fileName: file.originalname });

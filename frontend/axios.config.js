@@ -3,7 +3,7 @@ import axios from 'https://cdn.jsdelivr.net/npm/axios@1.6.8/+esm';
 // Prefer an explicitly configured API, including when the frontend runs locally.
 const isLocalHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
 const configuredApiBase = document.querySelector('meta[name="api-base"]')?.content?.trim();
-const API_BASE = (window.__API_BASE__ || configuredApiBase || (isLocalHost ? 'http://localhost:3000' : 'https://mkc-node-api.onrender.com')).replace(/\/+$/, '');
+const API_BASE = (window.__API_BASE__ || configuredApiBase || (isLocalHost ? 'http://localhost:3000' : 'https://mkc-ymuo.onrender.com')).replace(/\/+$/, '');
 const PYTHON_BASE = 'http://localhost:8000';
 
 export const api = axios.create({
