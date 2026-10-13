@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=0" />
+  <meta name="api-base" content="https://mkc-ymuo.onrender.com" />
   <title>Messages — Maritime Kargo</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <style>
@@ -179,6 +180,17 @@
 <script>
   let activeThreadId = null;
 
+  function getApiBase() {
+    const configuredBase = document.querySelector('meta[name="api-base"]')?.content?.trim();
+    const isLocalHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+    return (window.__API_BASE__ || configuredBase || (isLocalHost ? 'http://localhost:3000' : 'https://mkc-ymuo.onrender.com')).replace(/\/+$/, '');
+  }
+
+  function getAuthHeaders() {
+    const token = localStorage.getItem('access_token') || localStorage.getItem('token');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }
+
   // Simple i18n helper: prefer local `window.i18n.t`, then parent `window.parent.i18n.t` (iframe case), fallback to provided defaults
   function __(key, fallback) {
     try {
@@ -297,10 +309,8 @@
 
     // Attempt to POST to backend messages endpoint (best-effort). If fails, store locally.
     (async () => {
-      const API_BASE = (() => { const m = document.querySelector('meta[name="api-base"]')?.content || ''; return m || 'https://mkc-backend-qx7r.onrender.com'; })();
-      const base = API_BASE.replace(/\/$/, '');
-      const token = localStorage.getItem('token') || localStorage.getItem('access_token') || null;
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const base = getApiBase();
+      const headers = getAuthHeaders();
       let posted = false;
       try {
         const fd = new FormData();
@@ -338,9 +348,8 @@
   // Fetch disputes/messages for a given request id from backend
   async function fetchThreadMessages(threadId) {
     if (!threadId) return [];
-    const API_BASE = (() => { const m = document.querySelector('meta[name="api-base"]')?.content || ''; return m || 'https://mkc-backend-qx7r.onrender.com'; })();
-    const base = API_BASE.replace(/\/$/, '');
-    const token = localStorage.getItem('token') || localStorage.getItem('access_token') || null;
+    const base = getApiBase();
+    const token = localStorage.getItem('access_token') || localStorage.getItem('token') || null;
     if (token) {
       try {
         const payload = JSON.parse(atob(token.split('.')[1]));
@@ -349,13 +358,17 @@
         console.error('Failed to decode token', e);
       }
     }
-    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const headers = getAuthHeaders();
 
     // Helper to fetch json safely
     async function tryFetch(url) {
       try {
         const resp = await fetch(url, { headers });
-        if (!resp.ok) return null;
+        if (!resp.ok) {
+          console.warn(`Failed ${url}: ${resp.status}`);
+          if (resp.status === 401) throw new Error('Votre session a expiré. Veuillez vous reconnecter.');
+          return null;
+        }
         const j = await resp.json().catch(() => null);
         return j || null;
       } catch (e) {
@@ -425,41 +438,44 @@
 
   // Fetch all disputes from several possible admin endpoints
   async function fetchAllDisputes() {
-    const API_BASE = (() => { const m = document.querySelector('meta[name="api-base"]')?.content || ''; return m || 'https://mkc-backend-qx7r.onrender.com'; })();
-    const base = API_BASE.replace(/\/$/, '');
-    const token = localStorage.getItem('token') || localStorage.getItem('access_token') || null;
-    const headers = token ? { Authorization: `Bearer ${token}` } : {};
-    
-    console.log('Fetching disputes...');
-    // Prioritize the user-specific endpoint we just added
-    const candidates = [
-      `${base}/api/requests/disputes`,
-      `${base}/api/disputes`,
-      `${base}/api/admin/disputes`,
-      `${base}/api/requests/disputes/list`
-    ];
-    
-    for (const url of candidates) {
-      try {
-        console.log(`Trying ${url}...`);
-        const resp = await fetch(url, { headers });
-        if (!resp.ok) {
-            console.warn(`Failed ${url}: ${resp.status}`);
-            continue;
-        }
-        const j = await resp.json().catch(() => null);
-        if (!j) continue;
-        
-        console.log(`Success ${url}:`, j);
-        
-        if (Array.isArray(j)) return j;
-        if (j.data && Array.isArray(j.data)) return j.data;
-        if (j.disputes && Array.isArray(j.disputes)) return j.disputes;
-      } catch (e) {
-        console.error(`Error fetching ${url}`, e);
-      }
+    const token = localStorage.getItem('access_token') || localStorage.getItem('token');
+    if (!token) throw new Error(__('messages.login_required', 'Votre session a expiré. Veuillez vous reconnecter.'));
+
+    const base = getApiBase();
+    const headers = getAuthHeaders();
+    const [disputesResponse, messagesResponse] = await Promise.all([
+      fetch(`${base}/api/requests/disputes`, { headers }),
+      fetch(`${base}/api/requests/messages`, { headers })
+    ]);
+
+    if (disputesResponse.status === 401 || messagesResponse.status === 401) {
+      throw new Error(__('messages.login_required', 'Votre session a expiré. Veuillez vous reconnecter.'));
     }
-    return [];
+
+    const failedResponse = [disputesResponse, messagesResponse].find(response => !response.ok);
+    if (failedResponse) {
+      throw new Error(`${__('messages.load_error', 'Impossible de charger les conversations')} (${failedResponse.status})`);
+    }
+
+    const [disputesPayload, messagesPayload] = await Promise.all([
+      disputesResponse.json(),
+      messagesResponse.json()
+    ]);
+    const disputes = Array.isArray(disputesPayload) ? disputesPayload
+      : Array.isArray(disputesPayload?.data) ? disputesPayload.data
+      : Array.isArray(disputesPayload?.disputes) ? disputesPayload.disputes : null;
+    const messages = Array.isArray(messagesPayload) ? messagesPayload
+      : Array.isArray(messagesPayload?.data) ? messagesPayload.data
+      : Array.isArray(messagesPayload?.messages) ? messagesPayload.messages : null;
+
+    if (!disputes || !messages) {
+      throw new Error(__('messages.load_error', 'Réponse invalide du serveur.'));
+    }
+    return [...disputes, ...messages].sort((left, right) => {
+      const leftDate = Date.parse(left.created_at || left.createdAt || '') || 0;
+      const rightDate = Date.parse(right.created_at || right.createdAt || '') || 0;
+      return leftDate - rightDate;
+    });
   }
 
   document.getElementById('msg-send').addEventListener('click', send);
@@ -499,7 +515,17 @@
 
     if (!id) {
       // load all disputes
-      const all = await fetchAllDisputes();
+      let all;
+      try {
+        all = await fetchAllDisputes();
+      } catch (error) {
+        const el = document.createElement('div');
+        el.className = 'conversation-row type-normal';
+        el.setAttribute('role', 'alert');
+        el.textContent = error instanceof Error ? error.message : __('messages.load_error', 'Impossible de charger les contestations.');
+        list.appendChild(el);
+        return;
+      }
       if (!all || all.length === 0) {
         const el = document.createElement('div');
         el.className = 'conversation-row type-normal';

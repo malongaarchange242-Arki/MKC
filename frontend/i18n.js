@@ -95,6 +95,11 @@
       if (translations[currentLang] && translations[currentLang][key]) el.placeholder = translations[currentLang][key];
     });
 
+    document.querySelectorAll('[data-i18n-aria-label]').forEach(el => {
+      const key = el.getAttribute('data-i18n-aria-label');
+      if (translations[currentLang] && translations[currentLang][key]) el.setAttribute('aria-label', translations[currentLang][key]);
+    });
+
     // alt text for images via data-i18n-alt
     document.querySelectorAll('[data-i18n-alt]').forEach(el => {
       const key = el.getAttribute('data-i18n-alt');
@@ -123,19 +128,30 @@
     const sel = document.getElementById('lang-select');
     if (!sel) return;
     sel.value = currentLang;
-    sel.addEventListener('change', (e) => {
-      currentLang = e.target.value;
-      localStorage.setItem('lang', currentLang);
-      translatePage();
-    });
+    sel.addEventListener('change', () => window.i18n.setLang(sel.value));
+  }
+
+  function setLanguage(language, persist = true) {
+    const nextLanguage = String(language || '').toLowerCase();
+    if (!['en', 'fr'].includes(nextLanguage)) return false;
+
+    currentLang = nextLanguage;
+    const selector = document.getElementById('lang-select');
+    if (selector) selector.value = currentLang;
+    if (persist) localStorage.setItem('lang', currentLang);
+    translatePage();
+    window.dispatchEvent(new CustomEvent('i18n:changed', { detail: { lang: currentLang } }));
+    return true;
   }
 
   async function init() {
     await loadTranslations();
     // ensure common status keys are present even if translate.json is incomplete
     ensureStatusKeys();
-    // default to English per request, prefer persisted choice
-    currentLang = localStorage.getItem('lang') || 'en';
+    const savedLanguage = localStorage.getItem('lang');
+    // Keep the English default while recovering safely from stale saved values.
+    currentLang = ['en', 'fr'].includes(savedLanguage) ? savedLanguage : 'en';
+    if (savedLanguage !== currentLang) localStorage.setItem('lang', currentLang);
     translatePage();
     // create a floating switch only on index page when no inline switch exists
     const path = window.location.pathname.split('/').pop().toLowerCase();
@@ -162,7 +178,7 @@
 
   // expose for console
   window.i18n = {
-    setLang: (l) => { currentLang = l; translatePage(); },
+    setLang: setLanguage,
     getLang: () => currentLang,
     t
   };

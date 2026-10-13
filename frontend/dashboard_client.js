@@ -15,6 +15,11 @@ let activeDetailTrigger = null;
 let invoicesMap = new Map();
 let currentPage = 1;
 let pageSize = 10;
+let notificationPage = 1;
+let notificationFilter = 'all';
+let notificationRows = [];
+let notificationTotal = 0;
+const notificationPageSize = 20;
 
 // --- INITIALISATION AU CHARGEMENT ---
 window.addEventListener('DOMContentLoaded', async () => {
@@ -29,24 +34,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
-  // If a language switcher exists in the DOM but i18n has a different current
-  // language (race condition between scripts), prefer the visible switch value
-  // so the UI matches what the user sees.
-  try {
-    const langSel = document.getElementById('lang-select');
-    if (langSel && window.i18n && typeof window.i18n.getLang === 'function' && typeof window.i18n.setLang === 'function') {
-      const selVal = langSel.value;
-      const cur = window.i18n.getLang();
-      if (selVal && selVal !== cur) {
-        window.i18n.setLang(selVal);
-      } else if (!selVal) {
-        // ensure selector reflects current language
-        langSel.value = cur;
-      }
-    }
-  } catch (e) {
-    // ignore sync failures
-  }
   // Replace settings icon with messaging icon (if present)
   try {
     const settingsBtn = document.getElementById('settings-btn');
@@ -66,6 +53,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   loadTable(requests);
   // start polling notifications (badge + popup content)
   try { startNotifPolling(); } catch (_) {}
+  setupClientPageNavigation();
   // Periodic auto-refresh disabled — refresh will be manual via the UI.
   // Previously: setInterval(() => { loadRequests().catch(() => {}); }, 15000);
 });
@@ -94,6 +82,94 @@ function ensurePopupContainers() {
     p.innerHTML = `<div class="popup-header">Messages</div><div class="popup-body" id="popup-settings-body" style="max-height:80vh; overflow:auto; padding:8px;"></div>`;
     document.body.appendChild(p);
   }
+}
+
+function setupClientPageNavigation() {
+  const dashboardNav = document.querySelector('.nav-item[data-page="dashboard"]');
+  const notificationsNav = document.getElementById('nav-notif');
+
+  const showPage = page => {
+    const content = document.querySelector('.content-scroll');
+    const notificationPageElement = document.getElementById('client-notifications-page');
+    if (!content || !notificationPageElement) return;
+
+    const isNotificationsPage = page === 'notifications';
+    content.classList.toggle('notifications-active', isNotificationsPage);
+    notificationPageElement.hidden = !isNotificationsPage;
+    dashboardNav?.classList.toggle('active', !isNotificationsPage);
+    notificationsNav?.classList.toggle('active', isNotificationsPage);
+    document.getElementById('sidebar')?.classList.remove('show');
+
+    document.querySelectorAll('.dropdown-popup').forEach(popup => {
+      popup.classList.remove('show-popup');
+      popup.setAttribute('aria-hidden', 'true');
+      popup.style.display = 'none';
+    });
+    document.getElementById('notif-btn')?.setAttribute('aria-expanded', 'false');
+    document.getElementById('settings-btn')?.setAttribute('aria-expanded', 'false');
+
+    if (isNotificationsPage) {
+      if (window.location.hash !== '#notifications') {
+        window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#notifications`);
+      }
+      notificationPage = 1;
+      loadNotificationPage().catch(error => {
+        console.error('Failed to load client notification page', error);
+      });
+    } else if (window.location.hash === '#notifications') {
+      window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
+    }
+  };
+
+  dashboardNav?.addEventListener('click', () => showPage('dashboard'));
+  notificationsNav?.addEventListener('click', () => showPage('notifications'));
+  [dashboardNav, notificationsNav].forEach(item => item?.addEventListener('keydown', event => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      item.click();
+    }
+  }));
+
+  document.getElementById('notifications-view-all')?.addEventListener('click', () => showPage('notifications'));
+  document.querySelectorAll('[data-notification-filter]').forEach(button => {
+    button.addEventListener('click', () => {
+      notificationFilter = button.dataset.notificationFilter === 'unread' ? 'unread' : 'all';
+      notificationPage = 1;
+      document.querySelectorAll('[data-notification-filter]').forEach(filterButton => {
+        const isActive = filterButton === button;
+        filterButton.classList.toggle('active', isActive);
+        filterButton.setAttribute('aria-pressed', String(isActive));
+      });
+      loadNotificationPage().catch(error => console.error('Failed to filter notifications', error));
+    });
+  });
+
+  document.getElementById('notifications-prev')?.addEventListener('click', () => {
+    if (notificationPage > 1) {
+      notificationPage -= 1;
+      loadNotificationPage().catch(error => console.error('Failed to load previous notifications page', error));
+    }
+  });
+  document.getElementById('notifications-next')?.addEventListener('click', () => {
+    if (notificationPage * notificationPageSize < notificationTotal) {
+      notificationPage += 1;
+      loadNotificationPage().catch(error => console.error('Failed to load next notifications page', error));
+    }
+  });
+
+  document.getElementById('client-notification-list')?.addEventListener('click', async event => {
+    const retryButton = event.target.closest('[data-retry-notifications]');
+    if (retryButton) {
+      await loadNotificationPage();
+      return;
+    }
+    const button = event.target.closest('[data-mark-notification-read]');
+    if (!button) return;
+    await markNotificationAsRead(button.dataset.markNotificationRead);
+  });
+  document.getElementById('notifications-mark-all')?.addEventListener('click', markAllNotificationsAsRead);
+  if (window.location.hash === '#notifications') showPage('notifications');
+  else dashboardNav?.classList.add('active');
 }
 
 function formatDateNow() {
@@ -918,6 +994,10 @@ function bindUIEvents() {
         if (window.i18n && typeof window.i18n.setLang === 'function') window.i18n.setLang(langSel.value);
       } catch (e) { /* ignore */ }
       try { renderRequests(); } catch (e) { /* ignore */ }
+      if (document.getElementById('client-notifications-page') && !document.getElementById('client-notifications-page').hidden) {
+        loadNotificationPage().catch(error => console.error('Failed to refresh translated notifications', error));
+      }
+      loadNotifications().catch(() => {});
     });
   }
 
@@ -1190,7 +1270,7 @@ function togglePopup(type, triggerBtn) {
     triggerBtn.setAttribute('aria-expanded', isShown ? 'true' : 'false');
   }
 
-  // If opening notifications popup, load notifications and mark unread as read
+  // Refresh the notification preview and unread count when the popup opens.
   if (type === 'notif' && isShown) {
     loadNotifications().catch(() => {});
   }
@@ -1212,19 +1292,12 @@ let notifPollInterval = null;
 async function loadNotifications() {
   const badge = document.getElementById('notif-badge');
   const body = document.getElementById('popup-notif-body') || document.querySelector('#popup-notif .popup-body');
-  if (!body) return;
 
   try {
-    const res = await api.get('/notifications');
+    const res = await api.get('/notifications', { params: { page: 1, limit: 50 } });
     const list = (res && res.data && res.data.data) ? res.data.data : (res.data || []);
-
-    if (!Array.isArray(list) || list.length === 0) {
-      body.innerHTML = '<div class="notif-item">Aucune notification</div>';
-      if (badge) {
-        badge.textContent = '';
-        badge.style.display = 'none';
-      }
-      return;
+    if (!Array.isArray(list) || res?.data?.warning) {
+      throw new Error(res?.data?.warning || 'Invalid notifications response');
     }
 
     const unread = list.filter(n => !n.is_read);
@@ -1235,64 +1308,188 @@ async function loadNotifications() {
       badge.setAttribute('aria-label', count > 0 ? `${count} notifications non lues` : '0 notifications');
     }
 
-    body.innerHTML = list.slice().reverse().map(n => {
+    if (!body) return;
+    if (list.length === 0) {
+      body.innerHTML = `<div class="notif-item">${escapeHtml(notificationText('notifications_empty', 'Aucune notification'))}</div>`;
+      return;
+    }
+
+    body.innerHTML = list.slice(0, 5).map(n => {
       const title = escapeHtml(n.title || 'Notification');
       const msg = escapeHtml(n.message || '');
-      const ref = n.entity_id || (n.metadata && n.metadata.requestRef) || '';
-      const time = n.created_at ? new Date(n.created_at).toLocaleString() : '';
-
-        if (n.type === 'REQUEST_STATUS_CHANGED') {
-        const reference = escapeHtml(ref || n.entity_id || '');
-        const lang = (window.i18n && typeof window.i18n.getLang === 'function') ? window.i18n.getLang() : 'fr';
-        const statusLabel = escapeHtml(translateStatus('PROCESSING'));
-        const greeting = (lang === 'en') ? 'Hello' : 'Bonjour';
-        const referenceLabel = (lang === 'en') ? 'Reference' : 'Référence';
-        const processingText = (lang === 'en')
-          ? `Your file is now being processed (<strong>${statusLabel}</strong>). No action is required from you at this time.`
-          : `Votre dossier est désormais en cours de traitement (<strong>${statusLabel}</strong>).<br/>Aucune action n\'est requise de votre part pour le moment.`;
-
-        return `
-          <div class="notif-item" data-id="${escapeHtml(n.id)}">
-            <div class="title">🟢 ${statusLabel}</div>
-            <div class="message">
-              <p>${greeting},</p>
-
-              <p>${lang === 'en' ? 'We have received and validated the documents for your FERI request.' : 'Nous avons bien reçu et validé les documents de votre demande FERI.'}</p>
-
-              <p><strong>${referenceLabel} :</strong> ${reference}</p>
-
-              <p>${processingText}</p>
-
-              <p>${lang === 'en' ? 'You will be notified at the next step.' : 'Vous serez informé(e) dès la prochaine étape.'}</p>
-            </div>
-            <div class="meta">${time}</div>
-          </div>`;
-      }
+      const time = formatNotificationDate(n.created_at);
+      const unreadClass = n.is_read ? '' : ' is-unread';
 
       return `
-        <div class="notif-item" data-id="${escapeHtml(n.id)}">
+        <div class="notif-item${unreadClass}" data-id="${escapeHtml(n.id)}">
           <div class="title">${title}</div>
           <div class="message">${msg}</div>
-          <div class="meta">${ref ? 'Ref: ' + escapeHtml(ref) + ' • ' : ''}${time}</div>
+          <div class="meta">${escapeHtml(time)}</div>
         </div>`;
     }).join('');
+  } catch (error) {
+    console.error('Unable to refresh notification badge and preview', error);
+    if (body) body.innerHTML = `<div class="notif-item">${escapeHtml(notificationText('notifications_load_error', 'Impossible de charger les notifications'))}</div>`;
+  }
+}
 
-    // Mark unread as read when popup opened
-    const unreadIds = unread.map(u => u.id).filter(Boolean);
-    if (unreadIds.length) {
-      await Promise.all(unreadIds.map(id => api.patch(`/notifications/${id}/read`).catch(() => {})));
-      if (badge) {
-        badge.textContent = '';
-        badge.style.display = 'none';
+function notificationText(key, fallback) {
+  const translation = window.i18n && typeof window.i18n.t === 'function' ? window.i18n.t(key) : '';
+  return translation && translation !== key ? translation : fallback;
+}
+
+function formatNotificationDate(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const lang = window.i18n && typeof window.i18n.getLang === 'function' ? window.i18n.getLang() : 'fr';
+  return new Intl.DateTimeFormat(lang === 'fr' ? 'fr-FR' : 'en', {
+    dateStyle: 'medium',
+    timeStyle: 'short'
+  }).format(date);
+}
+
+async function loadNotificationPage() {
+  const listElement = document.getElementById('client-notification-list');
+  if (!listElement) return;
+
+  listElement.innerHTML = `<div class="notification-page-state">${escapeHtml(notificationText('notifications_loading', 'Chargement des notifications…'))}</div>`;
+  try {
+    const response = await api.get('/notifications', {
+      params: {
+        page: notificationPage,
+        limit: notificationPageSize,
+        ...(notificationFilter === 'unread' ? { unread: true } : {})
+      }
+    });
+    const payload = response?.data;
+    if (!payload?.success || payload.warning || !Array.isArray(payload.data)) {
+      throw new Error(payload?.warning || 'Invalid notifications response');
+    }
+
+    notificationRows = payload.data;
+    notificationTotal = Number(payload.pagination?.total) || notificationRows.length;
+    renderNotificationPage();
+  } catch (error) {
+    console.error('Failed to load notifications page', error);
+    listElement.innerHTML = `<div class="notification-page-state is-error">
+      <span>${escapeHtml(notificationText('notifications_load_error', 'Impossible de charger les notifications'))}</span>
+      <button class="notification-mark-read" type="button" data-retry-notifications>${escapeHtml(notificationText('retry', 'Réessayer'))}</button>
+    </div>`;
+    const pagination = document.getElementById('notifications-pagination');
+    if (pagination) pagination.hidden = true;
+  }
+}
+
+function renderNotificationPage() {
+  const listElement = document.getElementById('client-notification-list');
+  if (!listElement) return;
+
+  const visibleRows = notificationRows.filter(item => notificationFilter !== 'unread' || !item.is_read);
+  const unreadCount = notificationRows.filter(item => !item.is_read).length;
+  const unreadCountElement = document.getElementById('notifications-unread-count');
+  if (unreadCountElement) {
+    unreadCountElement.textContent = `${unreadCount} ${notificationText('notifications_unread_count', 'non lue(s)')}`;
+  }
+
+  const markAllButton = document.getElementById('notifications-mark-all');
+  if (markAllButton) markAllButton.disabled = unreadCount === 0;
+
+  if (visibleRows.length === 0) {
+    const key = notificationFilter === 'unread' ? 'notifications_no_unread' : 'notifications_empty';
+    const fallback = notificationFilter === 'unread' ? 'Aucune notification non lue.' : 'Aucune notification.';
+    listElement.innerHTML = `<div class="notification-page-state">${escapeHtml(notificationText(key, fallback))}</div>`;
+  } else {
+    listElement.innerHTML = visibleRows.map(item => {
+      const title = escapeHtml(item.title || notificationText('notifications', 'Notification'));
+      const message = escapeHtml(item.message || '');
+      const date = escapeHtml(formatNotificationDate(item.created_at));
+      const reference = item.metadata?.requestRef || item.metadata?.request_id || item.entity_id || '';
+      const referenceText = reference
+        ? `<span class="notification-reference">${escapeHtml(notificationText('ref_number', 'Référence'))} : ${escapeHtml(reference)}</span>`
+        : '';
+      const unreadClass = item.is_read ? '' : ' is-unread';
+      const readButton = item.is_read ? '' : `
+        <button class="notification-mark-read" type="button" data-mark-notification-read="${escapeHtml(item.id)}">
+          ${escapeHtml(notificationText('mark_as_read', 'Marquer comme lue'))}
+        </button>`;
+
+      return `
+        <article class="client-notification${unreadClass}">
+          <span class="client-notification-icon" aria-hidden="true"><i class="fas fa-bell"></i></span>
+          <div class="client-notification-content">
+            <h2>${title}</h2>
+            ${message ? `<p>${message}</p>` : ''}
+            <div class="client-notification-meta">${referenceText}<time>${date}</time></div>
+          </div>
+          ${readButton}
+        </article>`;
+    }).join('');
+  }
+
+  const pagination = document.getElementById('notifications-pagination');
+  const pageCount = Math.max(1, Math.ceil(notificationTotal / notificationPageSize));
+  if (pagination) pagination.hidden = pageCount <= 1;
+  const pageIndicator = document.getElementById('notifications-page-indicator');
+  if (pageIndicator) pageIndicator.textContent = `${notificationPage} / ${pageCount}`;
+  const previousButton = document.getElementById('notifications-prev');
+  const nextButton = document.getElementById('notifications-next');
+  if (previousButton) previousButton.disabled = notificationPage <= 1;
+  if (nextButton) nextButton.disabled = notificationPage >= pageCount;
+}
+
+async function markNotificationAsRead(notificationId) {
+  if (!notificationId) return;
+  try {
+    const response = await api.patch(`/notifications/${encodeURIComponent(notificationId)}/read`);
+    if (response?.data?.success === false) throw new Error(response.data.message || 'Unable to mark notification as read');
+
+    notificationRows = notificationRows.map(item => item.id === notificationId ? { ...item, is_read: true } : item);
+    renderNotificationPage();
+    await loadNotifications();
+  } catch (error) {
+    console.error('Failed to mark notification as read', { notificationId, error });
+    window.alert(notificationText('notification_mark_read_error', 'Impossible de marquer cette notification comme lue.'));
+  }
+}
+
+async function markAllNotificationsAsRead() {
+  const button = document.getElementById('notifications-mark-all');
+  if (!button || button.disabled) return;
+  const originalText = button.textContent;
+  button.disabled = true;
+
+  try {
+    const unreadIds = [];
+    let page = 1;
+    let total = Infinity;
+    while ((page - 1) * 50 < total) {
+      const response = await api.get('/notifications', { params: { page, limit: 50 } });
+      const payload = response?.data;
+      if (!payload?.success || payload.warning || !Array.isArray(payload.data)) {
+        throw new Error(payload?.warning || 'Unable to load notifications');
+      }
+      unreadIds.push(...payload.data.filter(item => !item.is_read).map(item => item.id).filter(Boolean));
+      total = Number(payload.pagination?.total) || payload.data.length;
+      if (payload.data.length < 50) break;
+      page += 1;
+    }
+
+    for (let index = 0; index < unreadIds.length; index += 10) {
+      const batch = unreadIds.slice(index, index + 10);
+      const results = await Promise.allSettled(batch.map(id => api.patch(`/notifications/${encodeURIComponent(id)}/read`)));
+      if (results.some(result => result.status === 'rejected' || result.value?.data?.success === false)) {
+        throw new Error('Some notifications could not be marked as read');
       }
     }
 
-  } catch (e) {
-    body.innerHTML = `<div class="notif-item">Impossible de charger les notifications</div>`;
-    if (badge) {
-      badge.textContent = '';
-      badge.style.display = 'none';
-    }
+    await Promise.all([loadNotificationPage(), loadNotifications()]);
+  } catch (error) {
+    console.error('Failed to mark all notifications as read', error);
+    window.alert(notificationText('notification_mark_read_error', 'Impossible de marquer les notifications comme lues.'));
+  } finally {
+    button.textContent = originalText;
+    button.disabled = notificationRows.every(item => item.is_read);
   }
 }
 

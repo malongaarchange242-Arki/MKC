@@ -46,6 +46,7 @@ export class MessagesService {
     const payload: any = {
       id: messageId,
       request_id: requestId,
+      sender_id: senderId,
       sender_role: senderRole,
       content: content,
       attachment_url: attachmentUrl || null,
@@ -152,5 +153,33 @@ export class MessagesService {
       logger.error('Failed to fetch messages', { e });
       throw new Error('Failed to fetch messages');
     }
+  }
+
+  static async getMessagesForUser(userId: string) {
+    const { data: requests, error: requestsError } = await supabase
+      .from('requests')
+      .select('id')
+      .eq('user_id', userId);
+
+    if (requestsError) {
+      logger.error('Failed to fetch user requests for messages', { userId, error: requestsError });
+      throw new Error('Failed to fetch user requests for messages');
+    }
+
+    const requestIds = (requests || []).map(request => request.id).filter(Boolean);
+    if (requestIds.length === 0) return [];
+
+    const { data, error } = await supabase
+      .from('messages_request')
+      .select('*')
+      .in('request_id', requestIds)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      logger.error('Failed to fetch user request messages', { userId, requestCount: requestIds.length, error });
+      throw new Error('Failed to fetch user request messages');
+    }
+
+    return data || [];
   }
 }

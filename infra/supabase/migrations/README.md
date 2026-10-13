@@ -18,6 +18,10 @@ Apply `20261013_align_request_status_enum.sql` as well. It adds `SEND_DRAFT`
 for sent drafts and `COMPLETED` for completed requests while preserving
 `DRAFT_SENT` for compatibility with existing rows.
 
+Apply `20261013_align_request_messages_schema.sql` to add the message metadata
+columns (`sender_role` and `attachment_url`) expected by the API and client
+message history. Retry sending the message after the migration is applied.
+
 Example using psql:
 
 psql -h <host> -U <user> -d <db> -f 20251230_add_extraction_fields_and_table.sql

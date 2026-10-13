@@ -396,4 +396,17 @@ export class RequestsController {
       return handleControllerError(res, error, 'Get my disputes');
     }
   }
+
+  static async getMyMessages(req: AuthRequest, res: Response) {
+    try {
+      const userId = getAuthUserId(req);
+      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+      const { MessagesService } = await import('../messages/messages.service');
+      const rows = await MessagesService.getMessagesForUser(userId);
+      return res.status(200).json({ messages: rows });
+    } catch (error) {
+      return handleControllerError(res, error, 'Get my messages');
+    }
+  }
 }

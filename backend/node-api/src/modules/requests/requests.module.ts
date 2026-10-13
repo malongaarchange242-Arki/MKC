@@ -21,6 +21,15 @@ export const requestsModule = (): Router => {
   );
 
   // ===============================
+  // LIST MESSAGES FOR MY REQUESTS
+  // ===============================
+  router.get(
+    '/messages',
+    authMiddleware,
+    RequestsController.getMyMessages
+  );
+
+  // ===============================
   // LIST REQUESTS (CLIENT) - explicit /me route
   // ===============================
   router.get(

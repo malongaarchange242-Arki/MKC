@@ -31,7 +31,7 @@ export class NotificationsController {
 				});
 			}
 
-			const { data, error, count } = await supabase
+			let notificationsQuery = supabase
 				.from('notifications')
 				.select(
 					`
@@ -46,8 +46,13 @@ export class NotificationsController {
 					{ count: 'exact' }
 				)
 				.eq('user_id', userId)
-				.order('created_at', { ascending: false })
-				.range(from, to);
+				.order('created_at', { ascending: false });
+
+			if (req.query.unread === 'true') {
+				notificationsQuery = notificationsQuery.eq('is_read', false);
+			}
+
+			const { data, error, count } = await notificationsQuery.range(from, to);
 
 			if (error) {
 				logger.error('[notifications] Supabase list error', {
