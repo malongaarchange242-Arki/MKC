@@ -17,12 +17,14 @@ export type RequestStatus =
   | 'SUBMITTED'
   | 'PROCESSING'
   | 'UNDER_REVIEW'
+  | 'SEND_DRAFT'
   | 'DRAFT_SENT'
   | 'PROFORMAT_SENT'
   | 'PAYMENT_PROOF_UPLOADED'
   | 'PAYMENT_CONFIRMED'
   | 'VALIDATED'
   | 'ISSUED'
+  | 'COMPLETED'
   | 'REJECTED'
   | 'CANCELLED';
 
@@ -33,12 +35,14 @@ export const REQUEST_STATUSES = [
   'SUBMITTED',
   'PROCESSING',
   'UNDER_REVIEW',
+  'SEND_DRAFT',
   'DRAFT_SENT',
   'PROFORMAT_SENT',
   'PAYMENT_PROOF_UPLOADED',
   'PAYMENT_CONFIRMED',
   'VALIDATED',
   'ISSUED',
+  'COMPLETED',
   'REJECTED',
   'CANCELLED'
 ] as const;
@@ -63,14 +67,14 @@ const STATE_TRANSITIONS: Record<RequestStatus, TransitionRule[]> = {
   CREATED: [
     { to: 'AWAITING_DOCUMENTS', allowedRoles: ['CLIENT', 'SYSTEM'] },
     // Allow admin to directly issue a draft from CREATED
-    { to: 'DRAFT_SENT', allowedRoles: ['ADMIN'] }
+    { to: 'SEND_DRAFT', allowedRoles: ['ADMIN'] }
   ],
 
   AWAITING_DOCUMENTS: [
     { to: 'SUBMITTED', allowedRoles: ['CLIENT'] },
     { to: 'CANCELLED', allowedRoles: ['CLIENT'] },
     // Allow admin to issue draft when awaiting documents
-    { to: 'DRAFT_SENT', allowedRoles: ['ADMIN'] }
+    { to: 'SEND_DRAFT', allowedRoles: ['ADMIN'] }
   ],
 
   SUBMITTED: [
@@ -84,19 +88,28 @@ const STATE_TRANSITIONS: Record<RequestStatus, TransitionRule[]> = {
   ],
 
   UNDER_REVIEW: [
-    { to: 'DRAFT_SENT', allowedRoles: ['ADMIN'] },
+    { to: 'SEND_DRAFT', allowedRoles: ['ADMIN'] },
     { to: 'PROFORMAT_SENT', allowedRoles: ['ADMIN'] },
     { to: 'REJECTED', allowedRoles: ['ADMIN'] }
   ],
 
   DRAFT_SENT: [
     { to: 'PAYMENT_PROOF_UPLOADED', allowedRoles: ['CLIENT'] },
-    { to: 'CANCELLED', allowedRoles: ['CLIENT'] }
+    { to: 'CANCELLED', allowedRoles: ['CLIENT'] },
+    { to: 'SEND_DRAFT', allowedRoles: ['ADMIN'] },
+    { to: 'PROFORMAT_SENT', allowedRoles: ['ADMIN'] }
+  ],
+
+  SEND_DRAFT: [
+    { to: 'PAYMENT_PROOF_UPLOADED', allowedRoles: ['CLIENT'] },
+    { to: 'CANCELLED', allowedRoles: ['CLIENT'] },
+    { to: 'PROFORMAT_SENT', allowedRoles: ['ADMIN'] }
   ],
 
   PROFORMAT_SENT: [
     { to: 'PAYMENT_PROOF_UPLOADED', allowedRoles: ['CLIENT'] },
     { to: 'CANCELLED', allowedRoles: ['CLIENT'] },
+    { to: 'SEND_DRAFT', allowedRoles: ['ADMIN'] },
     // Admin or system can mark the request as awaiting payment after issuing the proforma
     { to: 'AWAITING_PAYMENT', allowedRoles: ['ADMIN', 'SYSTEM'] }
   ],
@@ -123,6 +136,7 @@ const STATE_TRANSITIONS: Record<RequestStatus, TransitionRule[]> = {
   ],
 
   ISSUED: [],
+  COMPLETED: [],
   REJECTED: [],
   CANCELLED: []
 };
@@ -163,5 +177,5 @@ export const assertTransitionAllowed = (
 // HELPER: FINAL STATES
 // ===============================
 export const isFinalState = (status: RequestStatus): boolean => {
-  return ['ISSUED', 'REJECTED', 'CANCELLED'].includes(status);
+  return ['ISSUED', 'COMPLETED', 'REJECTED', 'CANCELLED'].includes(status);
 };

@@ -386,7 +386,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           // update local state and UI
           try {
             const isProforma = Array.isArray(json.drafts) && json.drafts.some(d => (d.type || '').toString().toLowerCase().includes('proforma'));
-            const newStatus = isProforma ? 'PROFORMAT_SENT' : 'DRAFT_SENT';
+            const newStatus = isProforma ? 'PROFORMAT_SENT' : 'SEND_DRAFT';
             requests = requests.map(r => ((r.id || r.request_id) == requestId) ? Object.assign({}, r, { status: newStatus }) : r);
             localStorage.setItem(STORAGE_KEY, JSON.stringify(requests)); renderAdminTable();
           } catch (e) {}
@@ -684,7 +684,7 @@ function renderAdminTable() {
         if (isInitiated) {
           const draftLabel = (i18n.issue_draft_price && (i18n.issue_draft_price[lang] || i18n.issue_draft_price.en)) || 'Issue Draft/Price';
           adminAction = `<button class="admin-row-action admin-row-draft" type="button" onclick="event.stopPropagation(); openAdminModal('${escapeJs(blValue)}', 'DRAFT', '${escapeJs(actionRequestId)}')"><i class="fas fa-file-circle-plus" aria-hidden="true"></i><span>${escapeHtml(draftLabel)}</span></button>`;
-        } else if (status === 'DRAFT_SENT' || status === 'AWAITING_PAYMENT') {
+        } else if (status === 'SEND_DRAFT' || status === 'DRAFT_SENT' || status === 'AWAITING_PAYMENT') {
           adminAction = `<span class="pending-payment">${escapeHtml(translateStatus(status))}</span>`;
         } else if (status === 'PAYMENT_PROOF_UPLOADED') {
           adminAction = `<span class="pending-confirmation">${escapeHtml(translateStatus(status))}</span>`;
@@ -947,11 +947,11 @@ async function handleAdminSubmit() {
     const json2 = await resp2.json();
     if (!json2.success) throw new Error('Failed to upload draft');
 
-    // Update local state to reflect server transition (DRAFT_SENT or PROFORMAT_SENT)
+    // Update local state to reflect server transition (SEND_DRAFT or PROFORMAT_SENT)
     try {
       const drafts = Array.isArray(json2.drafts) ? json2.drafts : [];
       const isProforma = drafts.some(d => (d.type || '').toString().toLowerCase().includes('proforma'));
-      const newStatus = isProforma ? 'PROFORMAT_SENT' : 'DRAFT_SENT';
+      const newStatus = isProforma ? 'PROFORMAT_SENT' : 'SEND_DRAFT';
       requests = requests.map(req => {
         if ((req.id || req.request_id || req.request?.id || req.request?.request_id) === requestId || [req.extracted_bl, req.manual_bl, req.manualBl, req.bl_number, req.bl, req.request?.extracted_bl, req.request?.manual_bl, req.request?.bl_number, req.request?.bl].some(x => x && String(x).trim().toLocaleLowerCase() === normalizedSelectedBL)) {
           return { ...req, status: newStatus, updated: new Date().toLocaleString() };
@@ -960,7 +960,7 @@ async function handleAdminSubmit() {
       });
     } catch (e) {
       // fallback: mark draft sent
-      requests = requests.map(req => ((req.id || req.request_id || req.request?.id || req.request?.request_id) === requestId) ? Object.assign({}, req, { status: 'DRAFT_SENT', updated: new Date().toLocaleString() }) : req);
+      requests = requests.map(req => ((req.id || req.request_id || req.request?.id || req.request?.request_id) === requestId) ? Object.assign({}, req, { status: 'SEND_DRAFT', updated: new Date().toLocaleString() }) : req);
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(requests));
     renderAdminTable();
@@ -1317,7 +1317,7 @@ function formatAdminDetailDate(value) {
 function getAdminDetailProgress(status) {
   const value = String(status || '').toUpperCase();
   if (['COMPLETED', 'VALIDATED', 'ISSUED'].includes(value)) return 3;
-  if (['PROCESSING', 'DRAFT_SENT', 'PROFORMAT_SENT', 'AWAITING_PAYMENT', 'PAYMENT_PROOF_UPLOADED', 'PAYMENT_CONFIRMED'].includes(value)) return 2;
+  if (['PROCESSING', 'SEND_DRAFT', 'DRAFT_SENT', 'PROFORMAT_SENT', 'AWAITING_PAYMENT', 'PAYMENT_PROOF_UPLOADED', 'PAYMENT_CONFIRMED'].includes(value)) return 2;
   if (['UNDER_REVIEW', 'SUBMITTED'].includes(value)) return 1;
   if (['CREATED', 'AWAITING_DOCUMENTS'].includes(value)) return 0;
   return -1;
@@ -1973,7 +1973,7 @@ function renderPendingPayments() {
   if (!tbody) return;
 
   // Consider these statuses as pending payments
-  const pendingStatuses = ['DRAFT_SENT', 'PROFORMAT_SENT', 'PAYMENT_PROOF_UPLOADED'];
+  const pendingStatuses = ['SEND_DRAFT', 'DRAFT_SENT', 'PROFORMAT_SENT', 'PAYMENT_PROOF_UPLOADED'];
 
   const rows = requests.filter(r => pendingStatuses.includes(r.status));
   if (rows.length === 0) {

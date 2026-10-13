@@ -79,6 +79,7 @@ function statusLabel(status?: string, lang: 'fr' | 'en' = 'fr') {
   const map: Record<string, { fr: string; en: string }> = {
     PROCESSING: { fr: 'Traitement en cours', en: 'Processing' },
     PAYMENT_PROOF_UPLOADED: { fr: 'Preuve de paiement téléversée', en: 'Payment proof uploaded' },
+    SEND_DRAFT: { fr: 'Draft envoyé', en: 'Draft sent' },
     DRAFT_SENT: { fr: 'Draft envoyé', en: 'Draft sent' },
     PAYMENT_CONFIRMED: { fr: 'Paiement confirmé', en: 'Payment confirmed' },
     COMPLETED: { fr: 'Demande traitée', en: 'Request completed' },

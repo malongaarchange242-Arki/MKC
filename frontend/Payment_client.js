@@ -23,6 +23,7 @@ const STATUS = {
     SUBMITTED: 'SUBMITTED',
     PROCESSING: 'PROCESSING',
     UNDER_REVIEW: 'UNDER_REVIEW',
+    SEND_DRAFT: 'SEND_DRAFT',
     DRAFT_SENT: 'DRAFT_SENT',
     PROFORMAT_SENT: 'PROFORMAT_SENT',
     PAYMENT_PROOF_UPLOADED: 'PAYMENT_PROOF_UPLOADED',
@@ -81,6 +82,7 @@ function formatStatusLabel(status) {
         [STATUS.SUBMITTED]: "Submitted",
         [STATUS.PROCESSING]: "Processing",
         [STATUS.UNDER_REVIEW]: "Under Review",
+        [STATUS.SEND_DRAFT]: "Draft Sent",
         [STATUS.DRAFT_SENT]: "Awaiting Payment",
         [STATUS.PROFORMAT_SENT]: "Awaiting Payment",
         [STATUS.AWAITING_PAYMENT]: "Awaiting Payment",
@@ -178,7 +180,7 @@ function renderClientPayments() {
 
     // Montrer uniquement les dossiers en attente de paiement (AWAITING_PAYMENT).
     // Les lignes dont la preuve a été uploadée (PAYMENT_PROOF_UPLOADED) seront retirées immédiatement.
-    const unpaid = requests.filter(req => [STATUS.AWAITING_PAYMENT, STATUS.DRAFT_SENT, STATUS.PROFORMAT_SENT].includes(req.status));
+    const unpaid = requests.filter(req => [STATUS.AWAITING_PAYMENT, STATUS.SEND_DRAFT, STATUS.DRAFT_SENT, STATUS.PROFORMAT_SENT].includes(req.status));
 
     if (unpaid.length === 0) {
         tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:40px;">${escapeHtml(t('no_pending_payments','No pending payments. All set!'))}</td></tr>`;
@@ -224,6 +226,7 @@ function renderClientPayments() {
                         actionClass = 'btn-white';
                         break;
                     case STATUS.DRAFT_SENT:
+                    case STATUS.SEND_DRAFT:
                     default:
                         actionLabelKey = 'upload_proof';
                         actionFallback = 'UPLOAD PROOF';
@@ -573,7 +576,7 @@ async function handlePaymentModeChange(blValue, selectedMode) {
         if (AUTO_TRANSITION_MODES.includes(selectedMode)) {
             // Only attempt server-side transition when the request is in an allowed from-state.
             const currentStatus = (reqIndex >= 0 && requests[reqIndex]) ? requests[reqIndex].status : null;
-            const ALLOWED_AUTO_FROM = [STATUS.DRAFT_SENT, STATUS.PROFORMAT_SENT, STATUS.AWAITING_PAYMENT, STATUS.PAYMENT_CONFIRMED];
+            const ALLOWED_AUTO_FROM = [STATUS.SEND_DRAFT, STATUS.DRAFT_SENT, STATUS.PROFORMAT_SENT, STATUS.AWAITING_PAYMENT, STATUS.PAYMENT_CONFIRMED];
             if (!ALLOWED_AUTO_FROM.includes(currentStatus)) {
                 // Persist payment_mode only and inform the user that auto-transition
                 // could not be performed due to current workflow state.

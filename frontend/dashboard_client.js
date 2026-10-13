@@ -515,7 +515,7 @@ function formatDetailDate(value) {
 function getDetailProgress(status) {
   const value = String(status || '').toUpperCase();
   if (['COMPLETED', 'VALIDATED', 'ISSUED'].includes(value)) return 3;
-  if (['PROCESSING', 'DRAFT_SENT', 'PROFORMAT_SENT', 'PAYMENT_PROOF_UPLOADED', 'PAYMENT_CONFIRMED'].includes(value)) return 2;
+  if (['PROCESSING', 'SEND_DRAFT', 'DRAFT_SENT', 'PROFORMAT_SENT', 'PAYMENT_PROOF_UPLOADED', 'PAYMENT_CONFIRMED'].includes(value)) return 2;
   if (['UNDER_REVIEW', 'SUBMITTED', 'OCR_PENDING', 'INITIATED', 'AWAITING_REVIEW'].includes(value)) return 1;
   return 0;
 }
@@ -1093,7 +1093,7 @@ function bindUIEvents() {
             
             // Determine availability label based on status
             let availabilityText = 'Draft Available';
-            if (statusLabel === 'DRAFT_SENT' || statusLabel === 'PROFORMAT_SENT' || statusLabel === 'PAYMENT_PROOF_UPLOADED' || statusLabel === 'AWAITING_PAYMENT') {
+            if (statusLabel === 'SEND_DRAFT' || statusLabel === 'DRAFT_SENT' || statusLabel === 'PROFORMAT_SENT' || statusLabel === 'PAYMENT_PROOF_UPLOADED' || statusLabel === 'AWAITING_PAYMENT') {
               availabilityText = 'Draft Sent';
             } else {
               // only mark as FERI available if a FERI URL/reference exists on the request

@@ -217,7 +217,7 @@ export class RequestsController {
       const request = await RequestsService.getRequestById(requestId);
       if (!request) return res.status(404).json({ message: 'Request not found' });
 
-      if (!['DRAFT_SENT', 'PROFORMAT_SENT', 'AWAITING_PAYMENT', 'PAYMENT_CONFIRMED'].includes(request.status)) {
+      if (!['SEND_DRAFT', 'DRAFT_SENT', 'PROFORMAT_SENT', 'AWAITING_PAYMENT', 'PAYMENT_CONFIRMED'].includes(request.status)) {
         return res.status(400).json({
           message: 'Payment proof can only be uploaded while payment is pending or when a confirmed payment needs review'
         });

@@ -14,6 +14,10 @@ Storage bucket. Apply `20261013_create_feri_documents_storage.sql` before
 publishing final documents in production. It also adds the delivery metadata
 columns used by the API; final deliveries are recorded with status `DELIVERED`.
 
+Apply `20261013_align_request_status_enum.sql` as well. It adds `SEND_DRAFT`
+for sent drafts and `COMPLETED` for completed requests while preserving
+`DRAFT_SENT` for compatibility with existing rows.
+
 Example using psql:
 
 psql -h <host> -U <user> -d <db> -f 20251230_add_extraction_fields_and_table.sql

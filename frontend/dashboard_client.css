@@ -923,11 +923,11 @@ body {
   background: var(--s-green-dot);
 }
 
-.MISSINGDOCS, .DRAFT_SENT, .AWAITING_PAYMENT, .PAYMENT_PROOF_UPLOADED, .PROFORMAT_SENT {
+.MISSINGDOCS, .SEND_DRAFT, .DRAFT_SENT, .AWAITING_PAYMENT, .PAYMENT_PROOF_UPLOADED, .PROFORMAT_SENT {
   background: var(--s-gray-bg);
   color: #46637A;
 }
-.MISSINGDOCS::before, .DRAFT_SENT::before, .AWAITING_PAYMENT::before,
+.MISSINGDOCS::before, .SEND_DRAFT::before, .DRAFT_SENT::before, .AWAITING_PAYMENT::before,
 .PAYMENT_PROOF_UPLOADED::before, .PROFORMAT_SENT::before {
   background: var(--s-gray-dot);
 }

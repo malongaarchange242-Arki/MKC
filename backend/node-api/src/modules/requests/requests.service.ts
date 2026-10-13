@@ -562,7 +562,7 @@ export class RequestsService {
 
         // Only notify clients about generic status changes when the status becomes
         // PROCESSING or when the actor is the client. Admin/internal flows that
-        // change status to other values (e.g. UNDER_REVIEW, DRAFT_SENT) should
+        // change status to other values (e.g. UNDER_REVIEW, SEND_DRAFT) should
         // use specialized events (e.g. CLIENT_DRAFT_AVAILABLE) to avoid duplicate
         // generic "status changed" emails to the client.
         const shouldNotifyClientStatusChange = (to === 'PROCESSING') || actorRole === 'CLIENT';
@@ -622,7 +622,7 @@ export class RequestsService {
 
         if (!clientIdLocal) return;
 
-        const important = ['DRAFT_SENT', 'PROFORMAT_SENT', 'PAYMENT_CONFIRMED', 'COMPLETED'];
+        const important = ['SEND_DRAFT', 'DRAFT_SENT', 'PROFORMAT_SENT', 'PAYMENT_CONFIRMED', 'COMPLETED'];
         if (!important.includes(String(to))) return;
 
         let title = '';
@@ -630,6 +630,7 @@ export class RequestsService {
         let eventType = '';
 
         switch (String(to)) {
+          case 'SEND_DRAFT':
           case 'DRAFT_SENT':
           case 'PROFORMAT_SENT':
             eventType = 'CLIENT_DRAFT_AVAILABLE';
@@ -658,7 +659,7 @@ export class RequestsService {
               .from('feri_deliveries')
               .select('pdf_url, file_name')
               .eq('request_id', requestId)
-              .eq('status', 'COMPLETED')
+              .eq('status', 'DELIVERED')
               .order('delivered_at', { ascending: false })
               .limit(1)
               .single();

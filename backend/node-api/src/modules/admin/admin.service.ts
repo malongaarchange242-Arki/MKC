@@ -652,11 +652,11 @@ export class AdminService {
         invoiceId: invoice.id
       });
 
-      // 4. Transition request status to PROFORMAT_SENT (idempotent)
+      // 4. Mark the request as having a draft sent (idempotent)
       try {
-        await RequestsService.transitionStatus({ requestId, to: 'PROFORMAT_SENT', actorRole: 'ADMIN', actorId: adminId });
+        await RequestsService.transitionStatus({ requestId, to: 'SEND_DRAFT', actorRole: 'ADMIN', actorId: adminId });
       } catch (e) {
-        logger.warn('RequestsService.transitionStatus failed during sendDraft', { requestId, err: e });
+        logger.warn('RequestsService.transitionStatus to SEND_DRAFT failed during sendDraft', { requestId, err: e });
       }
 
       // 5. Audit
@@ -794,11 +794,11 @@ export class AdminService {
 
       // Send notification
       try {
-        // Transition request to DRAFT_SENT so admin action and status reflect draft/proforma sent
+        // Transition request to SEND_DRAFT so admin action and status reflect draft sent
         try {
-          await RequestsService.transitionStatus({ requestId, to: 'DRAFT_SENT', actorRole: 'ADMIN', actorId: adminId, notifyClient: false });
+          await RequestsService.transitionStatus({ requestId, to: 'SEND_DRAFT', actorRole: 'ADMIN', actorId: adminId, notifyClient: false });
         } catch (transErr) {
-          logger.warn('RequestsService.transitionStatus to DRAFT_SENT failed during notifyDraft', { requestId, err: transErr });
+          logger.warn('RequestsService.transitionStatus to SEND_DRAFT failed during notifyDraft', { requestId, err: transErr });
         }
         const { NotificationsService } = await import('../notifications/notifications.service');
         await NotificationsService.send({

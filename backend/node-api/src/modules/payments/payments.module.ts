@@ -341,7 +341,7 @@ export const paymentsModule = () => {
       if (request.user_id !== authUserId) {
         return res.status(403).json({ success: false, message: 'Access denied: not the owner of the request' });
       }
-      if (!['DRAFT_SENT', 'PROFORMAT_SENT', 'AWAITING_PAYMENT', 'PAYMENT_CONFIRMED'].includes(request.status)) {
+      if (!['SEND_DRAFT', 'DRAFT_SENT', 'PROFORMAT_SENT', 'AWAITING_PAYMENT', 'PAYMENT_CONFIRMED'].includes(request.status)) {
         return res.status(400).json({
           success: false,
           message: 'Payment proof can only be uploaded while payment is pending or when a confirmed payment needs review'

@@ -330,8 +330,8 @@ export class AdminController {
 			const request = await RequestsService.getRequestById(requestId);
 			if (!request) return res.status(404).json({ message: 'Request not found' });
 			// Allow uploads when request is under review or when a draft/proforma was already sent
-			if (!['UNDER_REVIEW', 'DRAFT_SENT', 'PROFORMAT_SENT','CREATED', 'PROCESSING'].includes(request.status)) {
-				return res.status(400).json({ message: 'Cannot upload draft unless request is UNDER_REVIEW, DRAFT_SENT or PROFORMAT_SENT' });
+			if (!['UNDER_REVIEW', 'SEND_DRAFT', 'DRAFT_SENT', 'PROFORMAT_SENT','CREATED', 'PROCESSING'].includes(request.status)) {
+				return res.status(400).json({ message: 'Cannot upload draft unless request is UNDER_REVIEW, SEND_DRAFT or PROFORMAT_SENT' });
 			}
 
 			// Only ADMIN allowed (module guard exists but double-check)
@@ -352,7 +352,7 @@ export class AdminController {
 
 			// Transition to appropriate sent state (single transition). Do not send client notifications
 			// here — notifications should be explicit and triggered by the invoice send flow.
-			const targetStatus = (docType || '').toString().toUpperCase().includes('PROFORMA') ? 'PROFORMAT_SENT' : 'DRAFT_SENT';
+			const targetStatus = (docType || '').toString().toUpperCase().includes('PROFORMA') ? 'PROFORMAT_SENT' : 'SEND_DRAFT';
 			await RequestsService.transitionStatus({ requestId, to: targetStatus as any, actorRole: 'ADMIN', actorId: adminId, notifyClient: false });
 
 			// Audit
