@@ -57,6 +57,21 @@ export class AdminController {
 		}
 	}
 
+	static async searchClients(req: AuthRequest, res: Response) {
+		try {
+			if (!ensureAdminOrSystem(req, res)) return;
+			const query = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+			if (query.length < 2 || query.length > 100) {
+				return res.status(400).json({ message: 'Search query must contain between 2 and 100 characters' });
+			}
+
+			const clients = await AdminService.searchClients(query);
+			return res.status(200).json(clients);
+		} catch (error: unknown) {
+			return handleControllerError(res, error, 'Search clients');
+		}
+	}
+
 	static async getUserById(req: AuthRequest, res: Response) {
 		try {
 			if (!ensureAdminOrSystem(req, res)) return;

@@ -155,6 +155,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       });
     });
+
   }
 
   // Add event listeners for filter inputs to trigger filtering automatically
@@ -176,6 +177,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Initialize i18n translations for the filter bar
   applyTranslations();
+  const dashboardView = window.location.hash;
+  if (dashboardView === '#pending-payments' && menuItems[1]) {
+    menuItems[1].click();
+  } else if (dashboardView === '#requests' && menuItems[0]) {
+    menuItems[0].click();
+  }
   // Start automatic refresh to keep admin UI in sync with client actions
   try { startAdminAutoRefresh(); } catch (e) {}
 
@@ -531,6 +538,14 @@ const i18n = {
     en: 'Open a request to review its details and take action.',
     fr: 'Ouvrez une demande pour consulter ses détails et agir.'
   },
+  pending_payments_title: {
+    en: 'Pending Payments',
+    fr: 'Paiements en attente'
+  },
+  pending_payments_help: {
+    en: 'Review requests awaiting payment verification.',
+    fr: 'Consultez les demandes dont le paiement doit être vérifié.'
+  },
   view_request: {
     en: 'View',
     fr: 'Voir'
@@ -643,6 +658,14 @@ async function loadAdminRequests() {
 function renderAdminTable() {
   const tbody = document.getElementById('admin-table-body');
   if (!tbody) return;
+  const lang = document.getElementById('lang-select')?.value || 'en';
+  const title = document.getElementById('admin-requests-title');
+  const description = title?.parentElement?.querySelector('p');
+  if (title) {
+    title.setAttribute('data-i18n', 'incoming_requests');
+    title.textContent = (i18n.incoming_requests && i18n.incoming_requests[lang]) || i18n.incoming_requests.en;
+  }
+  if (description) description.textContent = (i18n.incoming_requests_help && i18n.incoming_requests_help[lang]) || i18n.incoming_requests_help.en;
   // default: show all incoming requests (exclude payment-only statuses)
   const rowsToShow = requests;
   tbody.innerHTML = rowsToShow.map(row => {
@@ -1971,6 +1994,14 @@ function openDocsModal(docs, req) {
 function renderPendingPayments() {
   const tbody = document.getElementById('admin-table-body');
   if (!tbody) return;
+  const lang = document.getElementById('lang-select')?.value || 'en';
+  const title = document.getElementById('admin-requests-title');
+  const description = title?.parentElement?.querySelector('p');
+  if (title) {
+    title.setAttribute('data-i18n', 'pending_payments_title');
+    title.textContent = (i18n.pending_payments_title && i18n.pending_payments_title[lang]) || i18n.pending_payments_title.en;
+  }
+  if (description) description.textContent = (i18n.pending_payments_help && i18n.pending_payments_help[lang]) || i18n.pending_payments_help.en;
 
   // Consider these statuses as pending payments
   const pendingStatuses = ['SEND_DRAFT', 'DRAFT_SENT', 'PROFORMAT_SENT', 'PAYMENT_PROOF_UPLOADED'];

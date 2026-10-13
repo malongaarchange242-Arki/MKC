@@ -3,6 +3,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const tableBody = document.getElementById('tableBody');
     const previewModal = document.getElementById('previewModal');
     const clientNameInput = document.getElementById('clientName');
+    const clientSuggestions = document.getElementById('clientSuggestions');
+    const clientLookupStatus = document.getElementById('clientLookupStatus');
     const origineInput = document.getElementById('origine');
     const serviceFixedInput = document.getElementById('serviceFixed');
     const validitySelect = document.getElementById('invoiceValidity');
@@ -303,6 +305,135 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!el) return;
         el.addEventListener('input', saveDraft);
     });
+
+    if (clientNameInput && clientSuggestions && clientLookupStatus) {
+        let clientSearchTimer;
+        let clientSearchController;
+        let clientMatches = [];
+        let activeClientMatch = -1;
+
+        function closeClientSuggestions() {
+            clientSuggestions.hidden = true;
+            clientNameInput.setAttribute('aria-expanded', 'false');
+            clientNameInput.removeAttribute('aria-activedescendant');
+            activeClientMatch = -1;
+            clientMatches = [];
+        }
+
+        function showClientSuggestions(clients) {
+            clientMatches = clients;
+            clientSuggestions.replaceChildren();
+            activeClientMatch = -1;
+
+            clients.forEach((client, index) => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'client-suggestion';
+                button.id = `client-suggestion-${index}`;
+                button.setAttribute('role', 'option');
+                button.setAttribute('aria-selected', 'false');
+                button.tabIndex = -1;
+
+                const name = document.createElement('span');
+                name.className = 'client-suggestion-name';
+                name.textContent = [client.prenom, client.nom].filter(Boolean).join(' ').trim() || client.email || 'Client';
+                button.appendChild(name);
+
+                if (client.email) {
+                    const email = document.createElement('span');
+                    email.className = 'client-suggestion-email';
+                    email.textContent = client.email;
+                    button.appendChild(email);
+                }
+
+                button.addEventListener('click', () => {
+                    clientNameInput.value = name.textContent;
+                    saveDraft();
+                    clientLookupStatus.textContent = '';
+                    closeClientSuggestions();
+                });
+                clientSuggestions.appendChild(button);
+            });
+
+            clientSuggestions.hidden = clients.length === 0;
+            clientNameInput.setAttribute('aria-expanded', String(clients.length > 0));
+        }
+
+        function setActiveClientMatch(index) {
+            const options = clientSuggestions.querySelectorAll('[role="option"]');
+            if (!options.length) return;
+
+            activeClientMatch = (index + options.length) % options.length;
+            options.forEach((option, optionIndex) => {
+                const isActive = optionIndex === activeClientMatch;
+                option.setAttribute('aria-selected', String(isActive));
+                if (isActive) clientNameInput.setAttribute('aria-activedescendant', option.id);
+            });
+        }
+
+        clientNameInput.addEventListener('input', () => {
+            clearTimeout(clientSearchTimer);
+            if (clientSearchController) clientSearchController.abort();
+
+            const query = clientNameInput.value.trim();
+            if (query.length < 2) {
+                clientMatches = [];
+                clientLookupStatus.textContent = '';
+                closeClientSuggestions();
+                return;
+            }
+
+            clientLookupStatus.textContent = 'Recherche des clients...';
+            closeClientSuggestions();
+            clientSearchTimer = setTimeout(async () => {
+                const controller = new AbortController();
+                clientSearchController = controller;
+                const apiBase = document.querySelector('meta[name="api-base"]')?.content || 'https://mkc-backend-qx7r.onrender.com';
+                const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+
+                try {
+                    const response = await fetch(
+                        `${apiBase.replace(/\/$/, '')}/admin/users/search?q=${encodeURIComponent(query)}`,
+                        {
+                            headers: token ? { Authorization: `Bearer ${token}` } : {},
+                            signal: controller.signal
+                        }
+                    );
+                    if (!response.ok) throw new Error(`Client search failed (${response.status})`);
+
+                    const clients = await response.json();
+                    if (clientNameInput.value.trim() !== query) return;
+
+                    showClientSuggestions(Array.isArray(clients) ? clients : []);
+                    clientLookupStatus.textContent = clients.length ? '' : 'Aucun client correspondant en base.';
+                } catch (error) {
+                    if (error.name === 'AbortError') return;
+                    console.error('Client profile search failed', error);
+                    clientLookupStatus.textContent = 'La recherche des clients est indisponible.';
+                }
+            }, 250);
+        });
+
+        clientNameInput.addEventListener('keydown', event => {
+            if (event.key === 'ArrowDown' && clientMatches.length) {
+                event.preventDefault();
+                setActiveClientMatch(activeClientMatch + 1);
+            } else if (event.key === 'ArrowUp' && clientMatches.length) {
+                event.preventDefault();
+                setActiveClientMatch(activeClientMatch < 0 ? clientMatches.length - 1 : activeClientMatch - 1);
+            } else if (event.key === 'Enter' && activeClientMatch >= 0) {
+                event.preventDefault();
+                clientSuggestions.querySelectorAll('[role="option"]')[activeClientMatch]?.click();
+            } else if (event.key === 'Escape') {
+                closeClientSuggestions();
+            }
+        });
+
+        document.addEventListener('click', event => {
+            if (!event.target.closest('.client-autocomplete')) closeClientSuggestions();
+        });
+    }
+
     // observe table changes to save rows
     const observer = new MutationObserver(saveDraft);
     observer.observe(tableBody, { childList: true, subtree: true });

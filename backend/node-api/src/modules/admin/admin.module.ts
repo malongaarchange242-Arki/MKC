@@ -28,6 +28,7 @@ export const adminModule = (): Router => {
 
 	// Users
 	router.get('/users', AdminController.listUsers);
+	router.get('/users/search', AdminController.searchClients);
 	router.get('/users/:id', AdminController.getUserById);
 	router.patch('/users/:id/role', AdminController.updateUserRole);
 	router.patch('/users/:id/status', (_req, res) => res.status(501).json({ message: 'Not implemented' }));

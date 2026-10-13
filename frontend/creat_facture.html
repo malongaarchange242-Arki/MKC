@@ -3,106 +3,187 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MKC - Générateur de Facture</title>
+    <link rel="icon" href="Logotype_mkc_bon-removebg-preview.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="creat_facture.css">
-    <style>
-        /* Make the top-level back button orange to match admin theme */
-        .btn-back-page {
-            background: #f59e0b;
-            color: #ffffff;
-            border: 1px solid #f59e0b;
-            padding: 6px 10px;
-            border-radius: 6px;
-            font-weight: 600;
-            cursor: pointer;
-        }
-        .btn-back-page:hover {
-            filter: brightness(0.95);
-        }
-    </style>
 </head>
 
-<body>
-    <div class="admin-panel no-print">
-            <div class="admin-header">
-            <h2>Gestion Maritime Kargo Consulting</h2>
-            <div style="display:flex; gap:8px; align-items:center; margin-left:auto;">
-                <button id="btn-back-page" class="btn-back-page" title="Retour">← Retour</button>
-                <button id="previewBtn" class="btn-primary">Aperçu de la Facture</button>
+<body class="invoice-body">
+    <div class="invoice-app no-print">
+        <aside class="invoice-sidebar" aria-label="Navigation Maritime Kargo">
+            <div class="sidebar-mobile-header">
+                <button class="sidebar-close-btn" id="invoice-menu-close" type="button" aria-label="Fermer le menu">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
             </div>
-        </div>
-        <div style="margin-top:6px; margin-left:8px;">
-             <span id="invoice-ref"></span>
-        </div>
+            <a class="invoice-brand" href="dashboard_admin.html" aria-label="Maritime Kargo Consulting">
+                <img src="Logotype_mkc_bon-removebg-preview.png" alt="">
+                <span class="brand-copy">
+                    <span class="brand-name"><span>MARITIME</span> <strong>KARGO</strong></span>
+                    <span class="brand-consulting">CONSULTING</span>
+                    <span class="brand-tagline">FERI · AD · INTERNATIONAL TRADE</span>
+                </span>
+            </a>
 
-        <div class="form-grid">
-            <input type="text" id="clientName" placeholder="Nom du Client">
-            <select id="origine" class="select-origine" aria-label="Origine de la marchandise">
-                <option value="" disabled selected>Origine de la marchandise</option>
-                <option value="Afrique">Afrique</option>
-                <option value="Antarctique">Antarctique</option>
-                <option value="Asie">Asie</option>
-                <option value="Europe">Europe</option>
-                <option value="Amérique">Amérique</option>
-                <option value="Océanie">Océanie</option>
-            </select>
-            <input type="text" id="objetRef" placeholder="Référence BL Principal">
-            <div style="display:flex; flex-direction:column; gap:6px;">
-                <label for="serviceFixed" style="font-size:12px; font-weight:600; margin-bottom:4px;">Frais de service (XAF)</label>
-                <input type="number" id="serviceFixed" step="1" value="0" style="width:160px;" aria-label="Montant fixe des frais de service en XAF">
-            </div>
-            
-        </div>
+            <div class="invoice-section-label">ESPACE ADMINISTRATEUR</div>
+            <nav class="invoice-nav" aria-label="Menu principal">
+                <a class="invoice-nav-item" href="dashboard_admin.html#requests">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                    <span>Demandes reçues</span>
+                </a>
+                <a class="invoice-nav-item" href="dashboard_admin.html#pending-payments">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 10h20M6 15h4"/></svg>
+                    <span>Paiements en attente</span>
+                </a>
+                <a class="invoice-nav-item active" href="creat_facture.html?manual=1" aria-current="page">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6M9 13h8M9 17h8"/></svg>
+                    <span>Création facture</span>
+                </a>
+                <a class="invoice-nav-item" href="facture_carte.html">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M2 9h3M19 9h3M2 15h3M19 15h3"/></svg>
+                    <span>Création de la carte chargeur</span>
+                </a>
+            </nav>
 
-        <table id="editTable">
-            <thead>
-                <tr>
-                    <th>Description</th>
-                    <th>N° BL</th>
-                    <th>Cond.</th>
-                    <th>PU (XAF)</th>
-                    <th>Qté</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody id="tableBody">
-                <tr class="item-row">
-                    <td>
-                        <select class="in-desc">
-                            <option value="" disabled selected>Choisir...</option>
-                            <option value="FERI">FERI</option>
-                            <option value="AD">AD</option>
-                            <option value="FERI+AD">FERI + AD</option>
-                            
-                        </select>
-                    </td>
-                    <td><input type="text" class="in-bl" placeholder="N° BL"></td>
-                    <td><input type="text" class="in-cond" placeholder="Vrac/Conteneur"></td>
-                    <td><input type="number" class="in-pu" placeholder="Prix en XAF"></td>
-                    <td><input type="number" class="in-qty" placeholder="Quantité"></td>
-                    <td><button class="btn-del">×</button></td>
-                </tr>
-            </tbody>
-        </table>
-        <button id="addBtn" class="btn-secondary">+ Ligne supplémentaire</button>
-    </div>
+            <a class="invoice-logout" href="index.html">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                <span>Déconnexion</span>
+            </a>
+        </aside>
 
-    <div id="previewModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-nav no-print">
-                <button id="backBtn" class="btn-back">← Éditer</button>
-                <div class="nav-right">
-                    <button id="sendBtn" class="btn-send">✉ Envoyer</button>
-                    <button id="printBtn" class="btn-print">⎙ Imprimer</button>
+        <div class="invoice-main">
+            <header class="invoice-topbar">
+                <button class="invoice-menu-trigger" id="invoice-menu-trigger" type="button" aria-label="Ouvrir le menu" aria-expanded="false">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+                </button>
+                <div class="topbar-context">
+                    <span class="context-label">ESPACE ADMINISTRATION</span>
+                    <strong>Facturation manuelle</strong>
                 </div>
-            </div>
+                <button id="btn-back-page" class="btn-back-page" type="button" title="Retour au tableau de bord">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                    Retour au tableau de bord
+                </button>
+            </header>
 
-            <div id="invoiceRender" class="a4-page">
-            </div>
+            <main class="invoice-content">
+                <section class="page-heading">
+                    <div class="heading-copy">
+                        <span class="heading-accent" aria-hidden="true"></span>
+                        <h1>Générateur de facture</h1>
+                        <p>Renseignez les informations du client et les prestations à facturer.</p>
+                    </div>
+                    <span id="invoice-ref" class="invoice-reference" aria-live="polite"></span>
+                </section>
+
+                <section class="form-card general-card" aria-labelledby="general-title">
+                    <div class="card-heading">
+                        <span class="card-heading-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h6"/></svg></span>
+                        <h2 id="general-title">Informations générales</h2>
+                    </div>
+                    <div class="form-grid">
+                        <div class="input-group">
+                            <label for="clientName">Nom du client</label>
+                            <div class="client-autocomplete">
+                                <input type="text" id="clientName" placeholder="Saisir le nom du client" autocomplete="off"
+                                    aria-autocomplete="list" aria-controls="clientSuggestions" aria-expanded="false">
+                                <div id="clientSuggestions" class="client-suggestions" role="listbox"
+                                    aria-label="Clients correspondants" hidden></div>
+                            </div>
+                            <div id="clientLookupStatus" class="client-lookup-status" role="status" aria-live="polite"></div>
+                        </div>
+                        <div class="input-group">
+                            <label for="origine">Origine de la marchandise</label>
+                            <select id="origine" class="select-origine" aria-label="Origine de la marchandise">
+                                <option value="" disabled selected>Choisir une origine</option>
+                                <option value="Afrique">Afrique</option>
+                                <option value="Antarctique">Antarctique</option>
+                                <option value="Asie">Asie</option>
+                                <option value="Europe">Europe</option>
+                                <option value="Amérique">Amérique</option>
+                                <option value="Océanie">Océanie</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label for="objetRef">Référence BL principal</label>
+                            <input type="text" id="objetRef" placeholder="Saisir le numéro de BL">
+                        </div>
+                        <div class="input-group service-fee-group">
+                            <label for="serviceFixed">Frais de service (XAF)</label>
+                            <input type="number" id="serviceFixed" step="1" value="0" aria-label="Montant fixe des frais de service en XAF">
+                        </div>
+                    </div>
+                </section>
+
+                <section class="form-card services-card" aria-labelledby="services-title">
+                    <div class="card-heading services-heading">
+                        <div class="card-heading-title">
+                            <span class="card-heading-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h8"/></svg></span>
+                            <h2 id="services-title">Détail des prestations</h2>
+                        </div>
+                        <button id="addBtn" class="btn-add" type="button">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                            Ajouter une ligne
+                        </button>
+                    </div>
+
+                    <div class="table-scroll">
+                        <table id="editTable" class="services-table">
+                            <thead>
+                                <tr>
+                                    <th>Description</th>
+                                    <th>N° BL</th>
+                                    <th>Conditionnement</th>
+                                    <th>Prix unitaire (XAF)</th>
+                                    <th>Quantité</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tableBody">
+                                <tr class="item-row">
+                                    <td>
+                                        <select class="in-desc" aria-label="Description de la prestation">
+                                            <option value="" disabled selected>Choisir...</option>
+                                            <option value="FERI">FERI</option>
+                                            <option value="AD">AD</option>
+                                            <option value="FERI+AD">FERI + AD</option>
+                                        </select>
+                                    </td>
+                                    <td><input type="text" class="in-bl" placeholder="N° BL" aria-label="Numéro de BL"></td>
+                                    <td><input type="text" class="in-cond" placeholder="Vrac/Conteneur" aria-label="Conditionnement"></td>
+                                    <td><input type="number" class="in-pu" placeholder="Prix en XAF" aria-label="Prix unitaire en XAF"></td>
+                                    <td><input type="number" class="in-qty" placeholder="Quantité" aria-label="Quantité"></td>
+                                    <td><button class="btn-del" type="button" aria-label="Supprimer cette ligne">×</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="bottom-actions">
+                        <button id="previewBtn" class="btn-preview" type="button">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="2.5"/></svg>
+                            Aperçu de la facture
+                        </button>
+                    </div>
+                </section>
+
+                <footer class="invoice-footer">
+                    <span class="footer-promise"><i aria-hidden="true"></i>PLUS QU'UNE PLATEFORME, UN PARTENAIRE DE CONFIANCE</span>
+                    <small>© 2026 Maritime Kargo Consulting. Tous droits réservés.</small>
+                </footer>
+            </main>
         </div>
     </div>
+
+    <div class="invoice-sidebar-backdrop" id="invoice-sidebar-backdrop" aria-hidden="true"></div>
+    <div id="previewModal" class="modal"></div>
 
     <script src="creat_facture.js"></script>
+    <script src="invoice_sidebar.js"></script>
 </body>
 
 </html>

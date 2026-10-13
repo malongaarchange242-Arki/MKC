@@ -19,6 +19,10 @@ export interface UpdateProfileInput {
   prenom?: string;
 }
 
+function escapeLikeTerm(value: string): string {
+  return value.replace(/[\\%_]/g, '\\$&');
+}
+
 // ===============================
 // USERS SERVICE
 // ===============================
@@ -265,6 +269,44 @@ export class UsersService {
     }
 
     return (data || []) as UserProfile[];
+  }
+
+  static async searchClients(query: string, limit = 8) {
+    const terms = query.trim().split(/\s+/).filter(Boolean);
+    const firstTerm = escapeLikeTerm(terms[0] || '');
+    const lastTerm = escapeLikeTerm(terms[terms.length - 1] || '');
+    const emailTerm = escapeLikeTerm(query.trim());
+
+    const [firstNameResult, lastNameResult, emailResult] = await Promise.all([
+      supabase.from('profiles').select('id, email, nom, prenom')
+        .eq('role', 'CLIENT').ilike('prenom', `%${firstTerm}%`).limit(limit),
+      supabase.from('profiles').select('id, email, nom, prenom')
+        .eq('role', 'CLIENT').ilike('nom', `%${lastTerm}%`).limit(limit),
+      supabase.from('profiles').select('id, email, nom, prenom')
+        .eq('role', 'CLIENT').ilike('email', `%${emailTerm}%`).limit(limit)
+    ]);
+
+    const error = firstNameResult.error || lastNameResult.error || emailResult.error;
+    if (error) {
+      logger.error('Failed to search client profiles', { error });
+      throw new Error('Failed to search client profiles');
+    }
+
+    const profiles = new Map<string, { id: string; email: string | null; nom: string | null; prenom: string | null }>();
+    for (const profile of [
+      ...(firstNameResult.data || []),
+      ...(lastNameResult.data || []),
+      ...(emailResult.data || [])
+    ]) {
+      const searchable = `${profile.prenom || ''} ${profile.nom || ''} ${profile.email || ''}`
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase();
+      const matches = terms.every(term => searchable.includes(
+        term.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase()
+      ));
+      if (matches) profiles.set(profile.id, profile);
+    }
+
+    return Array.from(profiles.values()).slice(0, limit);
   }
 
   // ===============================

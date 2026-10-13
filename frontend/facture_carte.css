@@ -25,7 +25,7 @@ button { cursor: pointer; }
 
 .ccc-app {
     display: grid;
-    grid-template-columns: 272px minmax(0, 1fr);
+    grid-template-columns: 300px minmax(0, 1fr);
     min-height: 100vh;
 }
 
@@ -35,11 +35,12 @@ button { cursor: pointer; }
     display: flex;
     flex-direction: column;
     min-height: 100vh;
-    padding: 24px 18px 16px;
+    padding: 0;
     overflow: hidden;
     isolation: isolate;
     color: #fff;
-    background: #06294A;
+    background: #062A48;
+    transition: transform 0.28s cubic-bezier(0.4,0,0.2,1);
 }
 
 .ccc-sidebar::before {
@@ -49,9 +50,9 @@ button { cursor: pointer; }
     content: "";
     pointer-events: none;
     background-image:
-        linear-gradient(to bottom, rgba(6,41,74,0.99) 0%, rgba(6,41,74,0.98) 40%, rgba(6,41,74,0.80) 72%, rgba(6,41,74,0.76) 100%),
+        linear-gradient(to bottom, rgba(5,36,62,0.99) 0%, rgba(5,36,62,0.97) 32%, rgba(5,36,62,0.88) 54%, rgba(5,36,62,0.62) 76%, rgba(5,36,62,0.76) 100%),
         url("Pont suspendu sur port industriel brumeux.png");
-    background-size: cover, auto 64%;
+    background-size: cover, cover;
     background-position: center, center bottom;
     background-repeat: no-repeat;
 }
@@ -59,47 +60,63 @@ button { cursor: pointer; }
 .ccc-brand {
     display: flex;
     align-items: center;
-    gap: 10px;
-    min-height: 56px;
+    gap: 11px;
+    padding: 28px 22px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
     color: inherit;
     text-decoration: none;
 }
-.ccc-brand img { width: 48px; height: 48px; flex: 0 0 auto; object-fit: contain; }
-.brand-copy { display: grid; gap: 2px; min-width: 0; }
-.brand-name { color: #fff; font-size: 0.86rem; font-weight: 600; white-space: nowrap; }
+.ccc-brand img { width: 46px; height: 46px; flex: 0 0 auto; object-fit: contain; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.35)); }
+.brand-copy { display: flex; flex-direction: column; min-width: 0; line-height: 1.15; }
+.brand-name { color: #fff; font-size: 0.9rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap; }
 .brand-name strong { color: #FF8A00; font-weight: 800; }
-.brand-consulting { color: rgba(255,255,255,0.92); font-size: 0.68rem; font-weight: 500; letter-spacing: 0.16em; }
-.brand-tagline { margin-top: 3px; color: rgba(255,255,255,0.54); font-size: 0.49rem; letter-spacing: 0.08em; white-space: nowrap; }
-.ccc-nav { display: grid; gap: 8px; margin-top: 44px; }
+.brand-consulting { margin-top: 1px; color: rgba(255,255,255,0.85); font-size: 0.72rem; font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase; }
+.brand-tagline { margin-top: 4px; color: rgba(255,255,255,0.38); font-size: 0.55rem; letter-spacing: 0.14em; text-transform: uppercase; white-space: nowrap; }
+.ccc-section-label { min-height: 40.8px; padding: 20px 22px 8px; color: rgba(255,255,255,0.32); font-size: 0.62rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
+.ccc-nav { display: flex; flex: 1; flex-direction: column; gap: 0; margin: 0; padding: 4px 12px 0; overflow-y: auto; }
 .ccc-nav-item {
     position: relative;
     display: flex;
     align-items: center;
-    gap: 12px;
-    min-height: 52px;
-    padding: 10px 12px;
-    border-radius: 8px;
-    color: rgba(255,255,255,0.76);
-    font-size: 0.84rem;
+    gap: 11px;
+    min-height: 40.4px;
+    margin-bottom: 2px;
+    padding: 11px 12px;
+    border-radius: 9px;
+    color: rgba(255,255,255,0.60);
+    font-size: 0.88rem;
     font-weight: 500;
-    line-height: 1.35;
+    line-height: normal;
     text-decoration: none;
+    user-select: none;
+    transition: background 0.15s, color 0.15s;
 }
-.ccc-nav-item svg, .ccc-logout svg { width: 19px; height: 19px; flex: 0 0 auto; }
-.ccc-nav-item.active { background: rgba(47,104,151,0.40); color: #fff; font-weight: 650; }
-.ccc-nav-item.active::before { position: absolute; inset: 8px auto 8px -18px; width: 3px; border-radius: 0 3px 3px 0; background: #FF8A00; content: ""; }
+
+.ccc-nav-item svg, .ccc-logout svg { width: 18px; height: 18px; flex: 0 0 auto; opacity: 0.8; }
+.ccc-nav-item:hover { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.90); }
+.ccc-nav-item.active { background: rgba(255,255,255,0.10); color: #fff; font-weight: 600; }
+.ccc-nav-item.active::before { position: absolute; inset: 8px auto 8px -12px; width: 3px; border-radius: 0 3px 3px 0; background: #FF8500; content: ""; }
+.ccc-nav-item.active svg, .ccc-nav-item:hover svg { opacity: 1; }
+.sidebar-mobile-header { display: none; align-items: center; justify-content: flex-end; padding: 16px 20px; }
+.sidebar-close-btn { display: flex; width: 32px; height: 32px; align-items: center; justify-content: center; border: 0; border-radius: 6px; background: rgba(255,255,255,0.10); color: rgba(255,255,255,0.7); cursor: pointer; }
+.sidebar-close-btn svg { width: 16px; height: 16px; }
+.invoice-sidebar-backdrop { display: none; }
+.invoice-menu-trigger { display: none; width: 36px; height: 36px; align-items: center; justify-content: center; padding: 0; border: 1px solid #E5ECF3; border-radius: 7px; background: #fff; color: #12345B; }
+.invoice-menu-trigger svg { width: 19px; height: 19px; }
 .ccc-logout {
     display: flex;
     align-items: center;
     gap: 12px;
-    min-height: 46px;
+    min-height: 47.2px;
     margin-top: auto;
-    padding: 10px 12px;
-    color: rgba(255,255,255,0.78);
-    font-size: 0.83rem;
+    padding: 14px 24px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.45);
+    font-size: 0.88rem;
+    font-weight: 500;
     text-decoration: none;
 }
-.ccc-logout:hover { color: #fff; }
+.ccc-logout:hover { color: rgba(255,255,255,0.80); }
 
 .ccc-main { display: flex; flex-direction: column; min-width: 0; min-height: 100vh; }
 .ccc-topbar {
@@ -214,22 +231,22 @@ button { cursor: pointer; }
 .ccc-footer small { font-size: 0.62rem; }
 
 @media (max-width: 1100px) {
-    .ccc-app { grid-template-columns: 246px minmax(0, 1fr); }
-    .ccc-sidebar { padding-right: 14px; padding-left: 14px; }
+    .ccc-app { grid-template-columns: 220px minmax(0, 1fr); }
     .ccc-content { padding: 22px 20px 16px; }
     .ccc-topbar { padding: 0 20px; }
     .heading-actions { gap: 7px; }
     .heading-actions button { padding: 0 10px; }
-    .ccc-sidebar::before { background-size: cover, auto 54%; background-position: center, 54% bottom; }
+    .ccc-sidebar::before { background-size: cover, auto 78%; background-position: center, 54% bottom; }
 }
 
 @media (max-width: 860px) {
-    .ccc-app { grid-template-columns: 224px minmax(0, 1fr); }
-    .ccc-sidebar { padding-right: 12px; padding-left: 12px; }
-    .ccc-brand { gap: 7px; }
-    .ccc-brand img { width: 42px; height: 42px; }
-    .brand-name { font-size: 0.76rem; }
-    .brand-tagline { font-size: 0.43rem; }
+    .ccc-app { grid-template-columns: minmax(0, 1fr); }
+    .ccc-sidebar { position: fixed; left: 0; z-index: 1000; width: 280px; min-width: 280px; height: 100vh; height: 100dvh; min-height: 0; transform: translateX(-100%); }
+    .ccc-sidebar.is-open { transform: translateX(0); box-shadow: 8px 0 32px rgba(9,40,68,0.22); }
+    .ccc-sidebar::before { background-size: cover, auto 82%; background-position: center, 58% bottom; }
+    .sidebar-mobile-header { display: flex; }
+    .invoice-menu-trigger { display: inline-flex; flex: 0 0 auto; }
+    .invoice-sidebar-backdrop.is-visible { position: fixed; inset: 0; z-index: 999; display: block; border: 0; background: rgba(9,40,68,0.38); }
     .page-heading { align-items: flex-start; flex-direction: column; }
     .heading-actions { width: 100%; justify-content: flex-start; }
     .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -237,16 +254,6 @@ button { cursor: pointer; }
 }
 
 @media (max-width: 680px) {
-    .ccc-app { grid-template-columns: minmax(0, 1fr); }
-    .ccc-sidebar { position: relative; min-height: 94px; padding: 12px 14px; flex-direction: row; align-items: center; gap: 10px; }
-    .ccc-sidebar::before { background-size: cover, auto 100%; background-position: center, center 72%; }
-    .ccc-brand img { width: 38px; height: 38px; }
-    .brand-tagline { display: none; }
-    .ccc-nav { margin: 0 auto; }
-    .ccc-nav-item { min-height: 44px; padding: 8px 10px; font-size: 0.72rem; }
-    .ccc-nav-item.active::before { left: -12px; }
-    .ccc-logout { min-height: 40px; margin: 0; padding: 8px; font-size: 0; }
-    .ccc-logout svg { width: 20px; height: 20px; }
     .ccc-topbar { position: relative; min-height: 66px; padding: 10px 14px; flex-wrap: wrap; gap: 10px; }
     .topbar-search { width: 100%; max-width: none; }
     .topbar-actions { gap: 10px; margin-left: auto; }
@@ -271,12 +278,10 @@ button { cursor: pointer; }
 }
 
 @media (max-width: 420px) {
-    .ccc-sidebar { min-height: 86px; padding: 10px; }
     .brand-name { font-size: 0.67rem; }
     .brand-consulting { font-size: 0.57rem; }
-    .ccc-nav-item { max-width: 126px; gap: 7px; font-size: 0.65rem; }
+    .ccc-nav-item { max-width: none; gap: 7px; font-size: 0.65rem; }
     .ccc-nav-item svg { width: 16px; height: 16px; }
-    .ccc-logout { padding: 5px; }
     .profile-avatar { width: 32px; height: 32px; }
 }
 

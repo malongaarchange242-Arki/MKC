@@ -20,6 +20,11 @@ export class AdminService {
     return UsersService.listUsers(limit, offset);
   }
 
+  static async searchClients(query: string, limit = 8) {
+    logger.info('Admin: search client profiles');
+    return UsersService.searchClients(query, limit);
+  }
+
   static async getUserById(userId: string) {
     logger.info('Admin: get user', { userId });
     return UsersService.getUserById(userId);
