@@ -87,10 +87,22 @@ export class AdminService {
     const profileById = new Map<string, any>();
 
     if (requestIds.length) {
-      const { data: requestRows, error: requestError } = await supabaseAdmin
+      const requestResult = await supabaseAdmin
         .from('requests')
         .select('id, user_id, bl_number, manual_bl, extracted_bl')
         .in('id', requestIds);
+      let requestRows: any[] = requestResult.data || [];
+      let requestError = requestResult.error;
+      if (requestResult.error?.code === '42703' &&
+          /requests\.manual_bl/i.test(requestResult.error.message || '')) {
+        logger.warn('requests.manual_bl is missing; loading inbox with available BL columns');
+        const compatibleResult = await supabaseAdmin
+          .from('requests')
+          .select('id, user_id, bl_number, extracted_bl')
+          .in('id', requestIds);
+        requestRows = compatibleResult.data || [];
+        requestError = compatibleResult.error;
+      }
       if (requestError) {
         logger.error('Failed to load request details for admin inbox', { requestIds, error: requestError });
         throw new Error('Failed to load inbox request details');
