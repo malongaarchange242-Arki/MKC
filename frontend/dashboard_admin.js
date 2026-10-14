@@ -719,7 +719,8 @@ function renderAdminTable() {
           adminAction = `<span class="pending-confirmation">${escapeHtml(translateStatus(status))}</span>`;
         } else if (status === 'COMPLETED') {
           const finalLabel = (i18n.deliver_final_feri && (i18n.deliver_final_feri[lang] || i18n.deliver_final_feri.en)) || 'Deliver Final FERI';
-          adminAction = `<button class="admin-row-action admin-row-final" type="button" disabled title="${escapeHtml(finalLabel)}">${escapeHtml(finalLabel)}</button>`;
+          const resendLabel = lang === 'fr' ? 'Renvoyer les documents au client' : 'Resend documents to client';
+          adminAction = `<button class="admin-row-action admin-row-final" type="button" onclick="event.stopPropagation(); resendFinalDocuments('${escapeJs(actionRequestId)}')"><i class="fas fa-paper-plane" aria-hidden="true"></i><span>${escapeHtml(resendLabel)}</span></button>`;
         } else {
           const finalLabel = (i18n.deliver_final_feri && (i18n.deliver_final_feri[lang] || i18n.deliver_final_feri.en)) || 'Deliver Final FERI';
           adminAction = `<button class="admin-row-action admin-row-final" type="button" onclick="event.stopPropagation(); openAdminModal('${escapeJs(blValue)}', 'FINAL', '${escapeJs(actionRequestId)}')"><i class="fas fa-file-circle-check" aria-hidden="true"></i><span>${escapeHtml(finalLabel)}</span></button>`;
@@ -940,13 +941,18 @@ async function handleAdminSubmit() {
         const txt = await resp.text().catch(() => null);
         throw new Error(`Publish failed: ${resp.status} ${txt || ''}`);
       }
+      const publishResult = await resp.json().catch(() => ({}));
 
       // Update local state
       requests = requests.map(req => req.id === requestId || req.request_id === requestId ? { ...req, status: 'COMPLETED', updated: new Date().toLocaleString() } : req);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(requests));
       renderAdminTable();
       closeAdminModal();
-      alert('Final FERI livré et enregistré.');
+      if (publishResult.notification?.emailSent && publishResult.notification?.inAppSent) {
+        alert('Document final livré. E-mail et notification client envoyés.');
+      } else {
+        alert('Document final enregistré, mais la notification ou l’e-mail client n’a pas été confirmé. Utilisez « Renvoyer les documents au client » dans la ligne de la demande.');
+      }
       return;
     }
 
@@ -1088,10 +1094,35 @@ function decodeTokenFallback(token) {
       prenom: obj.prenom || obj.first_name || null,
       nom: obj.nom || obj.last_name || null
     };
+
   } catch (e) {
     return null;
   }
 }
+
+window.resendFinalDocuments = async function (requestId) {
+  if (!requestId) return alert('Request id missing');
+  if (!confirm('Renvoyer les documents définitifs au client par e-mail et dans son tableau de bord ?')) return;
+
+  const API_BASE = document.querySelector('meta[name="api-base"]')?.content || 'https://mkc-ymuo.onrender.com';
+  const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+  if (!token) return alert('Token administrateur introuvable. Veuillez vous reconnecter.');
+
+  try {
+    const response = await fetch(`${API_BASE.replace(/\/$/, '')}/admin/requests/${encodeURIComponent(requestId)}/notify-final`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || result.success !== true) {
+      throw new Error(result.message || `HTTP ${response.status}`);
+    }
+    alert(`Notification envoyée : ${result.documents} document(s), e-mail et tableau de bord client.`);
+  } catch (error) {
+    console.error('Failed to resend final documents to client', { requestId, error });
+    alert(`Échec du renvoi des documents : ${error.message || error}`);
+  }
+};
 
 // Derive a human-friendly date string from various possible fields
 function formatDateFromRow(row) {
@@ -1251,16 +1282,18 @@ function getClientName(row) {
   }
 
   // 3️⃣ Single profile object from server-side join (row.profiles)
-  if (row.profiles && typeof row.profiles === 'object') {
-    const f = row.profiles.prenom || row.profiles.first_name || row.profiles.given_name || '';
-    const l = row.profiles.nom || row.profiles.last_name || row.profiles.lastname || '';
+  const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
+  if (profile && typeof profile === 'object') {
+    const f = profile.prenom || profile.first_name || profile.given_name || '';
+    const l = profile.nom || profile.last_name || profile.lastname || '';
     const c = `${f} ${l}`.trim();
     if (c) return c;
-    if (row.profiles.email) return row.profiles.email;
+    if (profile.email) return profile.email;
   }
 
   // 4️⃣ Other fallbacks
   if (row.client_name) return row.client_name;
+  if (row.client_email) return row.client_email;
   if (row.name) return row.name;
   if (row.full_name) return row.full_name;
   if (row.email) return row.email;

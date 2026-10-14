@@ -159,6 +159,7 @@ export class RequestsService {
     // Resolve profiles explicitly as the PostgREST relationship can be empty
     // when the deployed schema does not expose the expected foreign key.
     const userIds = Array.from(new Set(rows.map((row: any) => row.user_id).filter(Boolean)));
+    const profilesById = new Map<string, any>();
     if (userIds.length > 0) {
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
@@ -168,14 +169,43 @@ export class RequestsService {
       if (profilesError) {
         logger.error('Failed to resolve client profiles for admin request list', { userIds, error: profilesError });
       } else {
-        const profilesById = new Map((profiles || []).map((profile: any) => [String(profile.id), profile]));
-        for (const row of rows as any[]) {
-          const profile = profilesById.get(String(row.user_id));
-          if (profile) {
-            row.profiles = profile;
-            row.profile = profile;
-            row.client_name = [profile.prenom, profile.nom].filter(Boolean).join(' ').trim() || profile.email || null;
-          }
+        for (const profile of profiles || []) profilesById.set(String(profile.id), profile);
+      }
+
+      const missingProfileIds = userIds.filter(id => !profilesById.has(String(id)));
+      const authUsers = await Promise.all(missingProfileIds.map(async id => {
+        const { data, error: authError } = await supabase.auth.admin.getUserById(id);
+        if (authError) {
+          logger.warn('Failed to resolve client auth profile for admin request list', { userId: id, error: authError });
+          return null;
+        }
+        const user = data?.user;
+        if (!user) return null;
+        const metadata = user.user_metadata || {};
+        return {
+          id: user.id,
+          email: user.email || null,
+          prenom: metadata.prenom || metadata.first_name || metadata.given_name || null,
+          nom: metadata.nom || metadata.last_name || metadata.family_name || null
+        };
+      }));
+      for (const profile of authUsers) {
+        if (profile) profilesById.set(String(profile.id), profile);
+      }
+
+      for (const row of rows as any[]) {
+        const profile = profilesById.get(String(row.user_id));
+        if (profile) {
+          row.profiles = profile;
+          row.profile = profile;
+          row.client_name = [profile.prenom, profile.nom].filter(Boolean).join(' ').trim() || profile.email || null;
+          row.client_email = profile.email || null;
+        } else {
+          const relationProfile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
+          row.client_name = row.client_name || (relationProfile
+            ? [relationProfile.prenom, relationProfile.nom].filter(Boolean).join(' ').trim() || relationProfile.email || null
+            : null);
+          row.client_email = row.client_email || relationProfile?.email || null;
         }
       }
     }

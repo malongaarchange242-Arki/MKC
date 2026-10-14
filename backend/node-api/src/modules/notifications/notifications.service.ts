@@ -67,6 +67,8 @@ export class NotificationsService {
 
 			const channels: NotificationChannel[] =
 				payload.channels ?? ['in_app'];
+			let inAppSent = !channels.includes('in_app');
+			let emailSent = !channels.includes('email');
 
 			logger.info('Sending notification', {
 				type: payload.type,
@@ -95,7 +97,11 @@ export class NotificationsService {
 					},
 					is_read: false
 				});
-				if (error) logger.warn('Failed to persist in-app notification', { error });
+				if (error) {
+					logger.warn('Failed to persist in-app notification', { error });
+				} else {
+					inAppSent = true;
+				}
 				} catch (e) {
 					logger.warn('Failed to persist in-app notification', { e });
 				}
@@ -108,7 +114,7 @@ export class NotificationsService {
 						envSMTP: !!process.env.SMTP_HOST,
 						envSMTPHost: process.env.SMTP_HOST ? 'present' : 'missing'
 					});
-					return { success: true };
+					return { success: true, inAppSent, emailSent: false };
 				}
 
 				/* Helper: build attachments and template HTML */
@@ -253,6 +259,16 @@ export class NotificationsService {
 
 							userEmail = data?.email;
 							prenom = data?.prenom;
+							if (!userEmail) {
+								const { data: authUser, error: authUserError } = await supabase.auth.admin.getUserById(payload.userId);
+								if (authUserError) {
+									logger.warn('Failed to resolve notification recipient from auth user', { userId: payload.userId, error: authUserError });
+								} else if (authUser.user) {
+									const metadata = authUser.user.user_metadata || {};
+									userEmail = authUser.user.email;
+									prenom = prenom || metadata.prenom || metadata.first_name || metadata.given_name;
+								}
+							}
 					} catch (e) {
 						logger.warn('Supabase profile fetch error', { e, userId: payload.userId });
 						// Do not throw or return: admin email must still be sent
@@ -328,6 +344,7 @@ export class NotificationsService {
 									html,
 									attachments: clientAttachments
 								});
+								emailSent = true;
 								logger.info('Client email sent', { to: userEmail, type: payload.type });
 							} catch (sendErr) {
 								logger.error('SMTP sendMail failed (client)', { 
@@ -398,7 +415,7 @@ export class NotificationsService {
 				}
 			}
 
-			return { success: true };
+			return { success: true, inAppSent, emailSent };
 		} catch (err) {
 			logger.error('NotificationsService.send failed', { err });
 			throw new Error('Failed to send notification');

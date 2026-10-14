@@ -315,6 +315,18 @@ export class AdminController {
 		}
 	}
 
+	static async notifyFinalDocuments(req: AuthRequest, res: Response) {
+		try {
+			if (!ensureAdminOrSystem(req, res)) return;
+			const adminId = getAuthUserId(req);
+			if (!adminId) return res.status(401).json({ message: 'Unauthorized' });
+			const result = await AdminService.notifyFinalDocuments(req.params.id, adminId);
+			return res.status(200).json({ success: true, ...result });
+		} catch (error: unknown) {
+			return handleControllerError(res, error, 'Notify final documents');
+		}
+	}
+
 		static async regenerateManualBl(req: AuthRequest, res: Response) {
 			try {
 				if (!ensureAdminOrSystem(req, res)) return;

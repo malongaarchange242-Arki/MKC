@@ -544,10 +544,14 @@ export class AdminService {
       }
     }
 
+    let notificationResult: { inAppSent: boolean; emailSent: boolean } = {
+      inAppSent: false,
+      emailSent: false
+    };
     try {
       const { NotificationsService } = await import('../notifications/notifications.service');
 
-      await NotificationsService.send({
+      notificationResult = await NotificationsService.send({
         userId: request.user_id,
         type: 'REQUEST_COMPLETED',
         title: 'Vos documents officiels sont disponibles',
@@ -559,10 +563,92 @@ export class AdminService {
         attachments: attachments
       });
     } catch (err) {
-      logger.warn('Notification send failed', { err });
+      logger.error('Notification send failed after final document publication', { requestId, err });
     }
 
-    return { requestId, documents: docsWithUrls };
+    return { requestId, documents: docsWithUrls, notification: notificationResult };
+  }
+
+  static async notifyFinalDocuments(requestId: string, adminId: string) {
+    const request = await RequestsService.getRequestById(requestId);
+    if (!request) throw new Error('Request not found');
+
+    const links: Array<{ name: string; url: string; expires_in: number }> = [];
+    const attachments: Array<{ name: string; mime: string; base64: string }> = [];
+    const { data: deliveries, error: deliveriesError } = await supabase
+      .from('feri_deliveries')
+      .select('id, pdf_url, file_name, mime_type, status')
+      .eq('request_id', requestId)
+      .eq('status', 'DELIVERED');
+
+    if (deliveriesError) {
+      logger.error('Failed to load final deliveries for notification retry', { requestId, error: deliveriesError });
+      throw new Error('Unable to load final documents');
+    }
+
+    if (deliveries?.length) {
+      for (const delivery of deliveries) {
+        if (!delivery.pdf_url) continue;
+        const path = delivery.pdf_url;
+        const { data: signed, error: signedError } = await supabaseAdmin.storage
+          .from('feri_documents')
+          .createSignedUrl(path, 60 * 60);
+        if (signedError || !signed?.signedUrl) {
+          logger.warn('Failed to sign final delivery for notification retry', { requestId, deliveryId: delivery.id, error: signedError });
+        } else {
+          links.push({ name: delivery.file_name || 'Document officiel', url: signed.signedUrl, expires_in: 3600 });
+        }
+
+        const { data: fileData, error: downloadError } = await supabaseAdmin.storage.from('feri_documents').download(path);
+        if (downloadError || !fileData) {
+          logger.warn('Failed to load final delivery attachment for notification retry', { requestId, deliveryId: delivery.id, error: downloadError });
+        } else {
+          const file = Buffer.from(await fileData.arrayBuffer());
+          attachments.push({
+            name: delivery.file_name || path.split('/').pop() || 'document.pdf',
+            mime: delivery.mime_type || 'application/pdf',
+            base64: file.toString('base64')
+          });
+        }
+      }
+    } else {
+      const result = await DocumentsService.listDocuments({ requestId }, adminId, 'ADMIN');
+      for (const document of result.documents.filter((item: any) => item.category === 'FINAL')) {
+        try {
+          const url = await DocumentsService.generateSignedUrlFromDocument(document.id, 60 * 60);
+          links.push({ name: document.file_name || 'Document officiel', url, expires_in: 3600 });
+          const { file, document: downloadedDocument } = await DocumentsService.downloadDocument(document.id, adminId, 'ADMIN');
+          attachments.push({
+            name: downloadedDocument.file_name || `${document.id}.pdf`,
+            mime: downloadedDocument.mime_type || 'application/pdf',
+            base64: file.toString('base64')
+          });
+        } catch (error) {
+          logger.warn('Failed to load final document for notification retry', { requestId, documentId: document.id, error });
+        }
+      }
+    }
+
+    if (links.length === 0) throw new Error('No downloadable final documents found for this request');
+
+    const { NotificationsService } = await import('../notifications/notifications.service');
+    const result = await NotificationsService.send({
+      userId: request.user_id,
+      type: 'REQUEST_COMPLETED',
+      title: 'Vos documents officiels sont disponibles',
+      message: 'Votre FERI / AD a été validée. Vous pouvez télécharger vos documents sur la plateforme. Ils sont également joints à cet email.',
+      entityType: 'request',
+      entityId: requestId,
+      channels: ['in_app', 'email'],
+      links,
+      attachments
+    });
+    if (!result.inAppSent || !result.emailSent) {
+      logger.error('Final document notification retry was not fully delivered', { requestId, result });
+      throw new Error(`Notification incompletely delivered (in-app: ${result.inAppSent}, email: ${result.emailSent})`);
+    }
+
+    return { requestId, documents: links.length, emailSent: result.emailSent, inAppSent: result.inAppSent };
   }
 
   // ===============================
