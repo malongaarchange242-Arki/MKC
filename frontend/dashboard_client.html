@@ -159,14 +159,10 @@
     <header class="top-header">
       <div class="header-left">
         <!-- Hamburger (mobile) -->
-        <button class="hamburger-btn icon-btn" id="menu-trigger" aria-label="Ouvrir le menu" type="button">
+        <button class="hamburger-btn icon-btn" id="menu-trigger" aria-label="Ouvrir le menu" aria-controls="sidebar" aria-expanded="false" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
         </button>
-        <!-- Search -->
-        <div class="search-wrap">
-          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="search" class="search-input" id="global-search" placeholder="Rechercher une demande, un BL, une référence..." data-i18n-placeholder="search_requests" aria-label="Rechercher" />
-        </div>
+        <span class="mobile-header-brand" aria-hidden="true">MKC</span>
       </div>
 
       <div class="header-right">
@@ -420,6 +416,8 @@
   </div><!-- /main-content -->
 </div><!-- /app-container -->
 
+<button id="sidebar-backdrop" class="sidebar-backdrop" type="button" aria-label="Fermer le menu" hidden></button>
+
 <!-- ═══════════════════════════════════════════
      MODAL — Nouvelle demande (preserved entirely)
 ════════════════════════════════════════════ -->
@@ -635,34 +633,6 @@
 <script src="i18n.js"></script>
 
 <script>
-/* ── Mobile sidebar toggle ── */
-(function () {
-  var trigger = document.getElementById('menu-trigger');
-  var sidebar = document.getElementById('sidebar');
-  var closeBtn = document.getElementById('close-sidebar-btn');
-  if (trigger && sidebar) {
-    trigger.addEventListener('click', function () { sidebar.classList.add('show'); });
-  }
-  if (closeBtn && sidebar) {
-    closeBtn.addEventListener('click', function () { sidebar.classList.remove('show'); });
-  }
-  /* Click outside to close */
-  document.addEventListener('click', function (e) {
-    if (sidebar && sidebar.classList.contains('show') && !sidebar.contains(e.target) && e.target !== trigger) {
-      sidebar.classList.remove('show');
-    }
-  });
-
-  /* Nav items toggle active */
-  document.querySelectorAll('.nav-item').forEach(function (item) {
-    item.addEventListener('click', function () {
-      document.querySelectorAll('.nav-item').forEach(function (i) { i.classList.remove('active'); });
-      item.classList.add('active');
-    });
-  });
-
-})();
-
 /* ── Sync sidebar notif badge ── */
 (function () {
   var badge = document.getElementById('notif-badge');

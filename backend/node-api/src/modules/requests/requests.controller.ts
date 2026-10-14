@@ -361,6 +361,7 @@ export class RequestsController {
           category: 'FINAL',
           file_name: fileName,
           mime_type: delivery.mime_type || 'application/pdf',
+          delivered_at: delivery.delivered_at || undefined,
           created_at: delivery.delivered_at || undefined,
           downloadUrl: signed.signedUrl
         } as any);

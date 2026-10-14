@@ -103,6 +103,8 @@ function formatStatusLabel(status) {
 
 // --- INITIALISATION ---
 document.addEventListener('DOMContentLoaded', () => {
+    window.addEventListener('i18n:changed', renderClientPayments);
+
     // Load requests (source of truth) then invoices, then render.
     // If API is unavailable or unauthenticated, fall back to localStorage cache.
     fetchRequests()
@@ -183,7 +185,7 @@ function renderClientPayments() {
     const unpaid = requests.filter(req => [STATUS.AWAITING_PAYMENT, STATUS.SEND_DRAFT, STATUS.DRAFT_SENT, STATUS.PROFORMAT_SENT].includes(req.status));
 
     if (unpaid.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:40px;">${escapeHtml(t('no_pending_payments','No pending payments. All set!'))}</td></tr>`;
+        tbody.innerHTML = `<tr class="payment-empty-state"><td colspan="6">${escapeHtml(t('no_pending_payments','No pending payments. All set!'))}</td></tr>`;
         return;
     }
 
@@ -255,12 +257,12 @@ function renderClientPayments() {
 
                 return `
             <tr>
-                <td class="text-blue" style="font-weight:600;">${blDisplay}</td>
-                <td>FERI / CTN Issuance Fees</td>
-                <td>${amountValue}</td>
-                <td><span class="status ${escapeHtml(req.status)}">${escapeHtml(statusLabel)}</span></td>
-                <td>${actionBtn}</td>
-                <td>${paymentModeSelect}</td>
+                <td class="text-blue payment-bl-cell" data-label="${escapeHtml(t('bl_number','N° BL'))}" style="font-weight:600;">${blDisplay}</td>
+                <td class="payment-description-cell" data-label="${escapeHtml(t('description','Description'))}">FERI / CTN Issuance Fees</td>
+                <td class="payment-amount-cell" data-label="${escapeHtml(t('amount_due','Amount Due'))}">${amountValue}</td>
+                <td class="payment-status-cell" data-label="${escapeHtml(t('status','Status'))}"><span class="status ${escapeHtml(req.status)}">${escapeHtml(statusLabel)}</span></td>
+                <td class="payment-action-cell" data-label="${escapeHtml(t('action','Action'))}">${actionBtn}</td>
+                <td class="payment-mode-cell" data-label="${escapeHtml(t('payment_mode','Payment Method'))}">${paymentModeSelect}</td>
             </tr>
         `;
         }).join('');

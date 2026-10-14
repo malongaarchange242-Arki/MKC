@@ -24,6 +24,12 @@ const notificationPageSize = 20;
 
 // --- INITIALISATION AU CHARGEMENT ---
 window.addEventListener('DOMContentLoaded', async () => {
+  const detailBackdrop = document.getElementById('side-panel-backdrop');
+  const detailPanel = document.getElementById('side-panel');
+  if (detailBackdrop && detailPanel) {
+    // A transformed mobile sidebar would otherwise become the fixed panel's containing block.
+    document.body.append(detailBackdrop, detailPanel);
+  }
   ensurePopupContainers();
   bindUIEvents();
   try {
@@ -99,7 +105,7 @@ function setupClientPageNavigation() {
     notificationPageElement.hidden = !isNotificationsPage;
     dashboardNav?.classList.toggle('active', !isNotificationsPage);
     notificationsNav?.classList.toggle('active', isNotificationsPage);
-    document.getElementById('sidebar')?.classList.remove('show');
+    toggleMenu(false, false);
 
     document.querySelectorAll('.dropdown-popup').forEach(popup => {
       popup.classList.remove('show-popup');
@@ -127,12 +133,19 @@ function setupClientPageNavigation() {
 
   dashboardNav?.addEventListener('click', () => showPage('dashboard'));
   notificationsNav?.addEventListener('click', () => showPage('notifications'));
-  [dashboardNav, notificationsNav].forEach(item => item?.addEventListener('keydown', event => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      item.click();
-    }
-  }));
+  const navItems = document.querySelectorAll('.sidebar-nav .nav-item');
+  navItems.forEach(item => {
+    item.addEventListener('click', () => {
+      navItems.forEach(navItem => navItem.classList.toggle('active', navItem === item));
+      if (window.matchMedia('(max-width: 767.98px)').matches) toggleMenu(false, false);
+    });
+    item.addEventListener('keydown', event => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        item.click();
+      }
+    });
+  });
 
   document.getElementById('notifications-view-all')?.addEventListener('click', () => showPage('notifications'));
   document.querySelectorAll('[data-notification-filter]').forEach(button => {
@@ -585,10 +598,8 @@ function getRequestType(row) {
 }
 
 function clearRequestFilters() {
-  ['request-search', 'global-search'].forEach(id => {
-    const input = document.getElementById(id);
-    if (input) input.value = '';
-  });
+  const requestSearch = document.getElementById('request-search');
+  if (requestSearch) requestSearch.value = '';
   ['filter-type', 'filter-status', 'filter-date'].forEach(id => {
     const select = document.getElementById(id);
     if (select) select.value = 'all';
@@ -660,25 +671,55 @@ function renderDetailDocuments(row, documents, loadError = false) {
     ...doc,
     normalizedType: normalizeDocumentType(doc.type || doc.document_type || doc.doc_type)
   }));
-  const rendered = expected.map(expectedDoc => {
+  const isMkcDocument = doc => {
+    const type = doc.normalizedType || normalizeDocumentType(doc.type || doc.document_type || doc.doc_type);
+    const category = String(doc.category || '').toUpperCase();
+    const uploadedByRole = String(doc.uploaded_by_role || '').toUpperCase();
+    return uploadedByRole === 'ADMIN' ||
+      ['FINAL', 'DRAFT'].includes(category) ||
+      /^(DRAFT|PROFORMA|FERI_FINAL|AD_FINAL)|_FINAL$/.test(type);
+  };
+  const documentIdentity = doc => {
+    const type = normalizeDocumentType(doc.type || doc.document_type || doc.doc_type);
+    const name = String(doc.file_name || doc.fileName || doc.name || '').trim().toLowerCase();
+    const path = String(doc.file_path || doc.storage_path || doc.pdf_url || doc.pdfUrl || '').split('?')[0];
+    return name || path || type;
+  };
+  let transmittedCount = 0;
+  const clientDocuments = expected.map(expectedDoc => {
     const document = normalizedDocs.find(doc => doc.normalizedType === normalizeDocumentType(expectedDoc.type));
     const provided = Boolean(document);
+    if (provided) transmittedCount += 1;
     const statusLabel = document?.status
       ? translateStatus(document.status)
-      : provided ? detailText('document_status_received', 'Reçu') : detailText('document_status_not_received', 'Non transmis');
+      : provided
+        ? detailText('document_status_transmitted', 'Transmis')
+        : detailText('document_status_to_provide', 'À fournir');
+    const submittedAt = document?.uploaded_at || document?.created_at;
+    const description = submittedAt
+      ? `${detailText('document_submitted_on', 'Transmis le')} ${formatDetailDate(submittedAt)}`
+      : detailText(expectedDoc.descriptionKey, expectedDoc.name);
     const documentName = document?.file_name || detailText(expectedDoc.nameKey, expectedDoc.name);
     const action = document?.id
       ? `<button type="button" class="detail-download-btn" data-document-id="${escapeHtml(document.id)}"><i class="fas fa-download" aria-hidden="true"></i><span>${escapeHtml(detailText('download', 'Télécharger'))}</span></button>`
       : '';
-    return `<article class="detail-document-row ${provided ? 'is-provided' : 'is-unavailable'}">
+    return `<article class="detail-document-row is-client-document ${provided ? 'is-provided' : 'is-unavailable'}">
       <span class="detail-document-icon"><i class="fas ${expectedDoc.icon}" aria-hidden="true"></i></span>
-      <span class="detail-document-copy"><strong>${escapeHtml(documentName)}</strong><small>${escapeHtml(detailText(expectedDoc.descriptionKey, expectedDoc.name))}</small></span>
-      <span class="detail-document-status ${provided ? 'status-received' : 'status-not-received'}"><i class="fas ${provided ? 'fa-circle-check' : 'fa-circle-minus'}" aria-hidden="true"></i>${escapeHtml(statusLabel)}</span>
+      <span class="detail-document-copy"><strong>${escapeHtml(documentName)}</strong><small>${escapeHtml(description)}</small></span>
+      <span class="detail-document-status ${provided ? 'status-transmitted' : 'status-not-received'}"><i class="fas ${provided ? 'fa-circle-up' : 'fa-circle-minus'}" aria-hidden="true"></i>${escapeHtml(statusLabel)}</span>
       ${action}
     </article>`;
   });
   const knownTypes = new Set(expected.map(item => normalizeDocumentType(item.type)));
+  const mkcDocuments = [];
+  const renderedDocumentIds = new Set();
+  const renderedDocumentKeys = new Set();
   normalizedDocs.filter(doc => !knownTypes.has(doc.normalizedType)).forEach(doc => {
+    const identity = documentIdentity(doc);
+    const id = doc.id || doc.delivery_id;
+    if ((id && renderedDocumentIds.has(String(id))) || (identity && renderedDocumentKeys.has(identity))) return;
+    if (id) renderedDocumentIds.add(String(id));
+    if (identity) renderedDocumentKeys.add(identity);
     const name = doc.file_name || detailText('document', 'Document');
     let safeHref = '';
     if (doc.downloadUrl || doc.url) {
@@ -692,32 +733,42 @@ function renderDetailDocuments(row, documents, loadError = false) {
       : doc.id
         ? `<button type="button" class="detail-download-btn" data-document-id="${escapeHtml(doc.id)}"><i class="fas fa-download" aria-hidden="true"></i><span>${escapeHtml(detailText('download', 'Télécharger'))}</span></button>`
         : '';
-    rendered.push(`<article class="detail-document-row is-provided">
+    const isMkc = isMkcDocument(doc);
+    const issuedAt = doc.delivered_at || doc.issued_at || doc.created_at || doc.uploaded_at;
+    const dateLabel = issuedAt
+      ? `${detailText(isMkc ? 'document_issued_on' : 'document_submitted_on', isMkc ? 'Émis le' : 'Transmis le')} ${formatDetailDate(issuedAt)}`
+      : detailText(doc.type && isMkc ? 'document_status_available' : 'document_status_transmitted', isMkc ? 'Disponible' : 'Transmis');
+    const documentRow = `<article class="detail-document-row ${isMkc ? 'is-mkc-document' : 'is-client-document'} is-provided">
       <span class="detail-document-icon"><i class="fas fa-file-pdf" aria-hidden="true"></i></span>
-      <span class="detail-document-copy"><strong>${escapeHtml(name)}</strong><small>${escapeHtml(doc.type || detailText('document', 'Document'))}</small></span>
-      <span class="detail-document-status status-received"><i class="fas fa-circle-check" aria-hidden="true"></i>${escapeHtml(detailText('document_status_received', 'Reçu'))}</span>
-      ${action}
-    </article>`);
+      <span class="detail-document-copy"><strong>${escapeHtml(name)}</strong><small>${escapeHtml(dateLabel)}</small></span>
+      <span class="detail-document-status ${isMkc ? 'status-available' : 'status-transmitted'}"><i class="fas ${isMkc ? 'fa-circle-down' : 'fa-circle-up'}" aria-hidden="true"></i>${escapeHtml(detailText(isMkc ? 'document_status_available' : 'document_status_transmitted', isMkc ? 'Disponible' : 'Transmis'))}</span>
+      ${action}</article>`;
+    if (!isMkc) transmittedCount += 1;
+    (isMkc ? mkcDocuments : clientDocuments).push(documentRow);
   });
   const requestKey = String(row.request_id || row.id || '');
   const bl = row.bl_number || row.bl || row.extracted_bl || row.manual_bl || '—';
   const profile = getRelatedProfile(row);
   const externalFiles = [
-    ...(Array.isArray(row.documents) ? row.documents : []),
-    ...(Array.isArray(row.deliveries) ? row.deliveries : []),
-    ...(Array.isArray(row.feri_deliveries) ? row.feri_deliveries : [])
+    ...(Array.isArray(row.documents) ? row.documents.map(doc => ({ ...doc, isMkc: isMkcDocument(doc) })) : []),
+    ...(Array.isArray(row.deliveries) ? row.deliveries.map(doc => ({ ...doc, isMkc: true })) : []),
+    ...(Array.isArray(row.feri_deliveries) ? row.feri_deliveries.map(doc => ({ ...doc, isMkc: true })) : [])
   ].map(doc => ({
+    ...doc,
     href: doc.downloadUrl || doc.signedUrl || doc.pdf_url || doc.pdfUrl || doc.url,
-    name: doc.file_name || doc.fileName || doc.name || detailText('document', 'Document')
+    name: doc.file_name || doc.fileName || doc.name || detailText('document', 'Document'),
+    isMkc: doc.isMkc
   }));
   [
-    { href: row.draft_url || row.draftUrl || row.request_draft_url, name: 'Draft' },
-    { href: row.feri_signed_url || row.feriSignedUrl, name: 'FERI' }
+    { href: row.draft_url || row.draftUrl || row.request_draft_url, name: 'Draft', isMkc: true },
+    { href: row.feri_signed_url || row.feriSignedUrl, name: 'FERI', isMkc: true }
   ].forEach(file => {
     if (file.href && !externalFiles.some(existing => existing.href === file.href)) externalFiles.push(file);
   });
   externalFiles.forEach(file => {
     if (!file.href) return;
+    const identity = documentIdentity(file);
+    if (identity && renderedDocumentKeys.has(identity)) return;
     let safeHref;
     try {
       const parsed = new URL(file.href, window.location.href);
@@ -726,12 +777,16 @@ function renderDetailDocuments(row, documents, loadError = false) {
     } catch (_) {
       return;
     }
-    rendered.push(`<article class="detail-document-row is-provided">
+    const isMkc = file.isMkc;
+    const documentRow = `<article class="detail-document-row ${isMkc ? 'is-mkc-document' : 'is-client-document'} is-provided">
       <span class="detail-document-icon"><i class="fas fa-file-pdf" aria-hidden="true"></i></span>
-      <span class="detail-document-copy"><strong>${escapeHtml(file.name)}</strong><small>${escapeHtml(detailText('document_status_received', 'Reçu'))}</small></span>
-      <span class="detail-document-status status-received"><i class="fas fa-circle-check" aria-hidden="true"></i>${escapeHtml(detailText('document_status_received', 'Reçu'))}</span>
+      <span class="detail-document-copy"><strong>${escapeHtml(file.name)}</strong><small>${file.delivered_at || file.issued_at || file.created_at || file.uploaded_at ? `${escapeHtml(detailText(isMkc ? 'document_issued_on' : 'document_submitted_on', isMkc ? 'Émis le' : 'Transmis le'))} ${escapeHtml(formatDetailDate(file.delivered_at || file.issued_at || file.created_at || file.uploaded_at))}` : escapeHtml(detailText('document_status_received', 'Reçu'))}</small></span>
+      <span class="detail-document-status ${isMkc ? 'status-available' : 'status-transmitted'}"><i class="fas ${isMkc ? 'fa-circle-down' : 'fa-circle-up'}" aria-hidden="true"></i>${escapeHtml(detailText(isMkc ? 'document_status_available' : 'document_status_transmitted', isMkc ? 'Disponible' : 'Transmis'))}</span>
       <a class="detail-download-btn" href="${escapeHtml(safeHref)}" target="_blank" rel="noopener noreferrer"><i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i><span>${escapeHtml(detailText('view_document', 'Consulter'))}</span></a>
-    </article>`);
+    </article>`;
+    if (!isMkc) transmittedCount += 1;
+    (isMkc ? mkcDocuments : clientDocuments).push(documentRow);
+    if (identity) renderedDocumentKeys.add(identity);
   });
 
   const invoice = invoicesMap.get(requestKey) || invoicesMap.get(String(bl)) || null;
@@ -748,21 +803,33 @@ function renderDetailDocuments(row, documents, loadError = false) {
       prenom: profile?.prenom || row.prenom,
       email: profile?.email || row.email
     });
-    rendered.unshift(`<article class="detail-document-row is-provided">
+    mkcDocuments.unshift(`<article class="detail-document-row is-mkc-document is-provided">
       <span class="detail-document-icon"><i class="fas fa-receipt" aria-hidden="true"></i></span>
       <span class="detail-document-copy"><strong>${escapeHtml(detailText('invoice', 'Facture'))}</strong><small>${escapeHtml(String(invoiceNumber || formatAmountValue(amount)))}</small></span>
-      <span class="detail-document-status status-received">${escapeHtml(detailText('available', 'Disponible'))}</span>
+      <span class="detail-document-status status-available"><i class="fas fa-circle-down" aria-hidden="true"></i>${escapeHtml(detailText('document_status_available', 'Disponible'))}</span>
       <a class="invoice-link detail-download-btn" href="${escapeHtml(invoiceUrl)}" data-request="${escapeHtml(requestKey)}" data-bl="${escapeHtml(bl)}" data-inv="${escapeHtml(invoiceNumber)}" data-amount="${escapeHtml(String(amount))}" data-nom="${escapeHtml(profile?.nom || row.nom || '')}" data-prenom="${escapeHtml(profile?.prenom || row.prenom || '')}" data-email="${escapeHtml(profile?.email || row.email || '')}"><i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i><span>${escapeHtml(detailText('view_document', 'Consulter'))}</span></a>
     </article>`);
   }
-  if (!rendered.length) {
+  const documentCount = clientDocuments.length + mkcDocuments.length;
+  if (!documentCount) {
     container.innerHTML = `<p class="detail-docs-message">${escapeHtml(detailText('detail_no_documents', 'Aucun document défini pour cette demande.'))}</p>`;
     if (toggle) toggle.hidden = true;
     return;
   }
   const limit = 4;
-  const hasOverflow = rendered.length > limit;
-  container.innerHTML = rendered.map((html, index) => `<div class="detail-document-wrapper${hasOverflow && !detailDocumentsExpanded && index >= limit ? ' is-collapsed' : ''}">${html}</div>`).join('');
+  const hasOverflow = clientDocuments.length > limit || mkcDocuments.length > limit;
+  const renderSection = (key, icon, docs, badgeCount, emptyKey, emptyFallback) => {
+    const items = docs.map((html, index) => {
+      const collapsed = !detailDocumentsExpanded && index >= limit;
+      return `<div class="detail-document-wrapper${collapsed ? ' is-collapsed' : ''}">${html}</div>`;
+    }).join('');
+    return `<section class="detail-document-group ${key}" aria-label="${escapeHtml(detailText(key === 'is-mkc-group' ? 'documents_received_from_mkc' : 'documents_sent_by_client', key === 'is-mkc-group' ? 'Documents reçus de MKC' : 'Documents transmis par vous'))}">
+      <h4 class="detail-document-group-title"><i class="fas ${icon}" aria-hidden="true"></i>${escapeHtml(detailText(key === 'is-mkc-group' ? 'documents_received_from_mkc' : 'documents_sent_by_client', key === 'is-mkc-group' ? 'Documents reçus de MKC' : 'Documents transmis par vous'))}<span>${badgeCount}</span></h4>
+      ${items || `<p class="detail-documents-empty">${escapeHtml(detailText(emptyKey, emptyFallback))}</p>`}
+    </section>`;
+  };
+  container.innerHTML = renderSection('is-client-group', 'fa-arrow-up-from-bracket', clientDocuments, transmittedCount, 'no_client_documents_yet', 'Aucun document transmis.') +
+    renderSection('is-mkc-group', 'fa-arrow-down-to-bracket', mkcDocuments, mkcDocuments.length, 'no_mkc_documents_yet', 'Aucun document mis à disposition pour le moment.');
   if (toggle) {
     toggle.hidden = !hasOverflow;
     toggle.textContent = detailDocumentsExpanded
@@ -886,21 +953,24 @@ function openRequestDetails(requestId, trigger = null) {
 
 // --- RECHERCHE ET BIND UI ---
 function bindUIEvents() {
-  const searchInputs = ['request-search', 'global-search'].map(id => document.getElementById(id)).filter(Boolean);
-  searchInputs.forEach(input => input.addEventListener('input', () => {
-    searchInputs.forEach(other => { if (other !== input) other.value = input.value; });
-    applyFilters();
-  }));
+  const requestSearch = document.getElementById('request-search');
+  if (requestSearch) requestSearch.addEventListener('input', applyFilters);
 
   // Buttons
   const openModalBtn = document.getElementById('open-modal-btn');
   if (openModalBtn) openModalBtn.addEventListener('click', openModal);
 
   const menuTrigger = document.getElementById('menu-trigger');
-  if (menuTrigger) menuTrigger.addEventListener('click', toggleMenu);
+  if (menuTrigger) menuTrigger.addEventListener('click', () => toggleMenu());
 
   const closeSidebarBtn = document.getElementById('close-sidebar-btn');
-  if (closeSidebarBtn) closeSidebarBtn.addEventListener('click', toggleMenu);
+  if (closeSidebarBtn) closeSidebarBtn.addEventListener('click', () => toggleMenu(false));
+  document.getElementById('sidebar-backdrop')?.addEventListener('click', () => toggleMenu(false));
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && document.getElementById('sidebar')?.classList.contains('show')) {
+      toggleMenu(false);
+    }
+  });
 
   const refreshBtn = document.getElementById('refresh-btn');
   if (refreshBtn) refreshBtn.addEventListener('click', () => loadRequests());
@@ -2108,9 +2178,19 @@ async function downloadDraft(requestId) {
 }
 
 // --- MENU MOBILE ---
-function toggleMenu() {
+function toggleMenu(open = null, restoreFocus = true) {
   const sidebar = document.getElementById('sidebar');
-  if (sidebar) sidebar.classList.toggle('show');
+  if (!sidebar) return;
+  const isOpen = open === null ? !sidebar.classList.contains('show') : open;
+  sidebar.classList.toggle('show', isOpen);
+  document.getElementById('menu-trigger')?.setAttribute('aria-expanded', String(isOpen));
+  const backdrop = document.getElementById('sidebar-backdrop');
+  if (backdrop) backdrop.hidden = !isOpen;
+  if (isOpen) {
+    document.getElementById('close-sidebar-btn')?.focus({ preventScroll: true });
+  } else if (restoreFocus) {
+    document.getElementById('menu-trigger')?.focus({ preventScroll: true });
+  }
 }
 
 // --- PETITES PROTECTIONS XSS (affichage) ---
