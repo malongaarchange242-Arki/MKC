@@ -56,7 +56,6 @@ export class AdminService {
     const { data: disputes, error: disputesError } = await supabaseAdmin
       .from('request_disputes')
       .select('id, request_id, raised_by, reason, attachment_url, created_at')
-      .eq('raised_by', 'CLIENT')
       .order('created_at', { ascending: false })
       .limit(200);
 
@@ -98,7 +97,13 @@ export class AdminService {
       }
     }
 
-    return entries.map((entry: any) => {
+    return entries.filter((entry: any) => {
+      if (entry.type !== 'DISPUTE') return true;
+      const request = requestById.get(String(entry.request_id));
+      const raisedBy = String(entry.raised_by || '').trim();
+      return raisedBy.toUpperCase() === 'CLIENT' ||
+        (!!request?.user_id && raisedBy === String(request.user_id));
+    }).map((entry: any) => {
       const request = requestById.get(String(entry.request_id));
       const profile = request ? profileById.get(String(request.user_id)) : null;
       return {

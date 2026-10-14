@@ -91,12 +91,13 @@ export class MessagesService {
     (async () => {
       try {
         const { NotificationsService } = await import('../notifications/notifications.service');
+        const isClientSender = senderRole.trim().toUpperCase() === 'CLIENT';
         // fetch request to get owner
         const { data: reqRow } = await supabase.from('requests').select('id,user_id,extracted_bl,bl_number').eq('id', requestId).maybeSingle();
         const clientId = reqRow?.user_id;
         const blDesc = reqRow?.extracted_bl || reqRow?.bl_number || requestId;
 
-        if (clientId) {
+        if (!isClientSender && clientId && clientId !== senderId) {
           await NotificationsService.send({
             userId: clientId,
             type: 'REQUEST_MESSAGE',
@@ -109,7 +110,7 @@ export class MessagesService {
         }
 
         const adminEmail = process.env.ADMIN_EMAIL || null;
-        if (adminEmail) {
+        if (isClientSender && adminEmail) {
           await NotificationsService.send({
             userId: clientId || senderId,
             type: 'REQUEST_MESSAGE_ADMIN',

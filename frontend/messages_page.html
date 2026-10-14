@@ -4,193 +4,206 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=0" />
   <meta name="api-base" content="https://mkc-ymuo.onrender.com" />
-  <title>Messages — Maritime Kargo</title>
+  <title>Messages — Maritime Kargo Consulting</title>
+  <link rel="icon" href="Logotype_mkc_bon-removebg-preview.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <style>
-    /* Reset pour plein écran */
-    * { box-sizing: border-box; }
-    html, body { 
-      height: 100%; 
-      margin: 0; 
-      padding: 0; 
-      overflow: hidden; /* Empêche le scroll global du navigateur */
-      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-      background-color: #fff;
+    :root {
+      color-scheme: light;
+      --navy-900: #071d33;
+      --navy-800: #0b2945;
+      --navy-700: #0e3260;
+      --ocean: #126b8a;
+      --orange: #f58220;
+      --ink: #0b2540;
+      --muted: #64748b;
+      --line: #e2eaf1;
+      --page: #f3f6f8;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
-
-    /* Container Principal */
-    .app-container {
-      display: flex;
-      flex-direction: column;
-      height: 100vh; /* Toute la hauteur de l'écran */
-      width: 100vw;  /* Toute la largeur de l'écran */
-    }
-
-    /* En-tête fixe */
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+    body { color: var(--ink); background: var(--page); font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+    button, input, textarea { font: inherit; }
+    .app-container { display: flex; width: 100%; height: 100%; min-width: 0; flex-direction: row; }
+    #main-list-container { display: flex; width: 34%; min-width: 270px; max-width: 390px; height: 100%; min-height: 0; flex: 0 0 auto; flex-direction: column; background: #fff; border-right: 1px solid var(--line); }
     .header {
-      padding: 15px;
-      background: #ffffff;
-      border-bottom: 1px solid #eee;
+      z-index: 2;
       display: flex;
+      min-height: 76px;
+      flex: 0 0 auto;
       align-items: center;
-      gap: 12px;
-      flex-shrink: 0;
+      gap: 14px;
+      padding: 10px 16px;
+      color: #fff;
+      background: var(--navy-900);
+      box-shadow: 0 4px 18px rgba(7,29,51,.14);
     }
-
-    /* Liste des messages (Lignes) */
-    #list-view {
-      flex: 1;
-      overflow-y: auto; /* Scroll uniquement ici */
-      padding: 10px;
-    }
-
-    .conversation-row {
-      padding: 20px 15px;
-      margin-bottom: 8px;
-      border-radius: 10px;
-      cursor: pointer;
-      border: 1px solid rgba(0,0,0,0.03);
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    /* Couleurs demandées */
-    .type-conteste { background-color: #FEE2E2; border-left: 6px solid #EF4444; } 
-    .type-normal { background-color: #FFEDD5; border-left: 6px solid #F97316; }
-
-    .row-header { display: flex; justify-content: space-between; align-items: center; }
-    .row-title { font-weight: 700; font-size: 16px; color: #1f2937; }
-    .row-preview { font-size: 14px; color: #4b5563; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
-
-    /* Vue Chat (Détails plein écran) */
+    .header-icon { display: grid; width: 42px; height: 42px; flex: 0 0 auto; place-items: center; color: var(--navy-900); background: var(--orange); border-radius: 12px; font-size: 18px; }
+    .header-copy { min-width: 0; }
+    .header h2 { margin: 0; color: #fff; font-size: 1.12rem; font-weight: 750; letter-spacing: -.02em; }
+    .header-subtitle { margin: 4px 0 0; color: rgba(255,255,255,.67); font-size: .78rem; }
+    .inbox-back-link { display: none; min-height: 38px; align-items: center; gap: 8px; padding: 0 11px; color: #fff; border: 1px solid rgba(255,255,255,.27); border-radius: 8px; font-size: .78rem; font-weight: 650; text-decoration: none; white-space: nowrap; }
+    .inbox-back-link.visible { display: inline-flex; }
+    .inbox-back-link:hover { background: rgba(255,255,255,.1); }
+    .header-actions { display: flex; align-items: center; gap: 9px; margin-left: auto; }
+    #btn-load-disputes { display: inline-flex; min-height: 40px; align-items: center; justify-content: center; gap: 8px; padding: 0 14px; color: var(--navy-900); background: var(--orange); border: 1px solid var(--orange); border-radius: 8px; font-size: .81rem; font-weight: 700; cursor: pointer; transition: background .18s ease, transform .18s ease; }
+    #btn-load-disputes:hover { background: #ff9a36; transform: translateY(-1px); }
+    .header-subtitle { display: none; }
+    body.admin-inbox .header { gap: 8px; padding-right: 10px; padding-left: 10px; }
+    body.admin-inbox .header-copy { flex: 1 1 auto; }
+    body.admin-inbox .header h2 { font-size: .94rem; line-height: 1.25; }
+    body.admin-inbox .inbox-back-link { width: 34px; min-width: 34px; justify-content: center; gap: 0; padding: 0; font-size: 0; }
+    body.admin-inbox .inbox-back-link i { font-size: 13px; }
+    body.admin-inbox #btn-load-disputes { width: 38px; min-width: 38px; justify-content: center; gap: 0; padding: 0; font-size: 0; }
+    body.admin-inbox #btn-load-disputes i { font-size: 13px; }
+    #list-view { width: 100%; min-height: 0; flex: 1 1 auto; overflow-y: auto; margin: 0; padding: 10px; }
+    .conversation-row { position: relative; display: flex; width: 100%; min-height: 76px; flex-direction: column; gap: 6px; margin: 0 0 6px; padding: 12px; color: inherit; background: #fff; border: 1px solid transparent; border-bottom-color: var(--line); border-radius: 9px; text-align: left; cursor: pointer; transition: background .16s ease, border-color .16s ease; }
+    .conversation-row:hover { background: #f7fafc; border-color: #e7eef4; }
+    .conversation-row.is-active { background: #eef5fa; border-color: #d7e6f1; box-shadow: inset 3px 0 var(--orange); }
+    .conversation-row:focus-visible { outline: 3px solid rgba(245,130,32,.48); outline-offset: 2px; }
+    .type-conteste { border-left-color: #d92d20; }
+    .type-normal { border-left-color: var(--orange); }
+    .row-header { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+    .row-title { min-width: 0; overflow: hidden; color: var(--navy-900); font-size: .94rem; font-weight: 750; text-overflow: ellipsis; }
+    .row-header small { flex: 0 0 auto; color: var(--muted); font-size: .72rem; }
+    .row-preview { overflow: hidden; color: #53687c; font-size: .83rem; line-height: 1.5; text-overflow: ellipsis; white-space: nowrap; }
+    #no-conversations { display: grid; min-height: 150px; place-items: center; padding: 28px 18px !important; color: var(--muted) !important; text-align: center; line-height: 1.5; }
     #chat-view {
-      display: none; /* Masqué par défaut */
-      flex-direction: column;
+      position: relative;
+      display: flex;
+      width: 0;
       height: 100%;
-      background: #fdfdfd;
-    }
-
-    .chat-header {
-      padding: 12px 15px;
-      background: white;
-      border-bottom: 1px solid #eee;
-      display: flex;
-      align-items: center;
-      gap: 15px;
-    }
-
-    .messages-history {
-      flex: 1;
-      overflow-y: auto;
-      padding: 20px 15px;
-      display: flex;
+      min-width: 0;
+      min-height: 0;
+      flex: 1 1 auto;
       flex-direction: column;
-      gap: 12px;
+      overflow: hidden;
+      background: var(--page);
+      border: 0;
     }
-
-    /* Bulles de chat */
+    #chat-empty { display: flex; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 28px; color: var(--muted); text-align: center; }
+    #chat-empty[hidden] { display: none; }
+    #chat-empty i { color: #9db1c3; font-size: 2rem; }
+    #chat-empty strong { color: var(--navy-900); font-size: .95rem; }
+    #chat-empty span { max-width: 300px; font-size: .8rem; line-height: 1.55; }
+    .conversation-chat { display: flex; width: 100%; height: 100%; min-height: 0; flex-direction: column; }
+    .chat-header { z-index: 1; display: flex; min-height: 64px; flex: 0 0 auto; align-items: center; gap: 11px; padding: 10px 18px; background: var(--navy-900); box-shadow: 0 4px 16px rgba(7,29,51,.12); }
+    .chat-back { display: grid; width: 34px; height: 34px; flex: 0 0 auto; place-items: center; color: #fff; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.2); border-radius: 9px; font-size: 14px; cursor: pointer; }
+    .chat-back:hover { color: var(--orange); background: rgba(255,255,255,.16); }
+    #chat-title { min-width: 0; flex: 1; overflow: hidden; color: #fff; font-size: .9rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+    .messages-history { width: 100%; min-height: 0; flex: 1 1 auto; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 20px clamp(14px, 3vw, 42px); }
     .msg { display: flex; flex-direction: column; }
     .msg.me { align-items: flex-end; }
     .msg.other { align-items: flex-start; }
-    
-    .bubble {
-      padding: 12px 16px;
-      border-radius: 18px;
-      font-size: 15px;
-      line-height: 1.4;
-      max-width: 80%;
-    }
-    .msg.me .bubble { background: #3B82F6; color: white; border-bottom-right-radius: 4px; }
-    .msg.other .bubble { background: #E5E7EB; color: #111; border-bottom-left-radius: 4px; }
-
-    /* Zone de saisie fixe en bas */
-    .composer {
-      padding: 15px;
-      background: white;
-      border-top: 1px solid #eee;
-      display: flex;
-      gap: 10px;
-      align-items: center;
-    }
-
-    .composer input {
-      flex: 1;
-      padding: 12px 15px;
-      border: 1px solid #d1d5db;
-      border-radius: 25px;
-      outline: none;
-      font-size: 15px;
-    }
-
-    .composer button {
-      background: #3B82F6;
-      color: white;
-      border: none;
-      width: 45px;
-      height: 45px;
-      border-radius: 50%;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background 0.2s;
-    }
-
+    .bubble { max-width: 86%; padding: 10px 13px; border-radius: 14px; font-size: .82rem; line-height: 1.55; overflow-wrap: anywhere; white-space: pre-wrap; box-shadow: 0 3px 10px rgba(7,29,51,.06); }
+    .msg.me .bubble { color: #fff; background: linear-gradient(145deg, var(--navy-700), var(--navy-900)); border-bottom-right-radius: 4px; }
+    .msg.other .bubble { color: var(--ink); background: #fff; border: 1px solid var(--line); border-bottom-left-radius: 4px; }
+    .msg small { margin: 5px 5px 0 !important; color: var(--muted) !important; font-size: .69rem !important; }
+    .composer { display: flex; flex: 0 0 auto; align-items: flex-end; gap: 9px; padding: 12px 18px; background: #fff; border-top: 1px solid var(--line); }
+    .composer textarea { min-width: 0; min-height: 42px; max-height: 120px; flex: 1; resize: vertical; padding: 11px 15px; color: var(--ink); background: var(--page); border: 1px solid #d5e0e9; border-radius: 16px; outline: none; font-size: .86rem; line-height: 1.4; }
+    .composer textarea:focus { border-color: var(--ocean); box-shadow: 0 0 0 3px rgba(18,107,138,.12); }
+    .composer button { display: grid; width: 42px; height: 42px; flex: 0 0 auto; place-items: center; color: var(--navy-900); background: var(--orange); border: 0; border-radius: 50%; font-size: 14px; cursor: pointer; transition: background .18s ease, transform .18s ease; }
+    .composer button:hover:not(:disabled) { background: #ff9a36; transform: translateY(-1px); }
+    .composer button:disabled { opacity: .48; cursor: not-allowed; }
+    .chat-status { min-height: 20px; padding: 0 18px 7px; color: #b42332; background: #fff; font-size: .76rem; }
+    .chat-status:empty { display: none; }
+    .loading-state, .empty-state { display: flex; min-height: 100%; align-items: center; justify-content: center; gap: 9px; color: var(--muted); font-size: .84rem; text-align: center; }
+    .load-error { display: flex; max-width: 420px; flex-direction: column; align-items: center; gap: 12px; padding: 24px; color: #b42332; text-align: center; line-height: 1.5; }
+    .retry-load { padding: 8px 12px; color: var(--navy-900); background: #fff; border: 1px solid var(--line); border-radius: 8px; font-weight: 650; cursor: pointer; }
+    .retry-load:hover { background: #f5f8fb; }
+    .row-preview { display: flex; align-items: center; gap: 5px; }
+    .row-preview-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    button:focus-visible, a:focus-visible { outline: 3px solid rgba(245,130,32,.55); outline-offset: 3px; }
     .hidden { display: none !important; }
-    .inbox-back-link {
-      display: none;
-      align-items: center;
-      gap: 7px;
-      color: #1f2937;
-      font-size: 13px;
-      font-weight: 600;
-      text-decoration: none;
+    @media (max-width: 620px) {
+      #main-list-container { width: 100%; min-width: 0; max-width: none; border-right: 0; }
+      .app-container.has-active-conversation #main-list-container { display: none; }
+      .app-container.has-active-conversation #chat-view { display: flex; width: 100%; }
+      .app-container:not(.has-active-conversation) #chat-view { display: none; }
     }
-    .inbox-back-link.visible { display: inline-flex; }
+    @media (max-width: 760px) {
+      .header { min-height: 70px; gap: 10px; padding: 10px 13px; }
+      .header-icon { width: 37px; height: 37px; border-radius: 10px; font-size: 16px; }
+      .header h2 { font-size: .94rem; }
+      .header-subtitle { font-size: .68rem; }
+      .inbox-back-link { width: 36px; min-width: 36px; height: 36px; justify-content: center; padding: 0; overflow: hidden; font-size: 0; }
+      .inbox-back-link i { font-size: 14px; }
+      .header-actions { gap: 0; }
+      #btn-load-disputes { min-height: 37px; gap: 6px; padding: 0 10px; font-size: .73rem; }
+      #list-view { width: 100%; padding: 10px 12px 20px; }
+      .conversation-row { min-height: 82px; gap: 7px; padding: 14px 13px 14px 16px; }
+      .row-title { font-size: .85rem; }
+      .row-header small { font-size: .65rem; }
+      .row-preview { font-size: .77rem; }
+      .chat-header { min-height: 58px; gap: 9px; padding: 8px 11px; }
+      .chat-back { width: 33px; height: 33px; }
+      #chat-title { font-size: .84rem; }
+      .messages-history { padding: 13px 10px; }
+      .bubble { max-width: 90%; padding: 9px 11px; font-size: .8rem; }
+      .composer { gap: 7px; padding: 8px 9px; }
+      .composer textarea { min-height: 40px; font-size: .8rem; }
+      .composer button { width: 40px; height: 40px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+    }
   </style>
 </head>
 <body>
 
 <div class="app-container">
   
-  <div id="main-list-container" style="display: flex; flex-direction: column; height: 100%;">
+  <div id="main-list-container">
     <div class="header">
-    <a id="admin-inbox-back" class="inbox-back-link" href="dashboard_admin.html" aria-label="Retour au tableau de bord admin"><i class="fas fa-arrow-left" aria-hidden="true"></i> Tableau de bord</a>
-    <i class="fas fa-envelope-open-text" style="color:#3B82F6; font-size: 20px;"></i>
-    <h2 style="margin:0; font-size:20px;">Mes Messages</h2>
-      <div style="margin-left:auto; display:flex; gap:8px; align-items:center;">
-        <button id="btn-load-disputes" style="padding:8px 10px; background:#3B82F6; color:#fff; border:none; border-radius:6px; cursor:pointer;">Charger</button>
+      <a id="admin-inbox-back" class="inbox-back-link" href="dashboard_admin.html" aria-label="Retour au tableau de bord admin"><i class="fas fa-arrow-left" aria-hidden="true"></i><span>Tableau de bord</span></a>
+      <span class="header-icon" aria-hidden="true"><i class="fas fa-envelope-open-text"></i></span>
+      <div class="header-copy">
+        <h2>Mes Messages</h2>
+        <p class="header-subtitle">Échangez avec notre équipe au sujet de vos demandes.</p>
+      </div>
+      <div class="header-actions">
+        <button id="btn-load-disputes" type="button"><i class="fas fa-rotate" aria-hidden="true"></i><span>Charger</span></button>
       </div>
     </div>
 
     <div id="list-view">
-      <div id="no-conversations" style="text-align:center; color:#6b7280; padding:30px;">Aucune conversation pour le moment.</div>
+      <div id="no-conversations">Aucune conversation pour le moment.</div>
     </div>
   </div>
 
-  <div id="chat-view">
+  <div id="chat-view" aria-label="Conversation">
+  <div id="chat-empty">
+    <i class="fas fa-comments" aria-hidden="true"></i>
+    <strong>Sélectionnez une conversation</strong>
+    <span>Choisissez un échange dans la liste pour consulter son historique et répondre.</span>
+  </div>
+  <div id="chat-content" class="conversation-chat hidden">
     <div class="chat-header">
-      <button onclick="closeChat()" style="background:none; border:none; font-size:18px; cursor:pointer;">
-        <i class="fas fa-arrow-left"></i>
+      <button class="chat-back" onclick="closeChat()" type="button" aria-label="Retour aux conversations">
+        <i class="fas fa-arrow-left" aria-hidden="true"></i>
       </button>
-      <div style="font-weight: bold; font-size: 16px;" id="chat-title">Sujet</div>
+      <div id="chat-title">Sujet</div>
     </div>
-    
-    <div id="messages-history" class="messages-history">
-      </div>
-
+    <div id="messages-history" class="messages-history" aria-live="polite"></div>
+    <div id="chat-status" class="chat-status" role="status" aria-live="polite"></div>
     <div class="composer">
-      <input id="msg-input" placeholder="Ecrire un message..." />
-      <button id="msg-send"><i class="fas fa-paper-plane"></i></button>
+      <textarea id="msg-input" rows="1" placeholder="Écrire un message…" aria-label="Écrire un message"></textarea>
+      <button id="msg-send" type="button" aria-label="Envoyer" disabled><i class="fas fa-paper-plane" aria-hidden="true"></i></button>
     </div>
+  </div>
   </div>
 
 </div>
 
 <script>
   let activeThreadId = null;
+  let activeConversationButton = null;
   const isAdminInbox = new URLSearchParams(window.location.search).get('admin') === '1';
+  document.body.classList.toggle('admin-inbox', isAdminInbox);
 
   function getApiBase() {
     const configuredBase = document.querySelector('meta[name="api-base"]')?.content?.trim();
@@ -225,14 +238,14 @@
       const titleEl = document.querySelector('.header h2');
       if (titleEl) titleEl.innerText = isAdminInbox ? 'Messages des clients' : __('messages.title', 'Mes Messages');
       if (isAdminInbox) document.getElementById('admin-inbox-back')?.classList.add('visible');
-      const loadBtn = document.getElementById('btn-load-disputes');
-      if (loadBtn) loadBtn.innerText = __('messages.load', 'Charger');
+      const loadLabel = document.querySelector('#btn-load-disputes span');
+      if (loadLabel) loadLabel.innerText = __('messages.load', 'Charger');
       const noConv = document.getElementById('no-conversations');
       if (noConv) noConv.innerText = __('messages.no_conversations', 'Aucune conversation pour le moment.');
       const chatTitle = document.getElementById('chat-title');
       if (chatTitle && !chatTitle.dataset.localized) { chatTitle.dataset.localized = '1'; chatTitle.innerText = __('messages.subject', 'Sujet'); }
       const msgInput = document.getElementById('msg-input');
-      if (msgInput) msgInput.placeholder = __('messages.compose_placeholder', 'Ecrire un message...');
+      if (msgInput) msgInput.placeholder = __('messages.compose_placeholder', 'Écrire un message…');
       const msgSend = document.getElementById('msg-send');
       if (msgSend) msgSend.title = __('messages.send', 'Envoyer');
     } catch (e) { /* ignore */ }
@@ -244,6 +257,9 @@
       const p = ev.data || {};
       if (p && (p.type === 'i18n:changed' || p.type === 'i18n:setLang')) {
         localizeStaticTexts();
+      } else if (p?.type === 'messages:refresh') {
+        refreshConversations();
+        if (activeThreadId) renderMessages(activeThreadId);
       }
     } catch (e) { /* ignore */ }
   });
@@ -251,112 +267,169 @@
   // Try re-localizing shortly after load to pick up parent i18n state
   setTimeout(() => { try { localizeStaticTexts(); } catch (e) {} }, 200);
 
+  let activeThreadTitle = '';
+  let messageLoadSequence = 0;
+  let isLoadingMessages = false;
+  let isSendingMessage = false;
+  let currentUserId = null;
+  try {
+    const token = localStorage.getItem('access_token') || localStorage.getItem('token');
+    const payload = token ? JSON.parse(atob(token.split('.')[1])) : null;
+    currentUserId = payload?.id || payload?.sub || payload?.user_id || null;
+  } catch (error) {
+    currentUserId = null;
+  }
+
   function openChat(threadId, type, displayTitle) {
     activeThreadId = threadId;
-    document.getElementById('main-list-container').classList.add('hidden');
-    document.getElementById('chat-view').style.display = 'flex';
-    
-    // Display 'Contestation' if type is conteste, otherwise show the ID or title
-    const chatTitle = displayTitle || ((type === 'conteste') ? __('messages.dispute','Contestation') : threadId);
-    document.getElementById('chat-title').innerText = chatTitle;
-    
+    activeThreadTitle = displayTitle || ((type === 'conteste') ? __('messages.dispute', 'Contestation') : threadId);
+    document.querySelector('.app-container').classList.add('has-active-conversation');
+    document.getElementById('chat-empty').hidden = true;
+    document.getElementById('chat-content').classList.remove('hidden');
+    document.getElementById('chat-title').innerText = activeThreadTitle;
+    activeConversationButton = null;
+    document.querySelectorAll('.conversation-row').forEach(row => {
+      const isActive = row.dataset.requestId === threadId;
+      row.classList.toggle('is-active', isActive);
+      row.setAttribute('aria-current', isActive ? 'true' : 'false');
+      if (isActive) activeConversationButton = row;
+    });
     renderMessages(threadId);
   }
 
   function closeChat() {
-    document.getElementById('main-list-container').classList.remove('hidden');
-    document.getElementById('chat-view').style.display = 'none';
+    const returnFocus = activeConversationButton;
     activeThreadId = null;
+    activeThreadTitle = '';
+    activeConversationButton = null;
+    isLoadingMessages = false;
+    messageLoadSequence++;
+    document.querySelector('.app-container').classList.remove('has-active-conversation');
+    document.getElementById('chat-empty').hidden = false;
+    document.getElementById('chat-content').classList.add('hidden');
+    document.getElementById('chat-status').textContent = '';
+    document.querySelectorAll('.conversation-row').forEach(row => {
+      row.classList.remove('is-active');
+      row.removeAttribute('aria-current');
+    });
+    if (returnFocus?.isConnected) returnFocus.focus({ preventScroll: true });
   }
 
-  function renderMessages(threadId) {
+  document.addEventListener('keydown', event => {
+    if (event.key !== 'Escape') return;
+    if (activeThreadId) closeChat();
+    else if (window.parent !== window) window.parent.postMessage({ type: 'messages:close' }, window.location.origin);
+  });
+
+  function formatDate(value) {
+    const date = value ? new Date(value) : null;
+    if (!date || Number.isNaN(date.getTime())) return '';
+    const datePart = new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(date);
+    const timePart = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' }).format(date);
+    return `${datePart} à ${timePart}`;
+  }
+
+  function showChatStatus(message, isError = true) {
+    const status = document.getElementById('chat-status');
+    status.textContent = message || '';
+    status.style.color = isError ? '#b42332' : 'var(--muted)';
+  }
+
+  function updateSendButton() {
+    const input = document.getElementById('msg-input');
+    const button = document.getElementById('msg-send');
+    input.disabled = isLoadingMessages || isSendingMessage || !activeThreadId;
+    button.disabled = !activeThreadId || isLoadingMessages || isSendingMessage || !input.value.trim();
+    button.innerHTML = isSendingMessage
+      ? '<i class="fas fa-spinner fa-spin" aria-hidden="true"></i>'
+      : '<i class="fas fa-paper-plane" aria-hidden="true"></i>';
+    button.setAttribute('aria-label', isSendingMessage ? 'Envoi en cours' : 'Envoyer');
+  }
+
+  async function renderMessages(threadId) {
     const history = document.getElementById('messages-history');
-    const storageKey = 'msgs_' + threadId;
-    // Try to fetch from backend first, fallback to localStorage
-    (async () => {
-      let combined = [];
-      try {
-        const remote = await fetchThreadMessages(threadId);
-        if (Array.isArray(remote) && remote.length) combined = combined.concat(remote.map(r => ({ from: r.from || (r.sender_role || 'Support'), text: r.content || r.reason || r.text || '', created_at: r.created_at || r.time || null })));
-      } catch (e) {
-        // ignore remote fetch errors
+    const sequence = ++messageLoadSequence;
+    isLoadingMessages = true;
+    showChatStatus('');
+    updateSendButton();
+    history.innerHTML = `<div class="loading-state"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i>${escapeHtml(__('messages.loading', 'Chargement des messages…'))}</div>`;
+
+    try {
+      const messages = await fetchThreadMessages(threadId);
+      if (sequence !== messageLoadSequence || activeThreadId !== threadId) return;
+      if (messages.length === 0) {
+        history.innerHTML = `<div class="empty-state">${escapeHtml(__('messages.no_messages_in_thread', 'Aucun message dans cette discussion.'))}</div>`;
+        return;
       }
-
-      // include local unsent messages
-      try {
-        const local = JSON.parse(localStorage.getItem(storageKey) || '[]');
-        if (Array.isArray(local) && local.length) {
-          // local messages may use `time` field; normalize to created_at for ordering
-          combined = combined.concat(local.map(m => ({ from: m.from || 'Me', text: m.text || '', created_at: m.created_at || new Date().toISOString(), time: m.time || m.created_at || null })));
-        }
-      } catch (e) {}
-
-      // sort by created_at
-      combined.sort((a,b) => {
-        const ta = a.created_at ? Date.parse(a.created_at) : 0;
-        const tb = b.created_at ? Date.parse(b.created_at) : 0;
-        return (ta || 0) - (tb || 0);
-      });
-
-      if (combined.length === 0) {
-        history.innerHTML = `<div style="text-align:center; color:#9ca3af; margin-top:20px;">${__('messages.no_messages_in_thread','Aucun message dans cette discussion.')}</div>`;
-      } else {
-        history.innerHTML = combined.map(m => {
-          const isMine = isAdminInbox
-            ? String(m.from || '').toUpperCase() !== 'CLIENT'
-            : m.from === 'Me';
-          return `
-          <div class="msg ${isMine ? 'me' : 'other'}">
-            <div class="bubble">${escapeHtml(m.text)}</div>
-            <small style="font-size:10px; color:#9ca3af; margin: 4px 5px;">${escapeHtml(new Date(m.created_at || m.time || Date.now()).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }))}</small>
-          </div>
-        `;
-        }).join('');
-      }
+      history.innerHTML = messages.map(message => {
+        const senderRole = String(message.sender_role || '').toUpperCase();
+        const senderId = String(message.sender_id || message.raised_by || '');
+        const senderIdentity = senderId && currentUserId && senderId === String(currentUserId);
+        const clientSender = ['CLIENT', 'USER', 'ME'].includes(senderRole) || senderIdentity;
+        const isMine = isAdminInbox ? !clientSender : clientSender;
+        const timestamp = formatDate(message.created_at || message.createdAt || message.time);
+        return `<div class="msg ${isMine ? 'me' : 'other'}"><div class="bubble">${escapeHtml(message.content || message.reason || message.text || '')}</div><small>${escapeHtml(timestamp)}</small></div>`;
+      }).join('');
       history.scrollTop = history.scrollHeight;
-    })();
+    } catch (error) {
+      if (sequence !== messageLoadSequence || activeThreadId !== threadId) return;
+      console.error('Failed to load conversation messages', error);
+      history.innerHTML = `<div class="load-error" role="alert"><span>${escapeHtml(error instanceof Error ? error.message : __('messages.load_error', 'Impossible de charger les messages.'))}</span><button class="retry-load" type="button">${escapeHtml(__('messages.retry', 'Réessayer'))}</button></div>`;
+    } finally {
+      if (sequence === messageLoadSequence) {
+        isLoadingMessages = false;
+        updateSendButton();
+      }
+    }
   }
 
-  function send() {
-    const inp = document.getElementById('msg-input');
-    const txt = inp.value.trim();
-    if (!txt || !activeThreadId) return;
+  async function send() {
+    const input = document.getElementById('msg-input');
+    const text = input.value.trim();
+    const threadId = activeThreadId;
+    if (!text || !threadId || isSendingMessage || isLoadingMessages) return;
 
-    const storageKey = 'msgs_' + activeThreadId;
-    const nowIso = new Date().toISOString();
-
-    // Attempt to POST to backend messages endpoint (best-effort). If fails, store locally.
-    (async () => {
-      const base = getApiBase();
-      const headers = getAuthHeaders();
-      let posted = false;
+    isSendingMessage = true;
+    showChatStatus(__('messages.sending', 'Envoi du message…'), false);
+    updateSendButton();
+    try {
+      const formData = new FormData();
+      formData.append('content', text);
+      const response = await fetch(`${getApiBase()}/api/requests/${encodeURIComponent(threadId)}/messages`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: formData
+      });
+      let responsePayload = null;
       try {
-        const fd = new FormData();
-        fd.append('content', txt);
-        const resp = await fetch(`${base}/api/requests/${encodeURIComponent(activeThreadId)}/messages`, { method: 'POST', headers, body: fd });
-        if (resp.ok) {
-          // reflect in UI using server response if available
-          const j = await resp.json().catch(()=>null);
-          const storage = JSON.parse(localStorage.getItem(storageKey) || '[]');
-          const m = { from: (j && j.sender_role) ? j.sender_role : 'Me', text: txt, created_at: (j && j.created_at) ? j.created_at : nowIso };
-          storage.push(m);
-          localStorage.setItem(storageKey, JSON.stringify(storage));
-          posted = true;
-        }
-      } catch (e) {
-        posted = false;
+        responsePayload = await response.json();
+      } catch (error) {
+        responsePayload = null;
       }
-
-      if (!posted) {
-        // store locally as fallback
-        const msgs = JSON.parse(localStorage.getItem(storageKey) || '[]');
-        msgs.push({ from: 'Me', text: txt, created_at: nowIso });
-        localStorage.setItem(storageKey, JSON.stringify(msgs));
+      if (!response.ok) {
+        const detail = responsePayload?.message || responsePayload?.error || '';
+        if (response.status === 401) throw new Error(__('messages.login_required', 'Votre session a expiré. Veuillez vous reconnecter.'));
+        throw new Error(detail || `${__('messages.send_error', 'Impossible d’envoyer le message.')} (${response.status})`);
       }
-
-      inp.value = '';
-      renderMessages(activeThreadId);
-    })();
+      if (responsePayload?.success === false) {
+        throw new Error(responsePayload.message || __('messages.send_error', 'Impossible d’envoyer le message.'));
+      }
+      if (input.value.trim() === text) input.value = '';
+      if (activeThreadId === threadId) {
+        showChatStatus('');
+        await renderMessages(threadId);
+      }
+      await refreshConversations();
+    } catch (error) {
+      console.error('Failed to send conversation message', error);
+      if (activeThreadId === threadId) {
+        showChatStatus(error instanceof Error ? error.message : __('messages.send_error', 'Impossible d’envoyer le message.'));
+      }
+    } finally {
+      isSendingMessage = false;
+      updateSendButton();
+      if (activeThreadId === threadId) input.focus({ preventScroll: true });
+    }
   }
 
   function escapeHtml(s) {
@@ -365,93 +438,57 @@
 
   // Fetch disputes/messages for a given request id from backend
   async function fetchThreadMessages(threadId) {
-    if (!threadId) return [];
+    if (!threadId) throw new Error(__('messages.load_error', 'Conversation introuvable.'));
     const base = getApiBase();
-    const token = localStorage.getItem('access_token') || localStorage.getItem('token') || null;
-    if (token) {
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        console.log('Current User ID from token:', payload.id || payload.sub || payload.user_id);
-      } catch (e) {
-        console.error('Failed to decode token', e);
-      }
-    }
     const headers = getAuthHeaders();
+    const [disputesResponse, messagesResponse] = await Promise.all([
+      fetch(`${base}/api/requests/${encodeURIComponent(threadId)}/disputes`, { headers }),
+      fetch(`${base}/api/requests/${encodeURIComponent(threadId)}/messages`, { headers })
+    ]);
 
-    // Helper to fetch json safely
-    async function tryFetch(url) {
-      try {
-        const resp = await fetch(url, { headers });
-        if (!resp.ok) {
-          console.warn(`Failed ${url}: ${resp.status}`);
-          if (resp.status === 401) throw new Error('Votre session a expiré. Veuillez vous reconnecter.');
-          return null;
-        }
-        const j = await resp.json().catch(() => null);
-        return j || null;
-      } catch (e) {
-        return null;
-      }
+    if ([disputesResponse, messagesResponse].some(response => response.status === 401)) {
+      throw new Error(__('messages.login_required', 'Votre session a expiré. Veuillez vous reconnecter.'));
+    }
+    const failedResponse = [disputesResponse, messagesResponse].find(response => !response.ok);
+    if (failedResponse) {
+      throw new Error(`${__('messages.load_error', 'Impossible de charger les messages.')} (${failedResponse.status})`);
     }
 
-    try {
-      const disputesUrl = `${base}/api/requests/${encodeURIComponent(threadId)}/disputes`;
-      const messagesUrl = `${base}/api/requests/${encodeURIComponent(threadId)}/messages`;
-
-      const [dResp, mResp] = await Promise.all([tryFetch(disputesUrl), tryFetch(messagesUrl)]);
-
-      const out = [];
-
-      // Normalize disputes: pick 'reason' and raised_by
-      if (dResp) {
-        let arr = [];
-        if (Array.isArray(dResp)) arr = dResp;
-        else if (dResp.data && Array.isArray(dResp.data)) arr = dResp.data;
-        else if (dResp.disputes && Array.isArray(dResp.disputes)) arr = dResp.disputes;
-        arr.forEach(d => {
-          out.push({
-            type: 'dispute',
-            id: d.id || d.dispute_id || null,
-            request_id: d.request_id || d.requestId || null,
-            from: d.raised_by || d.from || (d.sender_role || 'ADMIN'),
-            text: d.reason || d.content || d.description || '',
-            created_at: d.created_at || d.createdAt || d.created || null,
-            raw: d
-          });
-        });
-      }
-
-      // Normalize messages: pick 'content' and sender_role
-      if (mResp) {
-        let arr = [];
-        if (Array.isArray(mResp)) arr = mResp;
-        else if (mResp.data && Array.isArray(mResp.data)) arr = mResp.data;
-        else if (mResp.messages && Array.isArray(mResp.messages)) arr = mResp.messages;
-        arr.forEach(m => {
-          out.push({
-            type: 'message',
-            id: m.id || null,
-            request_id: m.request_id || m.requestId || null,
-            from: m.sender_role || m.from || (m.raised_by || 'USER'),
-            text: m.content || m.text || m.body || '',
-            created_at: m.created_at || m.createdAt || m.time || null,
-            raw: m
-          });
-        });
-      }
-
-      // Sort combined by created_at ascending
-      out.sort((a,b) => {
-        const ta = a.created_at ? Date.parse(a.created_at) : 0;
-        const tb = b.created_at ? Date.parse(b.created_at) : 0;
-        return (ta || 0) - (tb || 0);
-      });
-
-      return out;
-    } catch (e) {
-      console.warn('fetchThreadMessages error', e);
-      return [];
+    const [disputesPayload, messagesPayload] = await Promise.all([
+      disputesResponse.json(),
+      messagesResponse.json()
+    ]);
+    const disputes = Array.isArray(disputesPayload) ? disputesPayload
+      : Array.isArray(disputesPayload?.data) ? disputesPayload.data
+      : Array.isArray(disputesPayload?.disputes) ? disputesPayload.disputes : null;
+    const messages = Array.isArray(messagesPayload) ? messagesPayload
+      : Array.isArray(messagesPayload?.data) ? messagesPayload.data
+      : Array.isArray(messagesPayload?.messages) ? messagesPayload.messages : null;
+    if (!disputes || !messages) {
+      throw new Error(__('messages.load_error', 'Réponse invalide du serveur.'));
     }
+
+    return [
+      ...disputes.map(dispute => ({
+        ...dispute,
+        type: 'dispute',
+        sender_id: dispute.sender_id || null,
+        sender_role: dispute.sender_role || dispute.from || dispute.raised_by || '',
+        content: dispute.reason || dispute.content || dispute.description || '',
+        created_at: dispute.created_at || dispute.createdAt || dispute.created || null
+      })),
+      ...messages.map(message => ({
+        ...message,
+        type: 'message',
+        sender_role: message.sender_role || message.from || '',
+        content: message.content || message.text || message.body || '',
+        created_at: message.created_at || message.createdAt || message.time || null
+      }))
+    ].sort((left, right) => {
+      const leftTime = Date.parse(left.created_at || '') || 0;
+      const rightTime = Date.parse(right.created_at || '') || 0;
+      return leftTime - rightTime;
+    });
   }
 
   // Fetch all disputes from several possible admin endpoints
@@ -467,7 +504,14 @@
         throw new Error(__('messages.login_required', 'Votre session administrateur a expiré. Veuillez vous reconnecter.'));
       }
       if (!response.ok) {
-        throw new Error(`${__('messages.load_error', 'Impossible de charger les conversations')} (${response.status})`);
+        let detail = '';
+        try {
+          const errorPayload = await response.json();
+          detail = errorPayload?.message || '';
+        } catch (error) {
+          detail = '';
+        }
+        throw new Error(detail || `${__('messages.load_error', 'Impossible de charger les conversations')} (${response.status})`);
       }
       const payload = await response.json();
       if (!Array.isArray(payload?.data)) {
@@ -512,119 +556,110 @@
   }
 
   document.getElementById('msg-send').addEventListener('click', send);
-  document.getElementById('msg-input').addEventListener('keydown', (e) => { 
-    if (e.key === 'Enter') send(); 
+  document.getElementById('messages-history').addEventListener('click', event => {
+    if (event.target.closest('.retry-load') && activeThreadId) renderMessages(activeThreadId);
   });
-
-  // Listen for admin messages posted from parent window (e.g. backend notifier)
-  window.addEventListener('message', (ev) => {
-    try {
-      const payload = ev.data || {};
-      if (!payload || payload.type !== 'admin_message') return;
-      const threadId = payload.threadId;
-      const text = payload.text || '';
-      const from = payload.from || 'Admin';
-      const time = payload.time || new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-      if (!threadId || !text) return;
-      const storageKey = 'msgs_' + threadId;
-      const msgs = JSON.parse(localStorage.getItem(storageKey) || '[]');
-      msgs.push({ from, text, time });
-      localStorage.setItem(storageKey, JSON.stringify(msgs));
-      // If the thread is currently open, re-render
-      if (activeThreadId === threadId) renderMessages(threadId);
-    } catch (e) {
-      console.warn('admin_message handler error', e);
+  document.getElementById('msg-input').addEventListener('input', updateSendButton);
+  document.getElementById('msg-input').addEventListener('keydown', event => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      send();
     }
   });
 
-  // Wire the load disputes button — if no id provided, load all disputes
-  document.getElementById('btn-load-disputes').addEventListener('click', async () => {
-    const id = (document.getElementById('load-dispute-id')?.value || '').trim();
+  window.addEventListener('message', event => {
+    const payload = event.data || {};
+    if (payload.type === 'admin_message' && payload.threadId === activeThreadId) {
+      renderMessages(activeThreadId);
+      refreshConversations();
+    }
+  });
+
+  async function refreshConversations() {
+    const button = document.getElementById('btn-load-disputes');
     const list = document.getElementById('list-view');
-    const no = document.getElementById('no-conversations');
-    if (no) no.remove();
-    // remove existing rows
-    Array.from(list.querySelectorAll('.conversation-row')).forEach(e => e.remove());
+    const originalLabel = button.querySelector('span').textContent;
+    button.disabled = true;
+    button.querySelector('i').className = 'fas fa-spinner fa-spin';
+    button.querySelector('span').textContent = __('messages.loading', 'Chargement…');
+    if (!list.querySelector('.conversation-row')) {
+      list.innerHTML = `<div class="loading-state"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i>${escapeHtml(__('messages.loading_conversations', 'Chargement des conversations…'))}</div>`;
+    }
 
-    if (!id) {
-      // load all disputes
-      let all;
-      try {
-        all = await fetchAllDisputes();
-      } catch (error) {
-        const el = document.createElement('div');
-        el.className = 'conversation-row type-normal';
-        el.setAttribute('role', 'alert');
-        el.textContent = error instanceof Error ? error.message : __('messages.load_error', 'Impossible de charger les contestations.');
-        list.appendChild(el);
-        return;
-      }
-      if (!all || all.length === 0) {
-        const el = document.createElement('div');
-        el.className = 'conversation-row type-normal';
-        el.innerHTML = `<div class="row-header"><span class="row-title">${__('messages.no_results','Aucun résultat')}</span><small>-</small></div><div class="row-preview">${__('messages.no_disputes_found','Aucune dispute trouvée.')}</div>`;
-        list.appendChild(el);
-        return;
-      }
-
-      // group incoming messages by request, keeping the client and BL context
-      const byReq = {};
-      all.forEach(d => {
-        const key = d.request_id || d.requestId || d.request || 'unknown';
-        byReq[key] = byReq[key] || [];
-        byReq[key].push(d);
+    try {
+      const entries = await fetchAllDisputes();
+      const grouped = new Map();
+      entries.forEach(entry => {
+        const requestId = entry.request_id || entry.requestId || entry.request;
+        if (!requestId) return;
+        const thread = grouped.get(String(requestId)) || [];
+        thread.push(entry);
+        grouped.set(String(requestId), thread);
       });
 
-      Object.keys(byReq).sort((left, right) => {
-        const leftLatest = byReq[left].reduce((latest, entry) =>
-          (Date.parse(entry.created_at || '') || 0) >= (Date.parse(latest.created_at || '') || 0) ? entry : latest
-        );
-        const rightLatest = byReq[right].reduce((latest, entry) =>
-          (Date.parse(entry.created_at || '') || 0) >= (Date.parse(latest.created_at || '') || 0) ? entry : latest
-        );
-        return (Date.parse(rightLatest.created_at || '') || 0) - (Date.parse(leftLatest.created_at || '') || 0);
-      }).forEach(k => {
-        const arr = byReq[k];
-        const latest = arr.reduce((current, entry) =>
-          (Date.parse(entry.created_at || '') || 0) >= (Date.parse(current.created_at || '') || 0) ? entry : current
-        );
-        const preview = latest.text || latest.reason || latest.content || JSON.stringify(latest).slice(0,120);
-        const clientName = latest.client_name || __('messages.client', 'Client');
-        const blNumber = latest.bl_number ? ` · BL ${latest.bl_number}` : '';
-        const row = document.createElement('div');
+      const conversations = Array.from(grouped.entries()).map(([requestId, thread]) => {
+        thread.sort((left, right) => {
+          const leftDate = Date.parse(left.created_at || left.createdAt || '') || 0;
+          const rightDate = Date.parse(right.created_at || right.createdAt || '') || 0;
+          return leftDate - rightDate;
+        });
+        return { requestId, entries: thread, latest: thread[thread.length - 1] };
+      }).sort((left, right) => {
+        const leftDate = Date.parse(left.latest.created_at || left.latest.createdAt || '') || 0;
+        const rightDate = Date.parse(right.latest.created_at || right.latest.createdAt || '') || 0;
+        return rightDate - leftDate;
+      });
+
+      list.replaceChildren();
+      if (conversations.length === 0) {
+        const empty = document.createElement('div');
+        empty.id = 'no-conversations';
+        empty.textContent = __('messages.no_conversations', 'Aucune conversation pour le moment.');
+        list.appendChild(empty);
+        return;
+      }
+
+      conversations.forEach(conversation => {
+        const { requestId, latest } = conversation;
+        const displayName = isAdminInbox
+          ? latest.client_name || latest.sender_name || __('messages.client', 'Client')
+          : latest.admin_name || latest.sender_name || __('messages.support', 'Équipe MKC');
+        const reference = latest.bl_number || latest.extracted_bl || latest.manual_bl;
+        const title = reference ? `${displayName} · BL ${reference}` : displayName;
+        const preview = latest.content || latest.text || latest.reason || latest.description || '';
+        const row = document.createElement('button');
+        row.type = 'button';
         row.className = `conversation-row ${latest.type === 'DISPUTE' || latest.raised_by ? 'type-conteste' : 'type-normal'}`;
-        row.innerHTML = `<div class="row-header"><span class="row-title">${escapeHtml(clientName)}${escapeHtml(blNumber)}</span><small>${escapeHtml(latest.created_at || latest.createdAt || '')}</small></div><div class="row-preview">${escapeHtml(preview)}</div>`;
-        row.addEventListener('click', () => openChat(k, 'normal', `${clientName}${blNumber}`));
+        row.dataset.requestId = requestId;
+        row.setAttribute('aria-label', `${title}. ${preview}`);
+        row.classList.toggle('is-active', requestId === activeThreadId);
+        row.innerHTML = `<span class="row-header"><span class="row-title">${escapeHtml(title)}</span><small>${escapeHtml(formatDate(latest.created_at || latest.createdAt))}</small></span><span class="row-preview"><span class="row-preview-text">${escapeHtml(preview || __('messages.no_messages_preview', 'Aucun message'))}</span></span>`;
+        row.addEventListener('click', () => openChat(requestId, latest.type === 'DISPUTE' ? 'conteste' : 'normal', title));
         list.appendChild(row);
       });
-      return;
+    } catch (error) {
+      console.error('Failed to load conversations', error);
+      if (!list.querySelector('.conversation-row')) {
+        list.replaceChildren();
+      }
+      const errorMessage = document.createElement('div');
+      errorMessage.className = 'empty-state';
+      errorMessage.setAttribute('role', 'alert');
+      errorMessage.textContent = error instanceof Error ? error.message : __('messages.load_error', 'Impossible de charger les conversations.');
+      list.prepend(errorMessage);
+    } finally {
+      button.disabled = false;
+      button.querySelector('i').className = 'fas fa-rotate';
+      button.querySelector('span').textContent = originalLabel;
     }
+  }
 
-    // else load by id
-    const disputes = await fetchThreadMessages(id);
-    if (!disputes || disputes.length === 0) {
-      const el = document.createElement('div');
-      el.className = 'conversation-row type-normal';
-      el.innerHTML = `<div class="row-header"><span class="row-title">${escapeHtml(id)}</span><small>-</small></div><div class="row-preview">${__('messages.no_disputes_for_id','Aucune dispute trouvée pour cet identifiant.')}</div>`;
-      el.addEventListener('click', () => openChat(id, 'normal'));
-      list.appendChild(el);
-      return;
-    }
-
-    // show latest dispute as preview
-    const latest = disputes[disputes.length - 1];
-    const preview = latest.text || latest.reason || latest.content || JSON.stringify(latest).slice(0,120);
-    const row = document.createElement('div');
-    row.className = 'conversation-row type-conteste';
-    row.innerHTML = `<div class="row-header"><span class="row-title">${__('messages.request_label','Demande')}: ${escapeHtml(id)}</span><small>${escapeHtml(latest.created_at || '')}</small></div><div class="row-preview">${escapeHtml(preview)}</div>`;
-    row.addEventListener('click', () => openChat(id, 'conteste'));
-    list.appendChild(row);
-  });
+  document.getElementById('btn-load-disputes').addEventListener('click', refreshConversations);
 
   // Auto-load disputes on page load
   window.addEventListener('load', () => {
     localizeStaticTexts();
-    document.getElementById('btn-load-disputes').click();
+    refreshConversations();
   });
 </script>
 

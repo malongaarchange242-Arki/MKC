@@ -84,8 +84,10 @@ export class DisputesService {
         const clientId = reqRow?.user_id;
         const blDesc = reqRow?.extracted_bl || reqRow?.bl_number || requestId;
 
-        // Notify client (in-app + email)
-        if (clientId) {
+        const isClientSender = raisedByRole === 'CLIENT';
+
+        // Notify the client only when the dispute was created by someone else.
+        if (!isClientSender && clientId && clientId !== raisedByUserId) {
           await NotificationsService.send({
             userId: clientId,
             type: 'REQUEST_DISPUTE',
@@ -99,7 +101,7 @@ export class DisputesService {
 
         // Notify admin emails if configured
         const adminEmail = process.env.ADMIN_EMAIL || null;
-        if (adminEmail) {
+        if (isClientSender && adminEmail) {
           await NotificationsService.send({
             userId: clientId || raisedByUserId,
             type: 'REQUEST_DISPUTE_ADMIN',

@@ -615,13 +615,18 @@
 </div>
 
 <!-- Messages popup -->
-<div id="popup-settings" class="dropdown-popup" aria-hidden="true" role="dialog" aria-label="Messages"
-  style="display:none;position:fixed;top:5vh;left:5vw;width:90vw;height:90vh;background:#fff;z-index:3000;box-shadow:0 24px 48px rgba(0,0,0,0.18);border-radius:12px;overflow:hidden;">
-  <div class="popup-header" style="padding:16px 20px;border-bottom:1px solid #E4EBF2;font-weight:600;position:relative;">
-    Messages
-    <button id="popup-settings-close" aria-label="Fermer messages" style="position:absolute;right:16px;top:12px;background:transparent;border:0;font-size:20px;cursor:pointer;">×</button>
+<div id="messages-backdrop" class="messages-backdrop" hidden></div>
+<div id="popup-settings" class="dropdown-popup messages-drawer" aria-hidden="true" role="dialog" aria-label="Messages" aria-modal="true" inert>
+  <div class="popup-header messages-drawer-header">
+    <div class="messages-drawer-title">
+      <i class="fas fa-comments" aria-hidden="true"></i>
+      <span>Messages</span>
+    </div>
+    <button id="popup-settings-close" class="messages-drawer-close" type="button" aria-label="Fermer messages">
+      <i class="fas fa-xmark" aria-hidden="true"></i>
+    </button>
   </div>
-  <div class="popup-body" id="popup-settings-body" style="height:calc(100% - 54px);padding:0;"></div>
+  <div class="popup-body messages-drawer-body" id="popup-settings-body"></div>
 </div>
 
 <!-- Font Awesome (required by dashboard_client.js for upload icons etc.) -->

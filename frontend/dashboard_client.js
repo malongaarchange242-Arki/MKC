@@ -105,7 +105,10 @@ function setupClientPageNavigation() {
       popup.classList.remove('show-popup');
       popup.setAttribute('aria-hidden', 'true');
       popup.style.display = 'none';
+      if (popup.id === 'popup-settings') popup.setAttribute('inert', '');
     });
+    const messagesBackdrop = document.getElementById('messages-backdrop');
+    if (messagesBackdrop) messagesBackdrop.hidden = true;
     document.getElementById('notif-btn')?.setAttribute('aria-expanded', 'false');
     document.getElementById('settings-btn')?.setAttribute('aria-expanded', 'false');
 
@@ -677,11 +680,23 @@ function renderDetailDocuments(row, documents, loadError = false) {
   const knownTypes = new Set(expected.map(item => normalizeDocumentType(item.type)));
   normalizedDocs.filter(doc => !knownTypes.has(doc.normalizedType)).forEach(doc => {
     const name = doc.file_name || detailText('document', 'Document');
+    let safeHref = '';
+    if (doc.downloadUrl || doc.url) {
+      try {
+        const parsed = new URL(doc.downloadUrl || doc.url, window.location.href);
+        if (['http:', 'https:'].includes(parsed.protocol)) safeHref = parsed.href;
+      } catch (_) {}
+    }
+    const action = safeHref
+      ? `<a class="detail-download-btn" href="${escapeHtml(safeHref)}" target="_blank" rel="noopener noreferrer"><i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i><span>${escapeHtml(detailText('view_document', 'Consulter'))}</span></a>`
+      : doc.id
+        ? `<button type="button" class="detail-download-btn" data-document-id="${escapeHtml(doc.id)}"><i class="fas fa-download" aria-hidden="true"></i><span>${escapeHtml(detailText('download', 'Télécharger'))}</span></button>`
+        : '';
     rendered.push(`<article class="detail-document-row is-provided">
-      <span class="detail-document-icon"><i class="fas fa-file" aria-hidden="true"></i></span>
+      <span class="detail-document-icon"><i class="fas fa-file-pdf" aria-hidden="true"></i></span>
       <span class="detail-document-copy"><strong>${escapeHtml(name)}</strong><small>${escapeHtml(doc.type || detailText('document', 'Document'))}</small></span>
       <span class="detail-document-status status-received"><i class="fas fa-circle-check" aria-hidden="true"></i>${escapeHtml(detailText('document_status_received', 'Reçu'))}</span>
-      ${doc.id ? `<button type="button" class="detail-download-btn" data-document-id="${escapeHtml(doc.id)}"><i class="fas fa-download" aria-hidden="true"></i><span>${escapeHtml(detailText('download', 'Télécharger'))}</span></button>` : ''}
+      ${action}
     </article>`);
   });
   const requestKey = String(row.request_id || row.id || '');
@@ -986,6 +1001,28 @@ function bindUIEvents() {
       togglePopup('settings', trigger || null);
     });
   }
+  const messagesBackdrop = document.getElementById('messages-backdrop');
+  if (messagesBackdrop) messagesBackdrop.addEventListener('click', () => {
+    const popup = document.getElementById('popup-settings');
+    if (!popup?.classList.contains('show-popup')) return;
+    togglePopup('settings', document.getElementById('settings-btn'));
+  });
+  document.addEventListener('keydown', event => {
+    if (event.key !== 'Escape') return;
+    const settingsPopup = document.getElementById('popup-settings');
+    if (settingsPopup?.classList.contains('show-popup')) {
+      togglePopup('settings', document.getElementById('settings-btn'));
+    }
+  });
+  window.addEventListener('message', event => {
+    const frame = document.querySelector('#popup-settings-body iframe');
+    if (event.origin !== window.location.origin || event.source !== frame?.contentWindow ||
+        event.data?.type !== 'messages:close') return;
+    const popup = document.getElementById('popup-settings');
+    if (popup?.classList.contains('show-popup')) {
+      togglePopup('settings', document.getElementById('settings-btn'));
+    }
+  });
 
   // filter selects
   const dateSel = document.getElementById('filter-date'); if (dateSel) dateSel.addEventListener('change', applyFilters);
@@ -1285,12 +1322,19 @@ function togglePopup(type, triggerBtn) {
   const isShown = popup.classList.toggle('show-popup');
   popup.style.display = isShown ? 'block' : 'none';
   popup.setAttribute('aria-hidden', isShown ? 'false' : 'true');
+  if (popup.id === 'popup-settings') {
+    if (isShown) popup.removeAttribute('inert');
+    else popup.setAttribute('inert', '');
+  }
 
   if (triggerBtn) {
     triggerBtn.setAttribute('aria-expanded', isShown ? 'true' : 'false');
   }
 
   // Refresh the notification preview and unread count when the popup opens.
+  const messagesBackdrop = document.getElementById('messages-backdrop');
+  if (messagesBackdrop) messagesBackdrop.hidden = !(type === 'settings' && isShown);
+  if (type === 'settings' && !isShown && triggerBtn) triggerBtn.focus({ preventScroll: true });
   if (type === 'notif' && isShown) {
     loadNotifications().catch(() => {});
   }
@@ -1300,9 +1344,13 @@ function togglePopup(type, triggerBtn) {
       // load the messages page into an iframe inside the popup so it behaves like
       // a full HTML page while staying inside the dashboard layout
       const body = document.getElementById('popup-settings-body');
-      if (body) {
-        body.innerHTML = `<iframe src="messages_page.html" style="width:100%; height:100%; border:0; border-radius:0; display:block;"></iframe>`;
+      const messagesFrame = body?.querySelector('iframe');
+      if (body && !messagesFrame) {
+        body.innerHTML = `<iframe title="Messagerie des demandes" src="messages_page.html" style="width:100%; height:100%; border:0; border-radius:0; display:block;"></iframe>`;
+      } else {
+        messagesFrame?.contentWindow?.postMessage({ type: 'messages:refresh' }, window.location.origin);
       }
+      document.getElementById('popup-settings-close')?.focus({ preventScroll: true });
     } catch (e) { console.warn('loadMessages iframe failed', e); }
   }
 }
@@ -1586,46 +1634,6 @@ function closeAlert(alertId) {
     // Mark as read in backend
     api.patch(`/notifications/${alertId}/read`).catch(() => {});
   }
-}
-
-// --- MESSAGING (simple client-side popup) ---
-function loadMessages() {
-  const body = document.getElementById('popup-messages-body');
-  if (!body) return;
-  const stored = JSON.parse(localStorage.getItem('dashboard_messages_v1') || '[]');
-  if (!stored || !stored.length) {
-    body.innerHTML = '<div class="msg-empty" style="color:#6b7280">No messages</div>';
-    return;
-  }
-  // render messages
-  body.innerHTML = stored.map(m => {
-    const who = escapeHtml(m.from || 'User');
-    const txt = escapeHtml(m.text || '');
-    const time = m.created_at ? new Date(m.created_at).toLocaleString() : '';
-    const isMe = (m.from === 'Me');
-    return `<div style="margin-bottom:8px; display:flex; ${isMe ? 'justify-content:flex-end' : 'justify-content:flex-start'};">
-      <div style="max-width:78%; background:${isMe ? '#DBEAFE' : '#F3F4F6'}; padding:8px 10px; border-radius:8px; box-shadow:0 1px 0 rgba(0,0,0,0.02);">
-        <div style="font-size:13px; color:#111;">${txt}</div>
-        <div style="font-size:11px; color:#6b7280; margin-top:6px; text-align:right;">${escapeHtml(time)}</div>
-      </div>
-    </div>`;
-  }).join('');
-  // scroll to bottom
-  setTimeout(() => { body.scrollTop = body.scrollHeight; }, 40);
-}
-
-function sendMessage() {
-  const input = document.getElementById('message-input');
-  if (!input) return;
-  const txt = (input.value || '').trim();
-  if (!txt) return;
-  const stored = JSON.parse(localStorage.getItem('dashboard_messages_v1') || '[]');
-  const item = { id: Date.now(), from: 'Me', text: txt, created_at: new Date().toISOString() };
-  stored.push(item);
-  localStorage.setItem('dashboard_messages_v1', JSON.stringify(stored));
-  input.value = '';
-  loadMessages();
-  // no simulated reply — real backend or admin should respond
 }
 
 // --- GESTION DE LA MODALE ---

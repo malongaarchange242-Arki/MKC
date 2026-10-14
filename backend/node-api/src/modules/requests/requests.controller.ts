@@ -5,6 +5,7 @@ import { getAuthUserId, getAuthUserRole } from '../../utils/request-user';
 import { ActorRole, REQUEST_STATUSES, RequestStatus } from './request.state-machine';
 import { logger } from '../../utils/logger';
 import { DocumentsService } from '../documents/documents.service';
+import supabaseAdmin from '../../config/supabaseAdmin';
 
 // ===============================
 // TYPES
@@ -324,7 +325,48 @@ export class RequestsController {
       if (!requestId) return res.status(400).json({ message: 'requestId is required' });
 
       const result = await DocumentsService.listDocuments({ requestId }, userId, getAuthUserRole(req) as any);
-      return res.status(200).json({ documents: result.documents || [] });
+      const documents = [...(result.documents || [])];
+      const { data: deliveries, error: deliveriesError } = await supabaseAdmin
+        .from('feri_deliveries')
+        .select('id, pdf_url, file_name, mime_type, delivered_at, status')
+        .eq('request_id', requestId)
+        .eq('status', 'DELIVERED')
+        .order('delivered_at', { ascending: false });
+
+      if (deliveriesError) {
+        logger.error('Failed to list final delivery documents for client request', { requestId, userId, error: deliveriesError });
+        throw new Error('Unable to load final request documents');
+      }
+
+      for (const delivery of deliveries || []) {
+        if (!delivery.pdf_url) continue;
+        const { data: signed, error: signedError } = await supabaseAdmin.storage
+          .from('feri_documents')
+          .createSignedUrl(delivery.pdf_url, 60 * 60);
+        if (signedError || !signed?.signedUrl) {
+          logger.error('Failed to sign final delivery document for client', {
+            requestId,
+            deliveryId: delivery.id,
+            error: signedError
+          });
+          continue;
+        }
+
+        const fileName = delivery.file_name || 'Document officiel';
+        const fileHint = `${fileName} ${delivery.pdf_url}`.toLowerCase();
+        documents.push({
+          delivery_id: delivery.id,
+          request_id: requestId,
+          type: /(^|[^a-z])ad([^a-z]|$)|(^|[_-])ad([_-]|$)/i.test(fileHint) ? 'AD_FINAL' : 'FERI_FINAL',
+          category: 'FINAL',
+          file_name: fileName,
+          mime_type: delivery.mime_type || 'application/pdf',
+          created_at: delivery.delivered_at || undefined,
+          downloadUrl: signed.signedUrl
+        } as any);
+      }
+
+      return res.status(200).json({ documents });
     } catch (error) {
       return handleControllerError(res, error, 'Get documents');
     }
