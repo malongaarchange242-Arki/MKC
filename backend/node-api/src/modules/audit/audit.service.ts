@@ -17,7 +17,7 @@ export class AuditService {
 				id: uuidv4(),
 				actor_id: input.actor_id,
 				action: input.action,
-				entity: input.entity,
+				entity_type: input.entity,
 				entity_id: input.entity_id || null,
 				metadata: input.metadata || {},
 				created_at: new Date().toISOString()

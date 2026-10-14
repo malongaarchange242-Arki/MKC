@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="api-base" content="https://mkc-ymuo.onrender.com">
     <title>LOGI-RDC | Administration</title>
+    <link rel="icon" type="image/svg+xml" href="favicon-mkc.svg">
     <link rel="stylesheet" href="dashboard_client.css">
     <link rel="stylesheet" href="dashboard_admin.css">
     <link rel="stylesheet" href="components/slide_pro.css">
@@ -59,10 +60,12 @@
 
         </nav>
 
+        <button id="sidebar-backdrop" class="sidebar-backdrop" type="button" aria-label="Fermer le menu" hidden></button>
+
         <main class="main-content admin-main">
             <header class="top-header">
                 <div class="header-left">
-                    <button class="hamburger-btn icon-btn" id="menu-trigger" type="button" aria-label="Ouvrir le menu">
+                    <button class="hamburger-btn icon-btn" id="menu-trigger" type="button" aria-label="Ouvrir le menu" aria-expanded="false" aria-controls="sidebar">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
                     </button>
                 </div>

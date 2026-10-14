@@ -6,6 +6,11 @@
   min-width: 0;
 }
 
+.app-container > .sidebar .sidebar-logo-img {
+  width: 82px;
+  height: 82px;
+}
+
 .admin-issue-overlay {
   z-index: 2100;
   padding: 20px;
@@ -477,6 +482,12 @@
   background: linear-gradient(180deg, #f7f9fc 0%, #eef4f9 100%);
 }
 
+.admin-page-heading,
+.admin-filter-card,
+.admin-requests-card {
+  flex-shrink: 0;
+}
+
 .admin-page-heading {
   display: flex;
   align-items: center;
@@ -739,6 +750,10 @@
   .admin-content-scroll {
     padding: 24px;
   }
+
+  .filter-bar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 600px) {
@@ -749,7 +764,13 @@
 
   .admin-page-heading {
     align-items: flex-start;
+    flex-wrap: wrap;
     gap: 12px;
+  }
+
+  .admin-page-heading > div {
+    min-width: 0;
+    flex: 1 1 220px;
   }
 
   .admin-page-heading h1 {
@@ -783,7 +804,21 @@
   }
 
   .admin-requests-card .dashboard-table {
-    min-width: 0;
+    min-width: 760px;
+  }
+
+  .admin-requests-card .table-responsive {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .admin-requests-card .dashboard-table td.admin-action-cell {
+    display: table-cell;
+  }
+
+  .admin-requests-card .dashboard-table td.admin-action-cell::before {
+    content: none;
   }
 
   .admin-row-actions {
@@ -794,23 +829,6 @@
     gap: 5px;
     padding: 0 7px;
     font-size: 0.64rem;
-  }
-
-  .admin-requests-card .dashboard-table td.admin-action-cell {
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 8px;
-    overflow-x: auto;
-  }
-
-  .admin-requests-card .dashboard-table td.admin-action-cell::before {
-    flex: 0 0 auto;
-    content: attr(data-label);
-  }
-
-  .admin-action-cell .admin-row-actions {
-    flex: 0 0 auto;
   }
 }
 
@@ -1641,5 +1659,300 @@
   #side-panel .voyage-waves path {
     transition: none;
     animation: none;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .top-header {
+    gap: 10px;
+    padding: 0 12px;
+  }
+
+  .header-left {
+    flex: 0 0 auto;
+  }
+
+  .header-right {
+    min-width: 0;
+    flex: 1 1 auto;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .header-right .user-info {
+    display: none;
+  }
+
+  .header-right .user-profile {
+    flex: 0 0 auto;
+  }
+
+  .admin-content-scroll {
+    min-width: 0;
+    padding: 18px 14px 24px;
+  }
+}
+
+@media (max-width: 600px) {
+  .admin-content-scroll {
+    gap: 13px;
+    padding: 16px 10px 20px;
+  }
+
+  .admin-page-heading {
+    align-items: stretch;
+    flex-direction: column;
+    justify-content: flex-start;
+  }
+
+  .admin-page-heading > div {
+    flex: 0 1 auto;
+  }
+
+  .admin-page-heading p {
+    max-width: none;
+  }
+
+  .admin-refresh-btn {
+    align-self: flex-start;
+  }
+
+  .admin-filter-card {
+    padding: 14px;
+  }
+
+  .filter-bar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-table-heading {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 14px;
+  }
+
+  .admin-queue-badge {
+    padding: 6px 9px;
+    font-size: 0.65rem;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023.98px) {
+  :root {
+    --sidebar-w: 200px;
+  }
+
+  .sidebar-logo {
+    gap: 8px;
+    padding: 22px 14px 16px;
+  }
+
+  .sidebar-logo-img {
+    width: 64px;
+    height: 64px;
+  }
+
+  .sidebar-brand {
+    font-size: 0.76rem;
+  }
+
+  .sb-consulting {
+    font-size: 0.64rem;
+    letter-spacing: 0.14em;
+  }
+
+  .sb-tagline {
+    font-size: 0.47rem;
+    letter-spacing: 0.1em;
+  }
+
+  .sidebar-nav {
+    padding-right: 8px;
+    padding-left: 8px;
+  }
+
+  .nav-item {
+    gap: 8px;
+    padding: 10px 8px;
+    font-size: 0.78rem;
+  }
+
+  .sidebar-section-label {
+    padding-right: 14px;
+    padding-left: 14px;
+    font-size: 0.58rem;
+    letter-spacing: 0.1em;
+  }
+
+  .sidebar-logout {
+    gap: 8px;
+    padding-right: 16px;
+    padding-left: 16px;
+    font-size: 0.78rem;
+  }
+
+  .admin-requests-card .table-responsive {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .admin-requests-card .table-responsive {
+    overflow: visible;
+  }
+
+  .admin-requests-card .dashboard-table,
+  .admin-requests-card .dashboard-table tbody {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .admin-requests-card .dashboard-table thead {
+    display: none;
+  }
+
+  .admin-requests-card .dashboard-table tbody {
+    display: grid;
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .admin-requests-card .dashboard-table tbody tr:not(.admin-empty-row) {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: hidden;
+    padding: 8px;
+    border: 1px solid #e2eaf1;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 5px 14px rgba(12, 42, 68, 0.045);
+  }
+
+  .admin-requests-card .dashboard-table tbody tr:not(.admin-empty-row):hover {
+    background: #fff;
+  }
+
+  .admin-requests-card .dashboard-table tbody tr:not(.admin-empty-row) > td,
+  .admin-requests-card .dashboard-table tbody tr:not(.admin-empty-row) > td:first-child {
+    display: grid;
+    width: auto;
+    min-width: 0;
+    align-content: start;
+    gap: 5px;
+    padding: 8px;
+    border: 0;
+    color: var(--text) !important;
+    font-size: 0.78rem;
+    overflow-wrap: anywhere;
+  }
+
+  .admin-requests-card .dashboard-table tbody tr:not(.admin-empty-row) > td::before {
+    content: attr(data-label);
+    color: #71859a;
+    font-size: 0.6rem;
+    font-weight: 750;
+    letter-spacing: 0.045em;
+    text-transform: uppercase;
+    overflow-wrap: anywhere;
+  }
+
+  .admin-requests-card .dashboard-table tbody tr:not(.admin-empty-row) > td:nth-child(1) {
+    grid-column: 1;
+    grid-row: 1;
+    color: var(--navy) !important;
+    font-size: 0.88rem;
+  }
+
+  .admin-requests-card .dashboard-table tbody tr:not(.admin-empty-row) > td:nth-child(2) {
+    grid-column: 1;
+    grid-row: 2;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-requests-card .dashboard-table tbody tr:not(.admin-empty-row) > td:nth-child(3) {
+    grid-column: 2;
+    grid-row: 1;
+    justify-items: end;
+    align-content: center;
+  }
+
+  .admin-requests-card .dashboard-table tbody tr:not(.admin-empty-row) > td:nth-child(3)::before {
+    content: none;
+  }
+
+  .admin-requests-card .dashboard-table tbody tr:not(.admin-empty-row) > td:nth-child(4) {
+    grid-column: 2;
+    grid-row: 2;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-requests-card .dashboard-table tbody tr:not(.admin-empty-row) > td:nth-child(5),
+  .admin-requests-card .dashboard-table tbody tr:not(.admin-empty-row) > td:nth-child(6) {
+    grid-column: 1 / -1;
+  }
+
+  .admin-requests-card .dashboard-table tbody tr:not(.admin-empty-row) > td:nth-child(5) {
+    grid-row: 3;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+
+  .admin-requests-card .dashboard-table tbody tr:not(.admin-empty-row) > td:nth-child(6) {
+    grid-row: 4;
+    border-top: 1px solid #edf2f6;
+  }
+
+  .admin-requests-card .dashboard-table tbody tr.admin-empty-row {
+    display: block;
+    width: 100%;
+    border: 1px solid #e2eaf1;
+    border-radius: 12px;
+    background: #fff;
+  }
+
+  .admin-requests-card .dashboard-table tbody tr.admin-empty-row > td {
+    display: block;
+    width: 100%;
+    padding: 24px 12px !important;
+  }
+
+  .admin-requests-card .dashboard-table tbody tr.admin-empty-row > td::before {
+    content: none;
+  }
+
+  .admin-requests-card .admin-row-actions {
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    white-space: normal;
+  }
+
+  .admin-requests-card .admin-row-action,
+  .admin-requests-card .admin-action-cell > .btn-green {
+    width: 100%;
+    min-height: 42px;
+    justify-content: center;
+    padding: 8px 10px;
+    text-align: center;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .admin-requests-card .admin-row-action span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .admin-requests-card .dashboard-table td > .icon-btn {
+    width: 42px;
+    height: 42px;
+    justify-self: end;
   }
 }

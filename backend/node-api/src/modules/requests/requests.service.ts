@@ -35,6 +35,69 @@ export interface TransitionInput {
   notifyClient?: boolean;
 }
 
+function getRequestStage(status: unknown): 'review' | 'processing' | 'completed' | null {
+  switch (String(status || '').toUpperCase()) {
+    case 'SUBMITTED':
+    case 'UNDER_REVIEW':
+      return 'review';
+    case 'PROCESSING':
+    case 'SEND_DRAFT':
+    case 'DRAFT_SENT':
+    case 'PROFORMAT_SENT':
+    case 'AWAITING_PAYMENT':
+    case 'PAYMENT_PROOF_UPLOADED':
+    case 'PAYMENT_CONFIRMED':
+      return 'processing';
+    case 'VALIDATED':
+    case 'ISSUED':
+    case 'COMPLETED':
+      return 'completed';
+    default:
+      return null;
+  }
+}
+
+async function enrichRequestStageDates(rows: any[]) {
+  const requestIds = rows.map(row => row.id).filter(Boolean);
+  if (requestIds.length === 0) return;
+
+  try {
+    const { data: auditRows, error } = await supabase
+      .from('audit_logs')
+      .select('entity_id, action, metadata, created_at')
+      .eq('entity_type', 'request')
+      .in('entity_id', requestIds)
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+
+    const stageDates = new Map<string, { review?: string; processing?: string; completed?: string }>();
+    for (const audit of auditRows || []) {
+      const action = String(audit.action || '');
+      const transition = action.match(/^TRANSITION_[A-Z_]+_TO_([A-Z_]+)$/);
+      const stage = getRequestStage(audit.metadata?.to || transition?.[1]);
+      if (!audit.entity_id || !stage || !audit.created_at) continue;
+
+      const dates = stageDates.get(String(audit.entity_id)) || {};
+      if (!dates[stage]) dates[stage] = audit.created_at;
+      stageDates.set(String(audit.entity_id), dates);
+    }
+
+    for (const row of rows) {
+      const dates = stageDates.get(String(row.id)) || {};
+      const activeStage = getRequestStage(row.status);
+      if (activeStage && !dates[activeStage]) {
+        dates[activeStage] = row.updated_at || (activeStage === 'processing' && row.type === 'AD_ONLY' ? row.created_at : undefined);
+      }
+      row.submitted_at = row.submitted_at || dates.review;
+      row.processing_started_at = row.processing_started_at || dates.processing;
+      row.completed_at = row.completed_at || dates.completed;
+    }
+  } catch (error) {
+    logger.warn('Failed to enrich requests with stage transition dates', { error, requestCount: requestIds.length });
+  }
+}
+
 // ===============================
 // REQUEST SERVICE
 // ===============================
@@ -314,6 +377,7 @@ export class RequestsService {
       logger.warn('Failed to enrich requests with payment_mode from invoices', { err: (e as any)?.message ?? String(e) });
     }
 
+    await enrichRequestStageDates(rows);
     return rows;
   }
 

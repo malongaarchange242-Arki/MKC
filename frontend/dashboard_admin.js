@@ -104,23 +104,30 @@ document.addEventListener('DOMContentLoaded', async () => {
   const sidebar = document.getElementById('sidebar');
   const menuTrigger = document.getElementById('menu-trigger');
   const closeSidebarBtn = document.getElementById('close-sidebar-btn');
+  const sidebarBackdrop = document.getElementById('sidebar-backdrop');
+  const closeSidebar = (restoreFocus = false) => {
+    sidebar?.classList.remove('show');
+    sidebarBackdrop && (sidebarBackdrop.hidden = true);
+    menuTrigger?.setAttribute('aria-expanded', 'false');
+    if (restoreFocus) menuTrigger?.focus({ preventScroll: true });
+  };
   const toggleSidebar = () => {
     if (!sidebar) return;
-    const isOpen = sidebar.classList.toggle('show');
+    const isOpen = !sidebar.classList.contains('show');
+    sidebar.classList.toggle('show', isOpen);
+    if (sidebarBackdrop) sidebarBackdrop.hidden = !isOpen;
     menuTrigger?.setAttribute('aria-expanded', String(isOpen));
   };
   menuTrigger?.addEventListener('click', toggleSidebar);
-  closeSidebarBtn?.addEventListener('click', () => {
-    sidebar?.classList.remove('show');
-    menuTrigger?.setAttribute('aria-expanded', 'false');
-    menuTrigger?.focus();
-  });
+  closeSidebarBtn?.addEventListener('click', () => closeSidebar(true));
+  sidebarBackdrop?.addEventListener('click', () => closeSidebar());
   document.addEventListener('keydown', event => {
     if (event.key === 'Escape' && sidebar?.classList.contains('show')) {
-      sidebar.classList.remove('show');
-      menuTrigger?.setAttribute('aria-expanded', 'false');
-      menuTrigger?.focus();
+      closeSidebar(true);
     }
+  });
+  window.addEventListener('resize', () => {
+    if (window.matchMedia('(min-width: 768px)').matches) closeSidebar();
   });
 
   // Load requests from backend (fallback to localStorage)
@@ -184,8 +191,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         menuItems.forEach(x => x.classList.remove('active'));
         li.classList.add('active');
         if (window.matchMedia('(max-width: 860px)').matches && !li.id) {
-          sidebar?.classList.remove('show');
-          menuTrigger?.setAttribute('aria-expanded', 'false');
+          closeSidebar();
         }
         if (idx === 0) {
           // Incoming Requests
@@ -726,6 +732,9 @@ function renderAdminTable() {
     const lang = (document.getElementById('lang-select') && document.getElementById('lang-select').value) || 'en';
     const viewLabel = (i18n.view_request && (i18n.view_request[lang] || i18n.view_request.en)) || 'View';
     const actionRequestId = (row.request && (row.request.id || row.request.request_id)) || row.request_id || row.id || rowId;
+    const rowLabels = lang === 'fr'
+      ? { bl: 'Numéro BL', date: 'Date', status: 'Statut', client: 'Client', documents: 'Documents client', action: 'Action admin' }
+      : { bl: 'BL Number', date: 'Date', status: 'Status', client: 'Client', documents: 'Client documents', action: 'Admin action' };
 
     // Use same BL selection logic as client but prefer extracted BL when available
     let blValue = '';
@@ -767,20 +776,20 @@ function renderAdminTable() {
           adminAction = `<button class="admin-row-action admin-row-final" type="button" onclick="event.stopPropagation(); openAdminModal('${escapeJs(blValue)}', 'FINAL', '${escapeJs(actionRequestId)}')"><i class="fas fa-file-circle-check" aria-hidden="true"></i><span>${escapeHtml(finalLabel)}</span></button>`;
         }
 
-        return `
+    const docsLabel = lang === 'fr' ? 'Voir les documents du client' : 'View client documents';
+    return `
       <tr data-req="${escapeHtml(rowId)}" class="clickable-row">
-          <td class="text-blue" style="font-weight: 600;">${escapeHtml(displayBl)}</td>
-            <td>${escapeHtml(formatDateFromRow(row))}</td>
-            <td><span class="status ${escapeHtml(status)}">${escapeHtml(statusLabel)}</span></td>
-            <td>${escapeHtml(getClientName(row))}</td>
-            <td>
-              <button class="icon-btn" title="View Docs" onclick="event.stopPropagation(); viewDocs('${escapeJs(((row.request && (row.request.id || row.request.request_id)) || row.request_id || row.id || blValue) || '')}')"><i class="fas fa-folder-open"></i></button>
-            </td>
-            <td class="admin-action-cell" data-label="${lang === 'fr' ? 'Action admin' : 'Admin Action'}">
-              <div class="admin-row-actions">${adminAction}${viewButton}</div>
-            </td>
-        </tr>
-    `;
+        <td class="text-blue" data-label="${escapeHtml(rowLabels.bl)}" style="font-weight: 600;">${escapeHtml(displayBl)}</td>
+        <td data-label="${escapeHtml(rowLabels.date)}">${escapeHtml(formatDateFromRow(row))}</td>
+        <td data-label="${escapeHtml(rowLabels.status)}"><span class="status ${escapeHtml(status)}">${escapeHtml(statusLabel)}</span></td>
+        <td data-label="${escapeHtml(rowLabels.client)}">${escapeHtml(getClientName(row))}</td>
+        <td data-label="${escapeHtml(rowLabels.documents)}">
+          <button class="icon-btn" type="button" title="${escapeHtml(docsLabel)}" aria-label="${escapeHtml(docsLabel)}" onclick="event.stopPropagation(); viewDocs('${escapeJs(((row.request && (row.request.id || row.request.request_id)) || row.request_id || row.id || blValue) || '')}')"><i class="fas fa-folder-open" aria-hidden="true"></i></button>
+        </td>
+        <td class="admin-action-cell" data-label="${escapeHtml(rowLabels.action)}">
+          <div class="admin-row-actions">${adminAction}${viewButton}</div>
+        </td>
+      </tr>`;
   }).join('');
   // use onclick to avoid multiple listeners when re-rendering
   tbody.onclick = onAdminRowClick;
@@ -1165,34 +1174,49 @@ window.resendFinalDocuments = async function (requestId) {
   }
 };
 
-// Derive a human-friendly date string from various possible fields
-function formatDateFromRow(row) {
+function getDateValueFromRow(row) {
   if (!row) return '';
   const fields = ['updated', 'updated_at', 'updatedAt', 'created_at', 'createdAt', 'created'];
 
-  const formatValue = (v) => {
-    const opts = { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };
-    if (v === null || v === undefined) return '';
-    if (typeof v === 'number') return new Date(v).toLocaleString('fr-FR', opts);
-    const d = new Date(String(v));
-    if (!isNaN(d.getTime())) return d.toLocaleString('fr-FR', opts);
-    return String(v);
-  };
-
   for (const f of fields) {
     const v = row[f] || (row.request && row.request[f]);
-    if (v) return formatValue(v);
+    if (v) return v;
   }
 
   if (row.documents && Array.isArray(row.documents)) {
     for (const d of row.documents) {
       for (const f of fields) {
-        if (d && d[f]) return formatValue(d[f]);
+        if (d && d[f]) return d[f];
       }
     }
   }
 
-  return '';
+  return null;
+}
+
+// Derive a human-friendly date string from various possible fields
+function formatDateFromRow(row) {
+  const value = getDateValueFromRow(row);
+  if (!value) return '';
+
+  const opts = { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+  if (typeof value === 'number') return new Date(value).toLocaleString('fr-FR', opts);
+  const date = new Date(String(value));
+  if (!isNaN(date.getTime())) return date.toLocaleString('fr-FR', opts);
+  return String(value);
+}
+
+function getDateFilterValueFromRow(row) {
+  const value = getDateValueFromRow(row);
+  if (!value) return '';
+
+  const date = typeof value === 'number' ? new Date(value) : new Date(String(value));
+  if (isNaN(date.getTime())) return String(value).slice(0, 10);
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 // Small helpers to avoid XSS when injecting values into HTML/JS
@@ -2088,7 +2112,7 @@ function renderPendingPayments() {
 
   const rows = requests.filter(r => pendingStatuses.includes(r.status));
   if (rows.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:40px;">Aucun paiement en attente.</td></tr>`;
+    tbody.innerHTML = `<tr class="admin-empty-row"><td colspan="6" style="text-align:center;padding:40px;">Aucun paiement en attente.</td></tr>`;
     return;
   }
 
@@ -2108,21 +2132,25 @@ function renderPendingPayments() {
       }
     }
 
-    const viewDocsBtn = `<button class="icon-btn" title="View Docs" onclick="event.stopPropagation(); viewDocs('${escapeJs(((row.request && (row.request.id || row.request.request_id)) || row.request_id || row.id || blValue) || '')}')"><i class="fas fa-folder-open"></i></button>`;
     const _lang = (document.getElementById('lang-select') && document.getElementById('lang-select').value) ? document.getElementById('lang-select').value : 'en';
+    const _docsLabel = _lang === 'fr' ? 'Voir les documents du client' : 'View client documents';
+    const viewDocsBtn = `<button class="icon-btn" type="button" title="${escapeHtml(_docsLabel)}" aria-label="${escapeHtml(_docsLabel)}" onclick="event.stopPropagation(); viewDocs('${escapeJs(((row.request && (row.request.id || row.request.request_id)) || row.request_id || row.id || blValue) || '')}')"><i class="fas fa-folder-open" aria-hidden="true"></i></button>`;
     const _confirmLabel = (i18n.confirm_payment && i18n.confirm_payment[_lang]) || i18n.confirm_payment.en;
     const confirmBtn = `<button class="btn-green" onclick="confirmPaymentFor('${escapeJs(row.id || row.request_id || '')}')" style="font-size:11px; padding:6px 12px;">${escapeHtml(_confirmLabel)}</button>`;
+    const rowLabels = _lang === 'fr'
+      ? { bl: 'Numéro BL', date: 'Date', status: 'Statut', client: 'Client', documents: 'Documents client', action: 'Action admin' }
+      : { bl: 'BL Number', date: 'Date', status: 'Status', client: 'Client', documents: 'Client documents', action: 'Admin action' };
 
     const displayBl = (row.manual_bl || row.manualBl) ? (blValue + ' (Bl saisi manuel)') : blValue;
 
     return `
       <tr data-req="${escapeHtml(rowId)}" class="clickable-row">
-        <td class="text-blue" style="font-weight: 600;">${escapeHtml(displayBl)}</td>
-        <td>${escapeHtml(formatDateFromRow(row))}</td>
-        <td><span class="status ${escapeHtml(status)}">${escapeHtml(statusLabel)}</span></td>
-        <td>${escapeHtml(getClientName(row))}</td>
-        <td>${viewDocsBtn}</td>
-        <td>${confirmBtn}</td>
+        <td class="text-blue" data-label="${escapeHtml(rowLabels.bl)}" style="font-weight: 600;">${escapeHtml(displayBl)}</td>
+        <td data-label="${escapeHtml(rowLabels.date)}">${escapeHtml(formatDateFromRow(row))}</td>
+        <td data-label="${escapeHtml(rowLabels.status)}"><span class="status ${escapeHtml(status)}">${escapeHtml(statusLabel)}</span></td>
+        <td data-label="${escapeHtml(rowLabels.client)}">${escapeHtml(getClientName(row))}</td>
+        <td data-label="${escapeHtml(rowLabels.documents)}">${viewDocsBtn}</td>
+        <td class="admin-action-cell" data-label="${escapeHtml(rowLabels.action)}">${confirmBtn}</td>
       </tr>
     `;
   }).join('');
@@ -2141,7 +2169,7 @@ function applyFilters() {
   const typeFilter = document.getElementById('filter-type').value;
 
   const filteredRequests = requests.filter(request => {
-    const matchesDate = dateFilter ? formatDateFromRow(request) === dateFilter : true;
+    const matchesDate = dateFilter ? getDateFilterValueFromRow(request) === dateFilter : true;
     const matchesStatus = statusFilter ? request.status === statusFilter : true;
     const matchesType = typeFilter ? request.type === typeFilter : true;
     return matchesDate && matchesStatus && matchesType;
@@ -2155,7 +2183,7 @@ function renderFilteredTable(filteredRequests) {
   if (!tbody) return;
 
   if (filteredRequests.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:40px;">No matching requests found.</td></tr>`;
+    tbody.innerHTML = `<tr class="admin-empty-row"><td colspan="6" style="text-align:center;padding:40px;">No matching requests found.</td></tr>`;
     return;
   }
 
@@ -2175,21 +2203,26 @@ function renderFilteredTable(filteredRequests) {
       }
     }
 
-    const viewDocsBtn = `<button class="icon-btn" title="View Docs" onclick="event.stopPropagation(); viewDocs('${escapeJs(((row.request && (row.request.id || row.request.request_id)) || row.request_id || row.id || blValue) || '')}')"><i class="fas fa-folder-open"></i></button>`;
     const _lang = (document.getElementById('lang-select') && document.getElementById('lang-select').value) ? document.getElementById('lang-select').value : 'en';
+    const _docsLabel = _lang === 'fr' ? 'Voir les documents du client' : 'View client documents';
+    const viewDocsBtn = `<button class="icon-btn" type="button" title="${escapeHtml(_docsLabel)}" aria-label="${escapeHtml(_docsLabel)}" onclick="event.stopPropagation(); viewDocs('${escapeJs(((row.request && (row.request.id || row.request.request_id)) || row.request_id || row.id || blValue) || '')}')"><i class="fas fa-folder-open" aria-hidden="true"></i></button>`;
     const _confirmLabel = (i18n.confirm_payment && i18n.confirm_payment[_lang]) || i18n.confirm_payment.en;
     const confirmBtn = `<button class="btn-green" onclick="confirmPaymentFor('${escapeJs(row.id || row.request_id || '')}')" style="font-size:11px; padding:6px 12px;">${escapeHtml(_confirmLabel)}</button>`;
+    const rowLabels = _lang === 'fr'
+      ? { bl: 'Numéro BL', date: 'Date', status: 'Statut', client: 'Client', documents: 'Documents client', action: 'Action admin' }
+      : { bl: 'BL Number', date: 'Date', status: 'Status', client: 'Client', documents: 'Client documents', action: 'Admin action' };
+    const docsLabel = _lang === 'fr' ? 'Voir les documents du client' : 'View client documents';
 
     const displayBl = (row.manual_bl || row.manualBl) ? (blValue + ' (Bl saisi manuel)') : blValue;
 
     return `
       <tr data-req="${escapeHtml(rowId)}" class="clickable-row">
-        <td class="text-blue" style="font-weight: 600;">${escapeHtml(displayBl)}</td>
-        <td>${escapeHtml(formatDateFromRow(row))}</td>
-        <td><span class="status ${escapeHtml(status)}">${escapeHtml(statusLabel)}</span></td>
-        <td>${escapeHtml(getClientName(row))}</td>
-        <td>${viewDocsBtn}</td>
-        <td>${confirmBtn}</td>
+        <td class="text-blue" data-label="${escapeHtml(rowLabels.bl)}" style="font-weight: 600;">${escapeHtml(displayBl)}</td>
+        <td data-label="${escapeHtml(rowLabels.date)}">${escapeHtml(formatDateFromRow(row))}</td>
+        <td data-label="${escapeHtml(rowLabels.status)}"><span class="status ${escapeHtml(status)}">${escapeHtml(statusLabel)}</span></td>
+        <td data-label="${escapeHtml(rowLabels.client)}">${escapeHtml(getClientName(row))}</td>
+        <td data-label="${escapeHtml(rowLabels.documents)}">${viewDocsBtn}</td>
+        <td class="admin-action-cell" data-label="${escapeHtml(rowLabels.action)}">${confirmBtn}</td>
       </tr>
     `;
   }).join('');
