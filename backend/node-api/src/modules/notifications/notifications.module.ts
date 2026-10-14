@@ -59,7 +59,7 @@ router.patch('/:id/read', async (req: Request, res: Response) => {
 			notificationId: req.params.id
 		});
 
-		return res.status(200).json({
+		return res.status(500).json({
 			success: false,
 			message: 'Unable to mark notification as read'
 		});

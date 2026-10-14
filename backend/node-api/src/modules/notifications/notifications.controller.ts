@@ -141,12 +141,15 @@ export class NotificationsController {
 					error
 				});
 
-				// Be resilient: treat "not found" or temporary Supabase errors as
-				// idempotent success for the frontend UX. The frontend expects a 200
-				// and will silently continue. We still log the condition for ops.
-				return res.status(200).json({
-					success: true,
-					warning: 'Notification not found or temporarily unavailable'
+				if (error) {
+					return res.status(500).json({
+						success: false,
+						message: 'Unable to update notification read status'
+					});
+				}
+				return res.status(404).json({
+					success: false,
+					message: 'Notification not found'
 				});
 			}
 
@@ -154,7 +157,7 @@ export class NotificationsController {
 		} catch (err) {
 			logger.error('[notifications] Mark as read failed', { err });
 
-			return res.status(200).json({
+			return res.status(500).json({
 				success: false,
 				message: 'Unable to mark notification as read'
 			});

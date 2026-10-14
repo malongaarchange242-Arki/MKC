@@ -19,6 +19,7 @@ let notificationPage = 1;
 let notificationFilter = 'all';
 let notificationRows = [];
 let notificationTotal = 0;
+let notificationUnreadTotal = 0;
 const notificationPageSize = 20;
 
 // --- INITIALISATION AU CHARGEMENT ---
@@ -163,9 +164,26 @@ function setupClientPageNavigation() {
       await loadNotificationPage();
       return;
     }
-    const button = event.target.closest('[data-mark-notification-read]');
-    if (!button) return;
-    await markNotificationAsRead(button.dataset.markNotificationRead);
+    const markButton = event.target.closest('[data-mark-notification-read]');
+    if (markButton) {
+      event.stopPropagation();
+      await markNotificationAsRead(markButton.dataset.markNotificationRead);
+      return;
+    }
+
+    const openButton = event.target.closest('[data-open-notification-request]');
+    if (!openButton) return;
+    const item = notificationRows.find(notification => String(notification.id) === openButton.dataset.notificationId);
+    if (item && !item.is_read) await markNotificationAsRead(item.id);
+
+    const requestId = openButton.dataset.openNotificationRequest;
+    showPage('dashboard');
+    let request = requests.find(row => String(row.request_id || row.id || '') === String(requestId));
+    if (!request) {
+      await loadRequests();
+      request = requests.find(row => String(row.request_id || row.id || '') === String(requestId));
+    }
+    if (request) openRequestDetails(requestId, openButton);
   });
   document.getElementById('notifications-mark-all')?.addEventListener('click', markAllNotificationsAsRead);
   if (window.location.hash === '#notifications') showPage('notifications');
@@ -1294,20 +1312,25 @@ async function loadNotifications() {
   const body = document.getElementById('popup-notif-body') || document.querySelector('#popup-notif .popup-body');
 
   try {
-    const res = await api.get('/notifications', { params: { page: 1, limit: 50 } });
+    const [res, unreadRes] = await Promise.all([
+      api.get('/notifications', { params: { page: 1, limit: 5 } }),
+      api.get('/notifications', { params: { page: 1, limit: 1, unread: true } })
+    ]);
     const list = (res && res.data && res.data.data) ? res.data.data : (res.data || []);
-    if (!Array.isArray(list) || res?.data?.warning) {
+    if (!Array.isArray(list) || res?.data?.success === false || res?.data?.warning ||
+        unreadRes?.data?.success === false || unreadRes?.data?.warning) {
       throw new Error(res?.data?.warning || 'Invalid notifications response');
     }
 
-    const unread = list.filter(n => !n.is_read);
+    const unreadCount = Number(unreadRes?.data?.pagination?.total);
+    notificationUnreadTotal = Number.isFinite(unreadCount) ? unreadCount : list.filter(n => !n.is_read).length;
     if (badge) {
-      const count = unread.length || 0;
-      badge.textContent = count > 99 ? '99+' : String(count);
-      badge.style.display = count > 0 ? 'inline-block' : 'none';
-      badge.setAttribute('aria-label', count > 0 ? `${count} notifications non lues` : '0 notifications');
+      badge.textContent = notificationUnreadTotal > 99 ? '99+' : String(notificationUnreadTotal);
+      badge.style.display = notificationUnreadTotal > 0 ? 'inline-block' : 'none';
+      badge.setAttribute('aria-label', notificationUnreadTotal > 0 ? `${notificationUnreadTotal} notifications non lues` : '0 notifications');
     }
 
+    if (document.getElementById('client-notification-list')) renderNotificationPage();
     if (!body) return;
     if (list.length === 0) {
       body.innerHTML = `<div class="notif-item">${escapeHtml(notificationText('notifications_empty', 'Aucune notification'))}</div>`;
@@ -1386,14 +1409,13 @@ function renderNotificationPage() {
   if (!listElement) return;
 
   const visibleRows = notificationRows.filter(item => notificationFilter !== 'unread' || !item.is_read);
-  const unreadCount = notificationRows.filter(item => !item.is_read).length;
   const unreadCountElement = document.getElementById('notifications-unread-count');
   if (unreadCountElement) {
-    unreadCountElement.textContent = `${unreadCount} ${notificationText('notifications_unread_count', 'non lue(s)')}`;
+    unreadCountElement.textContent = `${notificationUnreadTotal} ${notificationText('notifications_unread_count', 'non lue(s)')}`;
   }
 
   const markAllButton = document.getElementById('notifications-mark-all');
-  if (markAllButton) markAllButton.disabled = unreadCount === 0;
+  if (markAllButton) markAllButton.disabled = notificationUnreadTotal === 0;
 
   if (visibleRows.length === 0) {
     const key = notificationFilter === 'unread' ? 'notifications_no_unread' : 'notifications_empty';
@@ -1405,6 +1427,9 @@ function renderNotificationPage() {
       const message = escapeHtml(item.message || '');
       const date = escapeHtml(formatNotificationDate(item.created_at));
       const reference = item.metadata?.requestRef || item.metadata?.request_id || item.entity_id || '';
+      const requestId = String(item.entity_type || '').toLowerCase() === 'request'
+        ? (item.entity_id || item.metadata?.request_id || item.metadata?.data?.metadata?.request_id || '')
+        : '';
       const referenceText = reference
         ? `<span class="notification-reference">${escapeHtml(notificationText('ref_number', 'Référence'))} : ${escapeHtml(reference)}</span>`
         : '';
@@ -1416,12 +1441,14 @@ function renderNotificationPage() {
 
       return `
         <article class="client-notification${unreadClass}">
-          <span class="client-notification-icon" aria-hidden="true"><i class="fas fa-bell"></i></span>
-          <div class="client-notification-content">
-            <h2>${title}</h2>
-            ${message ? `<p>${message}</p>` : ''}
-            <div class="client-notification-meta">${referenceText}<time>${date}</time></div>
-          </div>
+          ${requestId ? `<button class="notification-open-request" type="button" data-open-notification-request="${escapeHtml(requestId)}" data-notification-id="${escapeHtml(item.id)}" aria-label="${escapeHtml(notificationText('open_related_request', 'Ouvrir la demande liée'))}">` : '<div class="notification-open-request">'}
+            <span class="client-notification-icon" aria-hidden="true"><i class="fas fa-bell"></i></span>
+            <span class="client-notification-content">
+              <span class="notification-title">${title}</span>
+              ${message ? `<span class="notification-message">${message}</span>` : ''}
+              <span class="client-notification-meta">${referenceText}<time>${date}</time></span>
+            </span>
+          ${requestId ? '</button>' : '</div>'}
           ${readButton}
         </article>`;
     }).join('');
@@ -1439,7 +1466,7 @@ function renderNotificationPage() {
 }
 
 async function markNotificationAsRead(notificationId) {
-  if (!notificationId) return;
+  if (!notificationId) return false;
   try {
     const response = await api.patch(`/notifications/${encodeURIComponent(notificationId)}/read`);
     if (response?.data?.success === false) throw new Error(response.data.message || 'Unable to mark notification as read');
@@ -1447,9 +1474,12 @@ async function markNotificationAsRead(notificationId) {
     notificationRows = notificationRows.map(item => item.id === notificationId ? { ...item, is_read: true } : item);
     renderNotificationPage();
     await loadNotifications();
+    await loadNotificationPage();
+    return true;
   } catch (error) {
     console.error('Failed to mark notification as read', { notificationId, error });
     window.alert(notificationText('notification_mark_read_error', 'Impossible de marquer cette notification comme lue.'));
+    return false;
   }
 }
 
