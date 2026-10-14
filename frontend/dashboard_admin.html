@@ -67,12 +67,20 @@
                     </button>
                 </div>
                 <div class="header-right">
-                    <label for="lang-select" class="admin-language-label">EN/FR</label>
-                    <select id="lang-select" class="admin-language-select" aria-label="Language switch">
-                        <option value="en">EN</option>
-                        <option value="fr">FR</option>
-                    </select>
-                    <button class="far fa-bell icon-btn admin-notification-btn" type="button" aria-label="Notifications"></button>
+                    <label class="language-control" for="lang-select" data-i18n-title="language_title">
+                        <svg class="language-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <circle cx="12" cy="12" r="9"></circle><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"></path>
+                        </svg>
+                        <span class="visually-hidden" data-i18n="language">Langue</span>
+                        <select id="lang-select" class="lang-selector" aria-label="Language" data-i18n-aria-label="language_aria_label">
+                            <option value="en" selected>English</option>
+                            <option value="fr">Français</option>
+                        </select>
+                        <svg class="lang-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                    </label>
+                    <button class="far fa-bell icon-btn admin-notification-btn" type="button"
+                        aria-label="Messages des clients" title="Messages des clients"
+                        onclick="window.location.href='messages_page.html?admin=1'"></button>
                     <div class="user-profile">
                         <div class="user-info">
                             <span class="name">Espace administrateur</span>

@@ -25,6 +25,95 @@ export class AdminService {
     return UsersService.searchClients(query, limit);
   }
 
+  static async listClientInbox() {
+    const { data: messageData, error: messageError } = await supabaseAdmin
+      .from('messages_request')
+      .select('id, request_id, sender_id, sender_role, content, attachment_url, created_at')
+      .eq('sender_role', 'CLIENT')
+      .order('created_at', { ascending: false })
+      .limit(200);
+
+    let messages = messageData || [];
+    if (messageError) {
+      if (messageError.code !== 'PGRST205') {
+        logger.error('Failed to list client messages for admin inbox', { error: messageError });
+        throw new Error('Failed to list client messages');
+      }
+
+      const legacyResult = await supabaseAdmin
+        .from('request_messages')
+        .select('id, request_id, sender_id, sender_role, content, attachment_url, created_at')
+        .eq('sender_role', 'CLIENT')
+        .order('created_at', { ascending: false })
+        .limit(200);
+      if (legacyResult.error) {
+        logger.error('Failed to list legacy client messages for admin inbox', { error: legacyResult.error });
+        throw new Error('Failed to list client messages');
+      }
+      messages = legacyResult.data || [];
+    }
+
+    const { data: disputes, error: disputesError } = await supabaseAdmin
+      .from('request_disputes')
+      .select('id, request_id, raised_by, reason, attachment_url, created_at')
+      .eq('raised_by', 'CLIENT')
+      .order('created_at', { ascending: false })
+      .limit(200);
+
+    if (disputesError) {
+      logger.error('Failed to list client disputes for admin inbox', { error: disputesError });
+      throw new Error('Failed to list client disputes');
+    }
+
+    const entries = [
+      ...(messages || []).map((message: any) => ({ ...message, type: 'MESSAGE', text: message.content || '' })),
+      ...(disputes || []).map((dispute: any) => ({ ...dispute, type: 'DISPUTE', text: dispute.reason || '' }))
+    ];
+    const requestIds = Array.from(new Set(entries.map((entry: any) => entry.request_id).filter(Boolean)));
+    const requestById = new Map<string, any>();
+    const profileById = new Map<string, any>();
+
+    if (requestIds.length) {
+      const { data: requestRows, error: requestError } = await supabaseAdmin
+        .from('requests')
+        .select('id, user_id, bl_number, manual_bl, extracted_bl')
+        .in('id', requestIds);
+      if (requestError) {
+        logger.error('Failed to load request details for admin inbox', { requestIds, error: requestError });
+        throw new Error('Failed to load inbox request details');
+      }
+
+      for (const request of requestRows || []) requestById.set(String(request.id), request);
+      const clientIds = Array.from(new Set((requestRows || []).map((request: any) => request.user_id).filter(Boolean)));
+      if (clientIds.length) {
+        const { data: profiles, error: profileError } = await supabaseAdmin
+          .from('profiles')
+          .select('id, nom, prenom, email')
+          .in('id', clientIds);
+        if (profileError) {
+          logger.error('Failed to load client profiles for admin inbox', { clientIds, error: profileError });
+          throw new Error('Failed to load inbox client profiles');
+        }
+        for (const profile of profiles || []) profileById.set(String(profile.id), profile);
+      }
+    }
+
+    return entries.map((entry: any) => {
+      const request = requestById.get(String(entry.request_id));
+      const profile = request ? profileById.get(String(request.user_id)) : null;
+      return {
+        ...entry,
+        client_name: profile
+          ? [profile.prenom, profile.nom].filter(Boolean).join(' ').trim() || profile.email || null
+          : null,
+        client_email: profile?.email || null,
+        bl_number: request?.manual_bl || request?.bl_number || request?.extracted_bl || null
+      };
+    }).sort((left: any, right: any) =>
+      Date.parse(right.created_at || '') - Date.parse(left.created_at || '')
+    );
+  }
+
   static async getUserById(userId: string) {
     logger.info('Admin: get user', { userId });
     return UsersService.getUserById(userId);

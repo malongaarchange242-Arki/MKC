@@ -72,6 +72,16 @@ export class AdminController {
 		}
 	}
 
+	static async listClientInbox(req: AuthRequest, res: Response) {
+		try {
+			if (!ensureAdminOrSystem(req, res)) return;
+			const messages = await AdminService.listClientInbox();
+			return res.status(200).json({ success: true, data: messages });
+		} catch (error: unknown) {
+			return handleControllerError(res, error, 'List client inbox');
+		}
+	}
+
 	static async getUserById(req: AuthRequest, res: Response) {
 		try {
 			if (!ensureAdminOrSystem(req, res)) return;

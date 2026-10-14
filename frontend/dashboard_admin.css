@@ -378,32 +378,6 @@
   opacity: 0.7;
 }
 
-.admin-language-label {
-  color: var(--text-2);
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-}
-
-.admin-language-select {
-  min-width: 64px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: #fff;
-  color: var(--text);
-  font: 600 0.8rem var(--font);
-  padding: 8px 9px;
-  cursor: pointer;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
-}
-
-.admin-language-select:hover,
-.admin-language-select:focus {
-  border-color: #b7cfe3;
-  box-shadow: 0 0 0 4px rgba(255, 133, 0, 0.08);
-  outline: none;
-}
-
 .admin-notification-btn {
   width: 36px;
   height: 36px;

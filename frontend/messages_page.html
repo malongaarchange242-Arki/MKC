@@ -138,6 +138,16 @@
     }
 
     .hidden { display: none !important; }
+    .inbox-back-link {
+      display: none;
+      align-items: center;
+      gap: 7px;
+      color: #1f2937;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .inbox-back-link.visible { display: inline-flex; }
   </style>
 </head>
 <body>
@@ -146,8 +156,9 @@
   
   <div id="main-list-container" style="display: flex; flex-direction: column; height: 100%;">
     <div class="header">
-      <i class="fas fa-envelope-open-text" style="color:#3B82F6; font-size: 20px;"></i>
-      <h2 style="margin:0; font-size:20px;">Mes Messages</h2>
+    <a id="admin-inbox-back" class="inbox-back-link" href="dashboard_admin.html" aria-label="Retour au tableau de bord admin"><i class="fas fa-arrow-left" aria-hidden="true"></i> Tableau de bord</a>
+    <i class="fas fa-envelope-open-text" style="color:#3B82F6; font-size: 20px;"></i>
+    <h2 style="margin:0; font-size:20px;">Mes Messages</h2>
       <div style="margin-left:auto; display:flex; gap:8px; align-items:center;">
         <button id="btn-load-disputes" style="padding:8px 10px; background:#3B82F6; color:#fff; border:none; border-radius:6px; cursor:pointer;">Charger</button>
       </div>
@@ -179,6 +190,7 @@
 
 <script>
   let activeThreadId = null;
+  const isAdminInbox = new URLSearchParams(window.location.search).get('admin') === '1';
 
   function getApiBase() {
     const configuredBase = document.querySelector('meta[name="api-base"]')?.content?.trim();
@@ -211,7 +223,8 @@
   function localizeStaticTexts() {
     try {
       const titleEl = document.querySelector('.header h2');
-      if (titleEl) titleEl.innerText = __('messages.title', 'Mes Messages');
+      if (titleEl) titleEl.innerText = isAdminInbox ? 'Messages des clients' : __('messages.title', 'Mes Messages');
+      if (isAdminInbox) document.getElementById('admin-inbox-back')?.classList.add('visible');
       const loadBtn = document.getElementById('btn-load-disputes');
       if (loadBtn) loadBtn.innerText = __('messages.load', 'Charger');
       const noConv = document.getElementById('no-conversations');
@@ -238,16 +251,16 @@
   // Try re-localizing shortly after load to pick up parent i18n state
   setTimeout(() => { try { localizeStaticTexts(); } catch (e) {} }, 200);
 
-  function openChat(title, type) {
-    activeThreadId = title;
+  function openChat(threadId, type, displayTitle) {
+    activeThreadId = threadId;
     document.getElementById('main-list-container').classList.add('hidden');
     document.getElementById('chat-view').style.display = 'flex';
     
     // Display 'Contestation' if type is conteste, otherwise show the ID or title
-    const displayTitle = (type === 'conteste') ? __('messages.dispute','Contestation') : title;
-    document.getElementById('chat-title').innerText = displayTitle;
+    const chatTitle = displayTitle || ((type === 'conteste') ? __('messages.dispute','Contestation') : threadId);
+    document.getElementById('chat-title').innerText = chatTitle;
     
-    renderMessages(title);
+    renderMessages(threadId);
   }
 
   function closeChat() {
@@ -288,12 +301,17 @@
       if (combined.length === 0) {
         history.innerHTML = `<div style="text-align:center; color:#9ca3af; margin-top:20px;">${__('messages.no_messages_in_thread','Aucun message dans cette discussion.')}</div>`;
       } else {
-        history.innerHTML = combined.map(m => `
-          <div class="msg ${m.from === 'Me' ? 'me' : 'other'}">
+        history.innerHTML = combined.map(m => {
+          const isMine = isAdminInbox
+            ? String(m.from || '').toUpperCase() !== 'CLIENT'
+            : m.from === 'Me';
+          return `
+          <div class="msg ${isMine ? 'me' : 'other'}">
             <div class="bubble">${escapeHtml(m.text)}</div>
             <small style="font-size:10px; color:#9ca3af; margin: 4px 5px;">${escapeHtml(new Date(m.created_at || m.time || Date.now()).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }))}</small>
           </div>
-        `).join('');
+        `;
+        }).join('');
       }
       history.scrollTop = history.scrollHeight;
     })();
@@ -443,6 +461,21 @@
 
     const base = getApiBase();
     const headers = getAuthHeaders();
+    if (isAdminInbox) {
+      const response = await fetch(`${base}/admin/client-inbox`, { headers });
+      if (response.status === 401 || response.status === 403) {
+        throw new Error(__('messages.login_required', 'Votre session administrateur a expiré. Veuillez vous reconnecter.'));
+      }
+      if (!response.ok) {
+        throw new Error(`${__('messages.load_error', 'Impossible de charger les conversations')} (${response.status})`);
+      }
+      const payload = await response.json();
+      if (!Array.isArray(payload?.data)) {
+        throw new Error(__('messages.load_error', 'Réponse invalide du serveur.'));
+      }
+      return payload.data;
+    }
+
     const [disputesResponse, messagesResponse] = await Promise.all([
       fetch(`${base}/api/requests/disputes`, { headers }),
       fetch(`${base}/api/requests/messages`, { headers })
@@ -534,7 +567,7 @@
         return;
       }
 
-      // group by request_id
+      // group incoming messages by request, keeping the client and BL context
       const byReq = {};
       all.forEach(d => {
         const key = d.request_id || d.requestId || d.request || 'unknown';
@@ -542,14 +575,26 @@
         byReq[key].push(d);
       });
 
-      Object.keys(byReq).sort().forEach(k => {
+      Object.keys(byReq).sort((left, right) => {
+        const leftLatest = byReq[left].reduce((latest, entry) =>
+          (Date.parse(entry.created_at || '') || 0) >= (Date.parse(latest.created_at || '') || 0) ? entry : latest
+        );
+        const rightLatest = byReq[right].reduce((latest, entry) =>
+          (Date.parse(entry.created_at || '') || 0) >= (Date.parse(latest.created_at || '') || 0) ? entry : latest
+        );
+        return (Date.parse(rightLatest.created_at || '') || 0) - (Date.parse(leftLatest.created_at || '') || 0);
+      }).forEach(k => {
         const arr = byReq[k];
-        const latest = arr[arr.length - 1];
-        const preview = latest.reason || latest.content || latest.text || JSON.stringify(latest).slice(0,120);
+        const latest = arr.reduce((current, entry) =>
+          (Date.parse(entry.created_at || '') || 0) >= (Date.parse(current.created_at || '') || 0) ? entry : current
+        );
+        const preview = latest.text || latest.reason || latest.content || JSON.stringify(latest).slice(0,120);
+        const clientName = latest.client_name || __('messages.client', 'Client');
+        const blNumber = latest.bl_number ? ` · BL ${latest.bl_number}` : '';
         const row = document.createElement('div');
-        row.className = 'conversation-row type-conteste';
-        row.innerHTML = `<div class="row-header"><span class="row-title">${__('messages.dispute','Contestation')}</span><small>${escapeHtml(latest.created_at || latest.createdAt || '')}</small></div><div class="row-preview">${escapeHtml(preview)}</div>`;
-        row.addEventListener('click', () => openChat(k, 'conteste'));
+        row.className = `conversation-row ${latest.type === 'DISPUTE' || latest.raised_by ? 'type-conteste' : 'type-normal'}`;
+        row.innerHTML = `<div class="row-header"><span class="row-title">${escapeHtml(clientName)}${escapeHtml(blNumber)}</span><small>${escapeHtml(latest.created_at || latest.createdAt || '')}</small></div><div class="row-preview">${escapeHtml(preview)}</div>`;
+        row.addEventListener('click', () => openChat(k, 'normal', `${clientName}${blNumber}`));
         list.appendChild(row);
       });
       return;

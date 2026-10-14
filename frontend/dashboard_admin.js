@@ -164,6 +164,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   const typeFilter = document.getElementById('filter-type');
 
   if (dateFilter) {
+    if (!dateFilter.value) {
+      const today = new Date();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      dateFilter.value = `${today.getFullYear()}-${month}-${day}`;
+    }
     dateFilter.addEventListener('input', applyFilters);
   }
 
