@@ -132,7 +132,7 @@ export class NotificationsController {
 				.eq('id', notificationId)
 				.eq('user_id', userId)
 				.select('id')
-				.single();
+				.maybeSingle();
 
 			if (error || !data) {
 				logger.warn('[notifications] Mark as read - not found or supabase error', {

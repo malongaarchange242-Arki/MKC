@@ -60,6 +60,7 @@
     body.admin-inbox .inbox-back-link i { font-size: 13px; }
     body.admin-inbox #btn-load-disputes { width: 38px; min-width: 38px; justify-content: center; gap: 0; padding: 0; font-size: 0; }
     body.admin-inbox #btn-load-disputes i { font-size: 13px; }
+    body.admin-modal .inbox-back-link { display: none !important; }
     #list-view { width: 100%; min-height: 0; flex: 1 1 auto; overflow-y: auto; margin: 0; padding: 10px; }
     .conversation-row { position: relative; display: flex; width: 100%; min-height: 76px; flex-direction: column; gap: 6px; margin: 0 0 6px; padding: 12px; color: inherit; background: #fff; border: 1px solid transparent; border-bottom-color: var(--line); border-radius: 9px; text-align: left; cursor: pointer; transition: background .16s ease, border-color .16s ease; }
     .conversation-row:hover { background: #f7fafc; border-color: #e7eef4; }
@@ -203,7 +204,9 @@
   let activeThreadId = null;
   let activeConversationButton = null;
   const isAdminInbox = new URLSearchParams(window.location.search).get('admin') === '1';
+  const isAdminModal = new URLSearchParams(window.location.search).get('modal') === '1';
   document.body.classList.toggle('admin-inbox', isAdminInbox);
+  document.body.classList.toggle('admin-modal', isAdminModal);
 
   function getApiBase() {
     const configuredBase = document.querySelector('meta[name="api-base"]')?.content?.trim();
@@ -237,7 +240,7 @@
     try {
       const titleEl = document.querySelector('.header h2');
       if (titleEl) titleEl.innerText = isAdminInbox ? 'Messages des clients' : __('messages.title', 'Mes Messages');
-      if (isAdminInbox) document.getElementById('admin-inbox-back')?.classList.add('visible');
+      if (isAdminInbox && !isAdminModal) document.getElementById('admin-inbox-back')?.classList.add('visible');
       const loadLabel = document.querySelector('#btn-load-disputes span');
       if (loadLabel) loadLabel.innerText = __('messages.load', 'Charger');
       const noConv = document.getElementById('no-conversations');

@@ -494,6 +494,10 @@ FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "notifications_insert_own" ON notifications
 FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+CREATE POLICY "notifications_update_own" ON notifications
+FOR UPDATE USING (auth.uid() = user_id)
+WITH CHECK (auth.uid() = user_id);
+
 -- audit_logs
 CREATE POLICY "audit_logs_select_admin" ON audit_logs
 FOR SELECT USING (

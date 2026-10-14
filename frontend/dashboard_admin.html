@@ -78,9 +78,9 @@
                         </select>
                         <svg class="lang-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
                     </label>
-                    <button class="far fa-bell icon-btn admin-notification-btn" type="button"
+                    <button class="fas fa-envelope icon-btn admin-notification-btn" id="admin-messages-trigger" type="button"
                         aria-label="Messages des clients" title="Messages des clients"
-                        onclick="window.location.href='messages_page.html?admin=1'"></button>
+                        aria-haspopup="dialog" aria-controls="admin-messages-modal" aria-expanded="false"></button>
                     <div class="user-profile">
                         <div class="user-info">
                             <span class="name">Espace administrateur</span>
@@ -166,6 +166,21 @@
                 </section>
             </div>
         </main>
+    </div>
+
+    <div id="admin-messages-modal" class="admin-messages-overlay" role="dialog" aria-modal="true" aria-labelledby="admin-messages-title" aria-hidden="true" hidden inert>
+        <section class="admin-messages-dialog">
+            <header class="admin-messages-dialog-header">
+                <div class="admin-messages-dialog-title">
+                    <i class="fas fa-comments" aria-hidden="true"></i>
+                    <h2 id="admin-messages-title">Messages des clients</h2>
+                </div>
+                <button id="admin-messages-close" class="admin-messages-dialog-close" type="button" aria-label="Fermer les messages">
+                    <i class="fas fa-xmark" aria-hidden="true"></i>
+                </button>
+            </header>
+            <iframe id="admin-messages-frame" title="Messagerie des clients" data-src="messages_page.html?admin=1&amp;modal=1"></iframe>
+        </section>
     </div>
 
     <div id="admin-modal" class="modal-overlay admin-issue-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="admin-modal-title">

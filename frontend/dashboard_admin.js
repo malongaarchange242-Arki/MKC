@@ -56,6 +56,47 @@ function showAdminToast(message, timeout = 4500) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+  const adminMessagesModal = document.getElementById('admin-messages-modal');
+  const adminMessagesTrigger = document.getElementById('admin-messages-trigger');
+  const adminMessagesFrame = document.getElementById('admin-messages-frame');
+  const adminMessagesClose = document.getElementById('admin-messages-close');
+  const closeAdminMessages = () => {
+    if (!adminMessagesModal || adminMessagesModal.hidden) return;
+    adminMessagesModal.hidden = true;
+    adminMessagesModal.inert = true;
+    adminMessagesModal.setAttribute('aria-hidden', 'true');
+    adminMessagesTrigger?.setAttribute('aria-expanded', 'false');
+    adminMessagesTrigger?.focus({ preventScroll: true });
+  };
+  const openAdminMessages = () => {
+    if (!adminMessagesModal) return;
+    adminMessagesModal.hidden = false;
+    adminMessagesModal.inert = false;
+    adminMessagesModal.setAttribute('aria-hidden', 'false');
+    adminMessagesTrigger?.setAttribute('aria-expanded', 'true');
+    if (adminMessagesFrame && !adminMessagesFrame.src) {
+      adminMessagesFrame.src = adminMessagesFrame.dataset.src || 'messages_page.html?admin=1&modal=1';
+    } else {
+      adminMessagesFrame?.contentWindow?.postMessage({ type: 'messages:refresh' }, window.location.origin);
+    }
+    adminMessagesClose?.focus({ preventScroll: true });
+  };
+  adminMessagesTrigger?.addEventListener('click', openAdminMessages);
+  adminMessagesClose?.addEventListener('click', closeAdminMessages);
+  adminMessagesModal?.addEventListener('click', event => {
+    if (event.target === adminMessagesModal) closeAdminMessages();
+  });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && adminMessagesModal && !adminMessagesModal.hidden) closeAdminMessages();
+  });
+  window.addEventListener('message', event => {
+    if (event.origin === window.location.origin &&
+        event.source === adminMessagesFrame?.contentWindow &&
+        event.data?.type === 'messages:close') {
+      closeAdminMessages();
+    }
+  });
+
   document.getElementById('side-panel-backdrop')?.addEventListener('click', closeSidePanel);
   document.addEventListener('keydown', event => {
     if (event.key === 'Escape' && document.getElementById('side-panel')?.classList.contains('show')) closeSidePanel();
