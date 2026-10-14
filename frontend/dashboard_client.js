@@ -512,7 +512,8 @@ function renderRequestRow(row) {
   const statusLabel = translateStatus(status) || '—';
   const category = getStatusCategory(status);
   const viewDetailsLabel = window.i18n?.t?.('view_details') || 'View details';
-  const labels = ['request_number', 'type', 'ref_number', 'client_company', 'creation_date', 'status', 'actions'];
+  const documentsLabel = window.i18n?.t?.('documents') || 'Documents';
+  const labels = ['request_number', 'type', 'ref_number', 'client_company', 'creation_date', 'status', 'documents', 'actions'];
   const label = key => escapeHtml(window.i18n?.t?.(key) || key);
 
   return `<tr>
@@ -522,7 +523,8 @@ function renderRequestRow(row) {
     <td data-label="${label(labels[3])}" class="request-client">${escapeHtml(getRequestClient(row))}</td>
     <td data-label="${label(labels[4])}">${escapeHtml(getRequestDate(row))}</td>
     <td data-label="${label(labels[5])}"><span class="status status-${category}">${escapeHtml(statusLabel)}</span></td>
-    <td data-label="${label(labels[6])}"><button type="button" class="request-detail-link" data-request-id="${escapeHtml(requestId)}"><span>${escapeHtml(viewDetailsLabel)}</span><span aria-hidden="true">→</span></button></td>
+    <td data-label="${label(labels[6])}" class="request-documents-cell"><button type="button" class="request-documents-link" data-request-id="${escapeHtml(requestId)}" aria-label="${escapeHtml(documentsLabel)} — ${escapeHtml(getRequestNumber(row))}" title="${escapeHtml(documentsLabel)}"><i class="fas fa-file-pdf" aria-hidden="true"></i></button></td>
+    <td data-label="${label(labels[7])}"><button type="button" class="request-detail-link" data-request-id="${escapeHtml(requestId)}"><span>${escapeHtml(viewDetailsLabel)}</span><span aria-hidden="true">→</span></button></td>
   </tr>`;
 }
 
@@ -1079,9 +1081,9 @@ function bindUIEvents() {
   const tableBody = document.getElementById('table-body');
   if (tableBody) {
     tableBody.addEventListener('click', function (e) {
-      const detailButton = e.target.closest('.request-detail-link');
-      if (!detailButton) return;
-      openRequestDetails(detailButton.dataset.requestId, detailButton);
+      const actionButton = e.target.closest('.request-detail-link, .request-documents-link');
+      if (!actionButton) return;
+      openRequestDetails(actionButton.dataset.requestId, actionButton);
     });
   }
 

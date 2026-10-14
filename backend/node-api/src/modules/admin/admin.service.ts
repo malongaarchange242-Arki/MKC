@@ -862,7 +862,7 @@ export class AdminService {
         // Generate a magic link token so recipients can open the preview without manual login
         try {
           const { JWTUtils } = await import('../../utils/jwt');
-          const apiBase = (process.env.API_BASE_URL || 'https://mkc-backend-cs7a.onrender.com').replace(/\/$/, '');
+          const apiBase = (process.env.API_BASE_URL || 'https://mkc-ymuo.onrender.com').replace(/\/$/, '');
           const magic = JWTUtils.generateMagicToken({ sub: request.user_id, email: request.customer_email || '', redirect: previewPath });
           const invoicePreviewUrl = `${apiBase}/auth/magic/redirect?token=${encodeURIComponent(magic)}`;
 
@@ -962,7 +962,7 @@ export class AdminService {
           const invoiceNumber = invoice?.invoice_number || opts.invoiceNumber || '';
 
           const { JWTUtils } = await import('../../utils/jwt');
-          const apiBase = (process.env.API_BASE_URL || 'https://mkc-backend-cs7a.onrender.com').replace(/\/$/, '');
+          const apiBase = (process.env.API_BASE_URL || 'https://mkc-ymuo.onrender.com').replace(/\/$/, '');
           const previewPath = `/Facture_.html?invoice_id=${encodeURIComponent(invoiceId)}`;
           const magic = JWTUtils.generateMagicToken({ sub: request.user_id, email: request.customer_email || '', redirect: previewPath });
           const invoicePreviewUrl = `${apiBase}/auth/magic/redirect?token=${encodeURIComponent(magic)}`;

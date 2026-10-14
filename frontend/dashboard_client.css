@@ -2026,7 +2026,7 @@ button.notification-open-request:focus-visible { outline: 2px solid var(--blue-l
 }
 .requests-card { overflow: hidden; border-radius: 10px; }
 .requests-card .table-responsive { overflow-x: auto; }
-.dashboard-table { min-width: 880px; font-size: 0.82rem; }
+.dashboard-table { min-width: 960px; font-size: 0.82rem; }
 .dashboard-table thead { background: #F9FBFD; }
 .dashboard-table th { padding: 14px 16px; font-size: 0.66rem; letter-spacing: 0.045em; }
 .dashboard-table td { padding: 13px 16px; color: #486582; }
@@ -2058,6 +2058,21 @@ button.notification-open-request:focus-visible { outline: 2px solid var(--blue-l
 }
 .request-detail-link:hover { color: var(--navy); text-decoration: underline; }
 .request-detail-link span:last-child { font-size: 1rem; }
+.request-documents-cell { text-align: center; }
+.request-documents-link {
+  display: inline-grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  color: #d92d20;
+  background: #fff5f4;
+  border: 1px solid #fecdca;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+.request-documents-link:hover { color: #b42318; background: #fee4e2; }
+.request-documents-link:focus-visible { outline: 3px solid rgba(8, 120, 249, .32); outline-offset: 2px; }
 .pagination-footer { min-height: 56px; padding: 10px 16px; }
 .page-numbers button { width: 30px; height: 30px; border-radius: 6px; }
 .page-numbers button:disabled { cursor: not-allowed; opacity: 0.45; }
