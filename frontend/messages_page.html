@@ -61,6 +61,14 @@
     body.admin-inbox #btn-load-disputes { width: 38px; min-width: 38px; justify-content: center; gap: 0; padding: 0; font-size: 0; }
     body.admin-inbox #btn-load-disputes i { font-size: 13px; }
     body.admin-modal .inbox-back-link { display: none !important; }
+    body.client-inbox .header { gap: 8px; padding-right: 10px; padding-left: 10px; }
+    body.client-inbox .header-icon { display: none; }
+    body.client-inbox .header-copy { flex: 1 1 auto; }
+    body.client-inbox .header h2 { font-size: .94rem; line-height: 1.25; }
+    body.client-inbox .inbox-back-link { width: 34px; min-width: 34px; justify-content: center; gap: 0; padding: 0; font-size: 0; }
+    body.client-inbox .inbox-back-link i { font-size: 13px; }
+    body.client-inbox #btn-load-disputes { width: 38px; min-width: 38px; justify-content: center; gap: 0; padding: 0; font-size: 0; }
+    body.client-inbox #btn-load-disputes i { font-size: 13px; }
     #list-view { width: 100%; min-height: 0; flex: 1 1 auto; overflow-y: auto; margin: 0; padding: 10px; }
     .conversation-row { position: relative; display: flex; width: 100%; min-height: 76px; flex-direction: column; gap: 6px; margin: 0 0 6px; padding: 12px; color: inherit; background: #fff; border: 1px solid transparent; border-bottom-color: var(--line); border-radius: 9px; text-align: left; cursor: pointer; transition: background .16s ease, border-color .16s ease; }
     .conversation-row:hover { background: #f7fafc; border-color: #e7eef4; }
@@ -203,10 +211,13 @@
 <script>
   let activeThreadId = null;
   let activeConversationButton = null;
-  const isAdminInbox = new URLSearchParams(window.location.search).get('admin') === '1';
-  const isAdminModal = new URLSearchParams(window.location.search).get('modal') === '1';
+  const pageParams = new URLSearchParams(window.location.search);
+  const isAdminInbox = pageParams.get('admin') === '1';
+  const isAdminModal = pageParams.get('modal') === '1';
+  const isClientInbox = pageParams.get('client') === '1';
   document.body.classList.toggle('admin-inbox', isAdminInbox);
   document.body.classList.toggle('admin-modal', isAdminModal);
+  document.body.classList.toggle('client-inbox', isClientInbox);
 
   function getApiBase() {
     const configuredBase = document.querySelector('meta[name="api-base"]')?.content?.trim();
@@ -241,6 +252,18 @@
       const titleEl = document.querySelector('.header h2');
       if (titleEl) titleEl.innerText = isAdminInbox ? 'Messages des clients' : __('messages.title', 'Mes Messages');
       if (isAdminInbox && !isAdminModal) document.getElementById('admin-inbox-back')?.classList.add('visible');
+      if (isClientInbox) {
+        const backLink = document.getElementById('admin-inbox-back');
+        if (backLink) {
+          backLink.href = 'dashboard_client.html';
+          backLink.setAttribute('aria-label', 'Retour au tableau de bord client');
+          backLink.querySelector('span').innerText = 'Tableau de bord';
+          backLink.classList.add('visible');
+        }
+        const refreshButton = document.getElementById('btn-load-disputes');
+        refreshButton?.setAttribute('aria-label', 'Actualiser les conversations');
+        refreshButton?.setAttribute('title', 'Actualiser les conversations');
+      }
       const loadLabel = document.querySelector('#btn-load-disputes span');
       if (loadLabel) loadLabel.innerText = __('messages.load', 'Charger');
       const noConv = document.getElementById('no-conversations');

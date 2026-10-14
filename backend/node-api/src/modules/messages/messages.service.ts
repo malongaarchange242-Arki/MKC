@@ -109,17 +109,16 @@ export class MessagesService {
           });
         }
 
-        const adminEmail = process.env.ADMIN_EMAIL || null;
-        if (isClientSender && adminEmail) {
+        if (isClientSender) {
           await NotificationsService.send({
             userId: clientId || senderId,
             type: 'REQUEST_MESSAGE_ADMIN',
             title: `New message regarding request ${blDesc}`,
-            message: String(content).slice(0, 240),
+            message: String(content),
             entityType: 'request',
             entityId: requestId,
-            channels: ['email'],
-            overrideEmail: adminEmail
+            requestRef: String(blDesc),
+            channels: ['email']
           });
         }
       } catch (e) {

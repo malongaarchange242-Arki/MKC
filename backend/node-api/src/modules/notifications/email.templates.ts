@@ -3,6 +3,7 @@
 export interface EmailTemplateInput {
   prenom?: string;
   requestRef?: string;
+  message?: string;
   links?: Array<{ name: string; url: string }>;
   client_name?: string;
   client_email?: string;
@@ -178,14 +179,19 @@ export const EmailTemplates: Record<string, (lang: 'fr' | 'en', input: EmailTemp
 
   REQUEST_MESSAGE_ADMIN: (lang, input) => {
     const title = lang === 'en' ? 'New message (admin)' : 'Nouveau message (admin)';
-    const subject = title;
-    const ref = escapeHtml(input.requestRef || '');
+    const subject = `${title}${input.requestRef ? ` — ${input.requestRef}` : ''}`;
+    const ref = input.requestRef || '';
+    const message = input.message || '';
     const text = lang === 'en'
-      ? `${greeting('en', input.prenom)}, a new message was posted for request ${ref}. Review and reply on the admin dashboard.`
-      : `${greeting('fr', input.prenom)}, un nouveau message a été publié pour la demande ${ref}. Consultez-le et répondez depuis le tableau de bord admin.`;
+      ? `${greeting('en', input.prenom)}, a new message was posted for request ${ref}:\n\n${message}\n\nReview and reply on the admin dashboard.`
+      : `${greeting('fr', input.prenom)}, un nouveau message a été publié pour la demande ${ref} :\n\n${message}\n\nConsultez-le et répondez depuis le tableau de bord admin.`;
     const adminLink = input.admin_dashboard_url ? `<p><a href="${escapeHtml(input.admin_dashboard_url)}">Open admin dashboard</a></p>` : '';
     const html = brandedLayout(title, `
-  <p>${escapeHtml(text)}</p>
+  <p>${escapeHtml(lang === 'en'
+    ? `${greeting('en', input.prenom)}, a new message was posted for request ${ref}.`
+    : `${greeting('fr', input.prenom)}, un nouveau message a été publié pour la demande ${ref}.`)}</p>
+  <blockquote style="margin:16px 0;padding:12px 16px;border-left:4px solid #e67b33;background:#f5f8fc;white-space:pre-wrap">${escapeHtml(message)}</blockquote>
+  <p>${escapeHtml(lang === 'en' ? 'Review and reply on the admin dashboard.' : 'Consultez-le et répondez depuis le tableau de bord admin.')}</p>
   ${renderLinks(input.links)}
   ${adminLink}
   `, lang);

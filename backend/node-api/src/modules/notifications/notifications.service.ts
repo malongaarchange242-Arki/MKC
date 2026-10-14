@@ -178,6 +178,7 @@ export class NotificationsService {
 								client_name: (payload as any).client_name,
 								client_email: (payload as any).client_email,
 								status: (payload as any).status,
+								message: payload.message,
 								date: (payload as any).date,
 								admin_dashboard_url: (payload as any).admin_dashboard_url,
 								requestRef: (payload as any).requestRef

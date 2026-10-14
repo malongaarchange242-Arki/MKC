@@ -1052,8 +1052,7 @@ function bindUIEvents() {
 
   const contactSupport = document.getElementById('detail-contact-support');
   if (contactSupport) contactSupport.addEventListener('click', () => {
-    closeDetails();
-    document.getElementById('settings-btn')?.click();
+    window.location.assign('messages_page.html?client=1');
   });
 
   // Popup buttons
