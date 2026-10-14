@@ -156,6 +156,30 @@ export class RequestsService {
 
     const rows = (data || []);
 
+    // Resolve profiles explicitly as the PostgREST relationship can be empty
+    // when the deployed schema does not expose the expected foreign key.
+    const userIds = Array.from(new Set(rows.map((row: any) => row.user_id).filter(Boolean)));
+    if (userIds.length > 0) {
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, nom, prenom, email')
+        .in('id', userIds);
+
+      if (profilesError) {
+        logger.error('Failed to resolve client profiles for admin request list', { userIds, error: profilesError });
+      } else {
+        const profilesById = new Map((profiles || []).map((profile: any) => [String(profile.id), profile]));
+        for (const row of rows as any[]) {
+          const profile = profilesById.get(String(row.user_id));
+          if (profile) {
+            row.profiles = profile;
+            row.profile = profile;
+            row.client_name = [profile.prenom, profile.nom].filter(Boolean).join(' ').trim() || profile.email || null;
+          }
+        }
+      }
+    }
+
     // Debug logs to help trace missing client names in admin UI
     try {
       logger.info('DEBUG listRequests count', { count: Array.isArray(rows) ? rows.length : 0 });

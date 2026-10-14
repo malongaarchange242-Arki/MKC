@@ -156,7 +156,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (window.currentInvoiceId) return;
         if (params.has('request_id')) return; // pas manuel si lié à une demande
 
-        const API_BASE = document.querySelector('meta[name="api-base"]')?.content || 'https://mkc-backend-qx7r.onrender.com';
+        const API_BASE = document.querySelector('meta[name="api-base"]')?.content || 'https://mkc-ymuo.onrender.com';
         const token = localStorage.getItem('token') || localStorage.getItem('access_token');
 
             const resp = await fetch(`${API_BASE.replace(/\/$/, '')}/api/client/invoices/manual`, {
@@ -189,7 +189,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             if (!requestId) return;
             const metaApi = document.querySelector('meta[name="api-base"]')?.content || '';
-            const API_BASE = metaApi || 'https://mkc-backend-qx7r.onrender.com';
+            const API_BASE = metaApi || 'https://mkc-ymuo.onrender.com';
             const token = localStorage.getItem('token') || localStorage.getItem('access_token');
 
             const resp = await fetch(`${API_BASE.replace(/\/$/, '')}/admin/requests/${encodeURIComponent(requestId)}`, {
@@ -388,7 +388,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             clientSearchTimer = setTimeout(async () => {
                 const controller = new AbortController();
                 clientSearchController = controller;
-                const apiBase = document.querySelector('meta[name="api-base"]')?.content || 'https://mkc-backend-qx7r.onrender.com';
+                const apiBase = document.querySelector('meta[name="api-base"]')?.content || 'https://mkc-ymuo.onrender.com';
                 const token = localStorage.getItem('token') || localStorage.getItem('access_token');
 
                 try {
@@ -483,7 +483,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // and prefer the request type when determining the objet label. This ensures
         // admin-provided MKC manual BLs or generated FERI refs are used consistently.
         const apiBaseMeta = document.querySelector('meta[name="api-base"]')?.content || '';
-        const API_BASE_FOR_REQUEST = apiBaseMeta || 'https://mkc-backend-qx7r.onrender.com';
+        const API_BASE_FOR_REQUEST = apiBaseMeta || 'https://mkc-ymuo.onrender.com';
         if (!refBL) {
             const firstRowBl = Array.from(document.querySelectorAll('.in-bl'))
                 .map(i => (i.value || '').trim())
@@ -623,7 +623,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (requestIdParam && Number(totalGeneral) > 0) {
             try {
                 const metaApi = document.querySelector('meta[name="api-base"]')?.content || '';
-                const API_BASE = metaApi || 'https://mkc-backend-qx7r.onrender.com';
+                const API_BASE = metaApi || 'https://mkc-ymuo.onrender.com';
                 const token = localStorage.getItem('token') || localStorage.getItem('access_token');
                 const resp = await fetch(`${API_BASE.replace(/\/$/, '')}/api/client/invoices`, {
                     method: 'POST',
@@ -650,7 +650,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if ((!invoiceRef || invoiceRef === '') && requestIdParam) {
                 try {
                     const metaApi2 = document.querySelector('meta[name="api-base"]')?.content || '';
-                    const API_BASE2 = metaApi2 || 'https://mkc-backend-qx7r.onrender.com';
+                    const API_BASE2 = metaApi2 || 'https://mkc-ymuo.onrender.com';
                     const token2 = localStorage.getItem('token') || localStorage.getItem('access_token');
                     const headers2 = Object.assign({}, token2 ? { Authorization: `Bearer ${token2}` } : {});
                     const listResp = await fetch(`${API_BASE2.replace(/\/$/, '')}/api/client/invoices?request_id=${encodeURIComponent(requestIdParam)}`, { headers: headers2 });
@@ -835,7 +835,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const urlParams2 = new URLSearchParams(window.location.search);
                     const requestIdParam2 = urlParams2.get('request_id');
                     const metaApi = document.querySelector('meta[name="api-base"]')?.content || '';
-                    const API_BASE = metaApi || 'https://mkc-backend-qx7r.onrender.com';
+                    const API_BASE = metaApi || 'https://mkc-ymuo.onrender.com';
                     const token = localStorage.getItem('token') || localStorage.getItem('access_token');
 
                     try {
