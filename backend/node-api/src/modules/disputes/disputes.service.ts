@@ -67,7 +67,16 @@ export class DisputesService {
       created_at: new Date().toISOString()
     };
 
-    const { data, error } = await supabase.from('request_disputes').insert(payload).select().single();
+    let { data, error } = await supabase.from('request_disputes').insert(payload).select().single();
+
+    if (error?.code === '42703' && /attachment_url/i.test(error.message || '')) {
+      logger.warn('request_disputes.attachment_url is missing; saving dispute without attachment URL', { requestId });
+      const compatiblePayload = { ...payload };
+      delete compatiblePayload.attachment_url;
+      const compatibleResult = await supabase.from('request_disputes').insert(compatiblePayload).select().single();
+      data = compatibleResult.data;
+      error = compatibleResult.error;
+    }
 
     if (error || !data) {
       logger.error('Failed to persist dispute', { error });

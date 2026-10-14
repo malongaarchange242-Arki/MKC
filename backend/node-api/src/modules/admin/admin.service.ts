@@ -53,11 +53,25 @@ export class AdminService {
       messages = legacyResult.data || [];
     }
 
-    const { data: disputes, error: disputesError } = await supabaseAdmin
+    const disputesResult = await supabaseAdmin
       .from('request_disputes')
       .select('id, request_id, raised_by, reason, attachment_url, created_at')
       .order('created_at', { ascending: false })
       .limit(200);
+    let disputes: any[] = disputesResult.data || [];
+    let disputesError = disputesResult.error;
+
+    if (disputesError?.code === '42703' &&
+        /request_disputes\.attachment_url/i.test(disputesError.message || '')) {
+      logger.warn('request_disputes.attachment_url is missing; loading inbox without dispute attachments');
+      const compatibleResult = await supabaseAdmin
+        .from('request_disputes')
+        .select('id, request_id, raised_by, reason, created_at')
+        .order('created_at', { ascending: false })
+        .limit(200);
+      disputes = compatibleResult.data || [];
+      disputesError = compatibleResult.error;
+    }
 
     if (disputesError) {
       logger.error('Failed to list client disputes for admin inbox', { error: disputesError });
