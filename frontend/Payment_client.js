@@ -772,16 +772,27 @@ function populateHeaderFromSession() {
             } catch (e) {
                 // ignore network errors
             } finally {
-                const prenom = profile?.prenom || '';
-                const nom = profile?.nom || '';
-                const fullName = (prenom || nom) ? `${prenom} ${nom}`.trim() : (profile?.email || 'Utilisateur');
+                const prenom = profile?.prenom || profile?.first_name || profile?.given_name || '';
+                const nom = profile?.nom || profile?.last_name || profile?.family_name || '';
+                const fullName = (prenom || nom) ? `${nom} ${prenom}`.trim() : (profile?.email || 'Utilisateur');
                 const roleText = profile?.role ? String(profile.role) : 'Client';
 
                 if (nameEl) nameEl.textContent = fullName;
                 if (roleEl) roleEl.textContent = roleText;
                 if (avatarEl) {
-                    const initials = ((prenom || '').charAt(0) + (nom || '').charAt(0)).toUpperCase() || (fullName.slice(0,2).toUpperCase());
-                    avatarEl.textContent = initials;
+                    const initials = ((nom || '').charAt(0) + (prenom || '').charAt(0)).toUpperCase() || (fullName.slice(0,2).toUpperCase());
+                    if (typeof profile?.avatar_url === 'string' && profile.avatar_url) {
+                        const image = document.createElement('img');
+                        image.src = profile.avatar_url;
+                        image.alt = fullName;
+                        image.width = 36;
+                        image.height = 36;
+                        image.style.borderRadius = '50%';
+                        image.style.display = 'block';
+                        avatarEl.replaceChildren(image);
+                    } else {
+                        avatarEl.textContent = initials;
+                    }
                 }
             }
         })();

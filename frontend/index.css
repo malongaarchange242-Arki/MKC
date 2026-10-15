@@ -151,8 +151,8 @@ body {
 }
 
 .logo-img {
-  width: 52px;
-  height: 52px;
+  width: 64px;
+  height: 64px;
   object-fit: contain;
   flex-shrink: 0;
   filter: drop-shadow(0 2px 8px rgba(0,0,0,0.45));
@@ -1041,7 +1041,7 @@ body {
 @media (max-width: 540px) {
   .site-header { width: 100%; justify-content: space-between; gap: 8px; padding: 16px 14px 0; }
   .logo-block { min-width: 0; gap: 8px; }
-  .logo-img { width: 40px; height: 40px; }
+  .logo-img { width: 48px; height: 48px; }
   .logo-name { font-size: 0.88rem; }
   .logo-consulting { font-size: 0.68rem; }
   .logo-tagline { display: none; }
@@ -1077,7 +1077,7 @@ body {
 
 @media (max-width: 360px) {
   .site-header { padding-right: 12px; padding-left: 12px; }
-  .logo-img { width: 36px; height: 36px; }
+  .logo-img { width: 44px; height: 44px; }
   .logo-block { gap: 6px; }
   .logo-name { font-size: 0.8rem; }
   .logo-consulting { font-size: 0.62rem; }
@@ -1105,7 +1105,7 @@ body {
 
 @media (max-height: 500px) and (max-width: 860px) {
   .site-header { padding: 6px 12px 0; }
-  .logo-img { width: 32px; height: 32px; }
+  .logo-img { width: 40px; height: 40px; }
   .lang-switch { padding: 2px 4px; }
   .lang-btn { padding-top: 3px; padding-bottom: 3px; }
   .layout { padding: 4px 12px; }

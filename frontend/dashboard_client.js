@@ -32,6 +32,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
   ensurePopupContainers();
   bindUIEvents();
+  setupClientPageNavigation();
   try {
     const me = await getMe();
     renderUserInfo(me);
@@ -41,17 +42,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
-  // Replace settings icon with messaging icon (if present)
-  try {
-    const settingsBtn = document.getElementById('settings-btn');
-    if (settingsBtn) {
-      // Replace gear class with envelope icon class to avoid duplicate icons
-      settingsBtn.className = 'fas fa-envelope icon-btn';
-      settingsBtn.innerHTML = '';
-      settingsBtn.title = 'Messages';
-    }
-  } catch (e) {}
-
   // Manual BL input removed: BLs are auto-generated when OCR fails and stored in `manual_bl`.
   await loadRequests();
   // fetch invoices once and merge amounts for display, then re-render table
@@ -60,7 +50,6 @@ window.addEventListener('DOMContentLoaded', async () => {
   loadTable(requests);
   // start polling notifications (badge + popup content)
   try { startNotifPolling(); } catch (_) {}
-  setupClientPageNavigation();
   // Periodic auto-refresh disabled — refresh will be manual via the UI.
   // Previously: setInterval(() => { loadRequests().catch(() => {}); }, 15000);
 });
@@ -116,6 +105,7 @@ function setupClientPageNavigation() {
     const messagesBackdrop = document.getElementById('messages-backdrop');
     if (messagesBackdrop) messagesBackdrop.hidden = true;
     document.getElementById('notif-btn')?.setAttribute('aria-expanded', 'false');
+    notificationsNav?.setAttribute('aria-expanded', 'false');
     document.getElementById('settings-btn')?.setAttribute('aria-expanded', 'false');
 
     if (isNotificationsPage) {
@@ -132,11 +122,16 @@ function setupClientPageNavigation() {
   };
 
   dashboardNav?.addEventListener('click', () => showPage('dashboard'));
-  notificationsNav?.addEventListener('click', () => showPage('notifications'));
+  notificationsNav?.addEventListener('click', event => {
+    event.preventDefault();
+    showPage('notifications');
+  });
   const navItems = document.querySelectorAll('.sidebar-nav .nav-item');
   navItems.forEach(item => {
     item.addEventListener('click', () => {
-      navItems.forEach(navItem => navItem.classList.toggle('active', navItem === item));
+      if (item !== notificationsNav) {
+        navItems.forEach(navItem => navItem.classList.toggle('active', navItem === item));
+      }
       if (window.matchMedia('(max-width: 767.98px)').matches) toggleMenu(false, false);
     });
     item.addEventListener('keydown', event => {
@@ -189,17 +184,26 @@ function setupClientPageNavigation() {
 
     const openButton = event.target.closest('[data-open-notification-request]');
     if (!openButton) return;
+    event.stopPropagation();
     const item = notificationRows.find(notification => String(notification.id) === openButton.dataset.notificationId);
-    if (item && !item.is_read) await markNotificationAsRead(item.id);
-
-    const requestId = openButton.dataset.openNotificationRequest;
-    showPage('dashboard');
-    let request = requests.find(row => String(row.request_id || row.id || '') === String(requestId));
-    if (!request) {
-      await loadRequests();
-      request = requests.find(row => String(row.request_id || row.id || '') === String(requestId));
-    }
-    if (request) openRequestDetails(requestId, openButton);
+    await openNotificationTarget({
+      notificationId: openButton.dataset.notificationId,
+      requestId: openButton.dataset.openNotificationRequest,
+      notificationType: item?.type || item?.metadata?.type,
+      isRead: item?.is_read,
+      trigger: openButton
+    });
+  });
+  document.getElementById('popup-notif-body')?.addEventListener('click', async event => {
+    const openButton = event.target.closest('[data-open-notification-request]');
+    if (!openButton) return;
+    await openNotificationTarget({
+      notificationId: openButton.dataset.notificationId,
+      requestId: openButton.dataset.openNotificationRequest,
+      notificationType: openButton.dataset.notificationType,
+      isRead: openButton.dataset.notificationRead === 'true',
+      trigger: openButton
+    });
   });
   document.getElementById('notifications-mark-all')?.addEventListener('click', markAllNotificationsAsRead);
   if (window.location.hash === '#notifications') showPage('notifications');
@@ -211,6 +215,47 @@ function formatDateNow() {
     day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit'
   });
+}
+
+async function openNotificationTarget({ notificationId, requestId, notificationType, isRead, trigger }) {
+  if (!requestId) return;
+  if (notificationId && isRead === false) await markNotificationAsRead(notificationId);
+
+  const notificationPopup = document.getElementById('popup-notif');
+  notificationPopup?.classList.remove('show-popup');
+  if (notificationPopup) {
+    notificationPopup.style.display = 'none';
+    notificationPopup.setAttribute('aria-hidden', 'true');
+  }
+  document.getElementById('notif-btn')?.setAttribute('aria-expanded', 'false');
+
+  const type = String(notificationType || '').toUpperCase();
+  if (type === 'REQUEST_MESSAGE' || type === 'REQUEST_MESSAGE_ADMIN') {
+    const messagesBody = document.getElementById('popup-settings-body');
+    if (!messagesBody) throw new Error('Messages popup is unavailable');
+    let messagesFrame = messagesBody.querySelector('iframe');
+    if (!messagesFrame) {
+      messagesFrame = document.createElement('iframe');
+      messagesFrame.title = 'Messagerie des demandes';
+      messagesFrame.style.cssText = 'width:100%;height:100%;border:0;border-radius:0;display:block;';
+      messagesBody.replaceChildren(messagesFrame);
+    }
+    messagesFrame.src = `messages_page.html?client=1&requestId=${encodeURIComponent(requestId)}`;
+    const messagesPopup = document.getElementById('popup-settings');
+    if (!messagesPopup?.classList.contains('show-popup')) {
+      togglePopup('settings', document.getElementById('settings-btn'));
+    }
+    return;
+  }
+
+  let request = requests.find(row => String(row.request_id || row.id || '') === String(requestId));
+  if (!request) {
+    await loadRequests();
+    request = requests.find(row => String(row.request_id || row.id || '') === String(requestId));
+  }
+  if (request) {
+    openRequestDetails(requestId, trigger || notificationsNav, true, type === 'REQUEST_COMPLETED');
+  }
 }
 
 // Format amount to always show XAF currency prefix
@@ -312,9 +357,11 @@ function renderUserInfo(me) {
       return;
     }
 
-    const fullName = `${profile.nom || profile.first_name || ''} ${profile.prenom || profile.last_name || ''}`.trim();
+    const nom = profile.nom || profile.last_name || profile.family_name || '';
+    const prenom = profile.prenom || profile.first_name || profile.given_name || '';
+    const fullName = `${nom} ${prenom}`.trim();
     if (nameEl) nameEl.textContent = fullName || profile.email || 'Utilisateur';
-    if (roleEl) roleEl.textContent = profile.role || (profile.user_metadata && profile.user_metadata.role) || 'User';
+    if (roleEl) roleEl.textContent = profile.role || (profile.user_metadata && profile.user_metadata.role) || 'Client';
       const avatarEl = document.querySelector('.avatar-placeholder');
       if (avatarEl) {
         try {
@@ -687,7 +734,9 @@ function renderDetailDocuments(row, documents, loadError = false) {
   };
   let transmittedCount = 0;
   const clientDocuments = expected.map(expectedDoc => {
-    const document = normalizedDocs.find(doc => doc.normalizedType === normalizeDocumentType(expectedDoc.type));
+    const document = normalizedDocs.find(doc =>
+      doc.normalizedType === normalizeDocumentType(expectedDoc.type) && !isMkcDocument(doc)
+    );
     const provided = Boolean(document);
     if (provided) transmittedCount += 1;
     const statusLabel = document?.status
@@ -714,7 +763,7 @@ function renderDetailDocuments(row, documents, loadError = false) {
   const mkcDocuments = [];
   const renderedDocumentIds = new Set();
   const renderedDocumentKeys = new Set();
-  normalizedDocs.filter(doc => !knownTypes.has(doc.normalizedType)).forEach(doc => {
+  normalizedDocs.filter(doc => isMkcDocument(doc) || !knownTypes.has(doc.normalizedType)).forEach(doc => {
     const identity = documentIdentity(doc);
     const id = doc.id || doc.delivery_id;
     if ((id && renderedDocumentIds.has(String(id))) || (identity && renderedDocumentKeys.has(identity))) return;
@@ -839,10 +888,11 @@ function renderDetailDocuments(row, documents, loadError = false) {
   }
 }
 
-function openRequestDetails(requestId, trigger = null) {
+function openRequestDetails(requestId, trigger = null, useNotificationModal = false, highlightOfficialDocuments = false) {
   const row = requests.find(item => String(item.request_id || item.id || '') === String(requestId));
   const panel = document.getElementById('side-panel');
   if (!row || !panel) return;
+  const isNotificationModal = useNotificationModal || panel.classList.contains('notification-detail-modal');
 
   const requestKey = String(row.request_id || row.id || '');
   const status = String(row.status || row.state || '');
@@ -855,7 +905,7 @@ function openRequestDetails(requestId, trigger = null) {
   const rejected = category === 'rejected';
   activeDetailRequestId = requestKey;
   activeDetailTrigger = trigger || document.activeElement;
-  detailDocumentsExpanded = false;
+  detailDocumentsExpanded = highlightOfficialDocuments;
 
   const setText = (id, value) => {
     const element = document.getElementById(id);
@@ -869,7 +919,6 @@ function openRequestDetails(requestId, trigger = null) {
   setText('detail-info-type', type);
   setText('detail-info-date', formatDetailDate(row.created_at || row.createdAt));
   setText('detail-info-client', getRequestClient(row));
-  setText('detail-info-country', row.destination_country || row.country || row.destination || '—');
   setText('detail-info-reference', reference);
   setText('detail-info-status', formattedStatus);
   setText('detail-info-fxi', row.fxi_number || row.fxi || '—');
@@ -927,10 +976,24 @@ function openRequestDetails(requestId, trigger = null) {
 
   const docContainer = document.getElementById('side-docs');
   if (docContainer) docContainer.innerHTML = `<p class="detail-docs-message"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i> ${escapeHtml(detailText('loading', 'Chargement...'))}</p>`;
+  panel.classList.toggle('notification-detail-modal', isNotificationModal);
+  document.body.classList.toggle('request-details-modal-open', isNotificationModal);
+  const backdrop = document.getElementById('side-panel-backdrop');
+  backdrop?.classList.toggle('notification-detail-backdrop', isNotificationModal);
+  backdrop?.setAttribute('aria-hidden', 'false');
+  if (isNotificationModal) {
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-modal', 'true');
+  } else {
+    panel.removeAttribute('role');
+    panel.removeAttribute('aria-modal');
+  }
   panel.classList.add('show');
   panel.setAttribute('aria-hidden', 'false');
-  document.getElementById('side-panel-backdrop')?.classList.add('show');
-  document.getElementById('side-close-btn')?.focus();
+  backdrop?.classList.add('show');
+  requestAnimationFrame(() => {
+    if (panel.classList.contains('show')) document.getElementById('side-close-btn')?.focus();
+  });
 
   const loadDetailDocuments = async () => {
     try {
@@ -938,6 +1001,12 @@ function openRequestDetails(requestId, trigger = null) {
       if (activeDetailRequestId !== requestKey) return;
       const list = Array.isArray(response.data?.documents) ? response.data.documents : [];
       renderDetailDocuments(row, list);
+      if (highlightOfficialDocuments) {
+        const officialGroup = document.querySelector('#side-docs .is-mkc-group');
+        const officialDocuments = officialGroup?.querySelectorAll('.detail-document-row.is-provided') || [];
+        officialDocuments.forEach(documentRow => documentRow.classList.add('is-notification-highlight'));
+        officialGroup?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
     } catch (error) {
       console.error('Failed to load documents for request details', {
         requestId: requestKey,
@@ -990,8 +1059,14 @@ function bindUIEvents() {
     const panel = document.getElementById('side-panel');
     if (!panel) return;
     panel.classList.remove('show');
+    panel.classList.remove('notification-detail-modal');
+    document.body.classList.remove('request-details-modal-open');
     panel.setAttribute('aria-hidden', 'true');
-    document.getElementById('side-panel-backdrop')?.classList.remove('show');
+    panel.removeAttribute('role');
+    panel.removeAttribute('aria-modal');
+    const backdrop = document.getElementById('side-panel-backdrop');
+    backdrop?.classList.remove('show', 'notification-detail-backdrop');
+    backdrop?.setAttribute('aria-hidden', 'true');
     activeDetailRequestId = '';
     activeDetailTrigger?.focus?.();
     activeDetailTrigger = null;
@@ -999,7 +1074,25 @@ function bindUIEvents() {
   if (closeSidePanel) closeSidePanel.addEventListener('click', closeDetails);
   document.getElementById('side-panel-backdrop')?.addEventListener('click', closeDetails);
   document.addEventListener('keydown', event => {
-    if (event.key === 'Escape' && document.getElementById('side-panel')?.classList.contains('show')) closeDetails();
+    const panel = document.getElementById('side-panel');
+    if (!panel?.classList.contains('show')) return;
+    if (event.key === 'Escape') {
+      closeDetails();
+      return;
+    }
+    if (event.key !== 'Tab' || !panel.classList.contains('notification-detail-modal')) return;
+    const focusable = [...panel.querySelectorAll('a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])')]
+      .filter(element => element.getClientRects().length && !element.closest('[hidden]'));
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
   });
 
   const documentsToggle = document.getElementById('detail-documents-toggle');
@@ -1349,12 +1442,13 @@ function bindUIEvents() {
 
   // Close popups when clicking outside
   document.addEventListener('click', (e) => {
-    if (!e.target.closest('.dropdown-popup') && !e.target.closest('#notif-btn') && !e.target.closest('#settings-btn')) {
+    if (!e.target.closest('.dropdown-popup') && !e.target.closest('#notif-btn') && !e.target.closest('#settings-btn') && !e.target.closest('#nav-notif')) {
       document.querySelectorAll('.dropdown-popup').forEach(p => {
         p.classList.remove('show-popup');
         p.setAttribute('aria-hidden', 'true');
       });
       if (notifBtn) notifBtn.setAttribute('aria-expanded', 'false');
+      document.getElementById('nav-notif')?.setAttribute('aria-expanded', 'false');
       if (settingsBtn) settingsBtn.setAttribute('aria-expanded', 'false');
     }
   });
@@ -1368,6 +1462,7 @@ function bindUIEvents() {
         p.setAttribute('aria-hidden', 'true');
       });
       if (notifBtn) notifBtn.setAttribute('aria-expanded', 'false');
+      document.getElementById('nav-notif')?.setAttribute('aria-expanded', 'false');
       if (settingsBtn) settingsBtn.setAttribute('aria-expanded', 'false');
     }
   });
@@ -1398,6 +1493,13 @@ function togglePopup(type, triggerBtn) {
 
   if (triggerBtn) {
     triggerBtn.setAttribute('aria-expanded', isShown ? 'true' : 'false');
+  }
+  if (type === 'notif') {
+    document.getElementById('notif-btn')?.setAttribute('aria-expanded', isShown ? 'true' : 'false');
+    document.getElementById('nav-notif')?.setAttribute('aria-expanded', isShown ? 'true' : 'false');
+  } else {
+    document.getElementById('notif-btn')?.setAttribute('aria-expanded', 'false');
+    document.getElementById('nav-notif')?.setAttribute('aria-expanded', 'false');
   }
 
   // Refresh the notification preview and unread count when the popup opens.
@@ -1461,13 +1563,19 @@ async function loadNotifications() {
       const msg = escapeHtml(n.message || '');
       const time = formatNotificationDate(n.created_at);
       const unreadClass = n.is_read ? '' : ' is-unread';
+      const requestId = String(n.entity_type || '').toLowerCase() === 'request'
+        ? (n.entity_id || n.metadata?.request_id || n.metadata?.data?.metadata?.request_id || '')
+        : '';
+      const notificationType = n.type || n.metadata?.type || '';
 
       return `
-        <div class="notif-item${unreadClass}" data-id="${escapeHtml(n.id)}">
+        ${requestId
+          ? `<button type="button" class="notif-item${unreadClass}" data-id="${escapeHtml(n.id)}" data-notification-id="${escapeHtml(n.id)}" data-open-notification-request="${escapeHtml(requestId)}" data-notification-type="${escapeHtml(notificationType)}" data-notification-read="${String(Boolean(n.is_read))}" aria-label="${escapeHtml(title)}">`
+          : `<div class="notif-item${unreadClass}" data-id="${escapeHtml(n.id)}">`}
           <div class="title">${title}</div>
           <div class="message">${msg}</div>
           <div class="meta">${escapeHtml(time)}</div>
-        </div>`;
+        ${requestId ? '</button>' : '</div>'}`;
     }).join('');
   } catch (error) {
     console.error('Unable to refresh notification badge and preview', error);

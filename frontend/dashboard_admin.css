@@ -7,8 +7,8 @@
 }
 
 .app-container > .sidebar .sidebar-logo-img {
-  width: 82px;
-  height: 82px;
+  width: 90px;
+  height: 90px;
 }
 
 .admin-issue-overlay {
@@ -1748,9 +1748,9 @@
     padding: 22px 14px 16px;
   }
 
-  .sidebar-logo-img {
-    width: 64px;
-    height: 64px;
+  .app-container > .sidebar .sidebar-logo-img {
+    width: 72px;
+    height: 72px;
   }
 
   .sidebar-brand {

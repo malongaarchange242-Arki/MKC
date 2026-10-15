@@ -73,8 +73,8 @@ button {
 }
 
 .invoice-brand img {
-    width: 46px;
-    height: 46px;
+    width: 54px;
+    height: 54px;
     flex: 0 0 auto;
     object-fit: contain;
     filter: drop-shadow(0 2px 6px rgba(0,0,0,0.35));
@@ -243,6 +243,7 @@ button {
 .a4-page { position: relative; display: flex; flex-direction: column; width: 210mm; height: 297mm; margin: 0 auto; padding: 15mm 20mm; overflow: hidden; background: #fff; color: #000; box-shadow: 0 0 30px rgba(0,0,0,0.5); }
 .header-logos { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .header-logos img { width: auto; height: 70px; object-fit: contain; }
+.a4-page .header-logos img:first-child { height: 82px; }
 .date-line { margin: 10px 0; text-align: right; font-weight: bold; }
 .ref-line { margin-bottom: 5px; font-size: 14px; font-weight: bold; }
 .invoice-title { margin: 25px 0; font-size: 32px; font-weight: 900; letter-spacing: 1px; text-align: center; }

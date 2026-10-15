@@ -137,13 +137,12 @@ export const EmailTemplates: Record<string, (lang: 'fr' | 'en', input: EmailTemp
   },
 
   REQUEST_CREATED: (lang, input) => {
-    const title = lang === 'en' ? 'Status update' : 'Mise à jour du statut';
+    const title = lang === 'en' ? 'Request received' : 'Demande reçue';
     const subject = title;
     const ref = escapeHtml(input.requestRef || '');
-    const statusLabel = lang === 'en' ? 'Processing' : 'Traitement en cours';
     const text = lang === 'en'
-      ? `${greeting('en', input.prenom)}, the status of your request ${ref} has been updated: ${statusLabel}.\n\nWe will notify you of the next steps as soon as they are available.\n\nMaritime Kargo Consulting – This is an automated message.`
-      : `${greeting('fr', input.prenom)}, le statut de votre demande ${ref} a été mis à jour : ${statusLabel}.\n\nNous vous informerons des prochaines étapes dès qu'elles seront disponibles.\n\nMaritime Kargo Consulting – Ceci est un message automatique.`;
+      ? `${greeting('en', input.prenom)}, we have received your request ${ref}. Our team will review it and notify you of the next steps.\n\nMaritime Kargo Consulting – This is an automated message.`
+      : `${greeting('fr', input.prenom)}, nous avons bien reçu votre demande ${ref}. Notre équipe va l'examiner et vous informera des prochaines étapes.\n\nMaritime Kargo Consulting – Ceci est un message automatique.`;
     const html = brandedLayout(title, `
   <p>${escapeHtml(text).replace(/\n/g, '<br>')}</p>
   `, lang);

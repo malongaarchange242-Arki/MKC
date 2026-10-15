@@ -1564,7 +1564,6 @@ function openSidePanel(req) {
   setAdminDetailValue('side-type', typeDisplay);
   const typeBadge = document.getElementById('side-type-badge');
   if (typeBadge) typeBadge.textContent = typeDisplay;
-  setAdminDetailValue('side-country', req.destination_country || req.country || req.destination);
   renderAdminDetailJourney(req, rawStatus);
   renderAdminRequestHistory(req);
 

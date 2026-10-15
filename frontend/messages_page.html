@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=0" />
   <meta name="api-base" content="https://mkc-ymuo.onrender.com" />
   <title>Messages — Maritime Kargo Consulting</title>
-  <link rel="icon" href="Logotype_mkc_bon-removebg-preview.png" />
+  <link rel="icon" type="image/svg+xml" href="favicon-mkc.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <style>
     :root {
@@ -22,11 +22,12 @@
       --muted: #64748b;
       --line: #e2eaf1;
       --page: #f3f6f8;
-      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --font: 'Inter', -apple-system, 'Segoe UI', Arial, sans-serif;
+      font-family: var(--font);
     }
     *, *::before, *::after { box-sizing: border-box; }
-    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
-    body { color: var(--ink); background: var(--page); font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; font-size: 16px; }
+    body { color: var(--ink); background: var(--page); font-family: var(--font); -webkit-font-smoothing: antialiased; }
     button, input, textarea { font: inherit; }
     .app-container { display: flex; width: 100%; height: 100%; min-width: 0; flex-direction: row; }
     #main-list-container { display: flex; width: 34%; min-width: 270px; max-width: 390px; height: 100%; min-height: 0; flex: 0 0 auto; flex-direction: column; background: #fff; border-right: 1px solid var(--line); }
@@ -50,6 +51,14 @@
     .inbox-back-link.visible { display: inline-flex; }
     .inbox-back-link:hover { background: rgba(255,255,255,.1); }
     .header-actions { display: flex; align-items: center; gap: 9px; margin-left: auto; }
+    .client-profile { display: none; min-width: 0; align-items: center; gap: 7px; color: #fff; }
+    body.client-inbox .client-profile { display: flex; }
+    .client-profile-avatar { display: grid; width: 30px; height: 30px; flex: 0 0 auto; place-items: center; overflow: hidden; color: var(--navy-900); background: var(--orange); border-radius: 50%; font-size: .68rem; font-weight: 750; }
+    .client-profile-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; }
+    .client-profile-copy { min-width: 0; }
+    .client-profile-name, .client-profile-role { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .client-profile-name { max-width: 118px; color: #fff; font-size: .68rem; font-weight: 700; }
+    .client-profile-role { color: rgba(255,255,255,.67); font-size: .59rem; }
     #btn-load-disputes { display: inline-flex; min-height: 40px; align-items: center; justify-content: center; gap: 8px; padding: 0 14px; color: var(--navy-900); background: var(--orange); border: 1px solid var(--orange); border-radius: 8px; font-size: .81rem; font-weight: 700; cursor: pointer; transition: background .18s ease, transform .18s ease; }
     #btn-load-disputes:hover { background: #ff9a36; transform: translateY(-1px); }
     .header-subtitle { display: none; }
@@ -142,6 +151,10 @@
       .inbox-back-link { width: 36px; min-width: 36px; height: 36px; justify-content: center; padding: 0; overflow: hidden; font-size: 0; }
       .inbox-back-link i { font-size: 14px; }
       .header-actions { gap: 0; }
+      .client-profile { gap: 5px; }
+      .client-profile-avatar { width: 27px; height: 27px; }
+      .client-profile-name { max-width: 86px; font-size: .63rem; }
+      .client-profile-role { font-size: .56rem; }
       #btn-load-disputes { min-height: 37px; gap: 6px; padding: 0 10px; font-size: .73rem; }
       #list-view { width: 100%; padding: 10px 12px 20px; }
       .conversation-row { min-height: 82px; gap: 7px; padding: 14px 13px 14px 16px; }
@@ -175,6 +188,13 @@
         <p class="header-subtitle">Échangez avec notre équipe au sujet de vos demandes.</p>
       </div>
       <div class="header-actions">
+        <div class="client-profile" id="client-profile" aria-label="Profil client">
+          <span class="client-profile-avatar" id="client-profile-avatar" aria-hidden="true">U</span>
+          <span class="client-profile-copy">
+            <span class="client-profile-name" id="client-profile-name">Utilisateur</span>
+            <span class="client-profile-role" id="client-profile-role">Client</span>
+          </span>
+        </div>
         <button id="btn-load-disputes" type="button"><i class="fas fa-rotate" aria-hidden="true"></i><span>Charger</span></button>
       </div>
     </div>
@@ -214,7 +234,8 @@
   const pageParams = new URLSearchParams(window.location.search);
   const isAdminInbox = pageParams.get('admin') === '1';
   const isAdminModal = pageParams.get('modal') === '1';
-  const isClientInbox = pageParams.get('client') === '1';
+  const isClientInbox = pageParams.get('client') === '1' || (!isAdminInbox && !isAdminModal);
+  const requestedThreadId = pageParams.get('requestId');
   document.body.classList.toggle('admin-inbox', isAdminInbox);
   document.body.classList.toggle('admin-modal', isAdminModal);
   document.body.classList.toggle('client-inbox', isClientInbox);
@@ -229,6 +250,41 @@
     const token = localStorage.getItem('access_token') || localStorage.getItem('token');
     return token ? { Authorization: `Bearer ${token}` } : {};
   }
+
+  async function loadClientProfile() {
+    if (!isClientInbox) return;
+    const token = localStorage.getItem('access_token') || localStorage.getItem('token');
+    if (!token) return;
+    try {
+      const response = await fetch(`${getApiBase()}/users/me`, { headers: getAuthHeaders() });
+      if (!response.ok) throw new Error(`Profile request failed (${response.status})`);
+      const payload = await response.json();
+      const profile = payload?.profile || payload?.user || payload?.data || payload;
+      const nom = profile?.nom || profile?.last_name || profile?.family_name || '';
+      const prenom = profile?.prenom || profile?.first_name || profile?.given_name || '';
+      const fullName = `${nom} ${prenom}`.trim();
+      const name = document.getElementById('client-profile-name');
+      const role = document.getElementById('client-profile-role');
+      const avatar = document.getElementById('client-profile-avatar');
+      if (name) name.textContent = fullName || profile?.email || 'Utilisateur';
+      if (role) role.textContent = profile?.role || profile?.user_metadata?.role || 'Client';
+      if (avatar) {
+        const initials = `${nom.charAt(0)}${prenom.charAt(0)}`.toUpperCase() || 'MA';
+        if (typeof profile?.avatar_url === 'string' && profile.avatar_url) {
+          const image = document.createElement('img');
+          image.src = profile.avatar_url;
+          image.alt = '';
+          avatar.replaceChildren(image);
+        } else {
+          avatar.textContent = initials;
+        }
+      }
+    } catch (error) {
+      console.warn('Unable to load client profile in messages', error);
+    }
+  }
+
+  loadClientProfile();
 
   // Simple i18n helper: prefer local `window.i18n.t`, then parent `window.parent.i18n.t` (iframe case), fallback to provided defaults
   function __(key, fallback) {
@@ -256,6 +312,7 @@
         const backLink = document.getElementById('admin-inbox-back');
         if (backLink) {
           backLink.href = 'dashboard_client.html';
+          backLink.target = '_top';
           backLink.setAttribute('aria-label', 'Retour au tableau de bord client');
           backLink.querySelector('span').innerText = 'Tableau de bord';
           backLink.classList.add('visible');
@@ -663,6 +720,16 @@
         row.addEventListener('click', () => openChat(requestId, latest.type === 'DISPUTE' ? 'conteste' : 'normal', title));
         list.appendChild(row);
       });
+      const requestedConversation = requestedThreadId
+        ? conversations.find(conversation => conversation.requestId === requestedThreadId)
+        : null;
+      if (requestedConversation && !activeThreadId) {
+        const { requestId, latest } = requestedConversation;
+        const displayName = latest.admin_name || latest.sender_name || __('messages.support', 'Équipe MKC');
+        const reference = latest.bl_number || latest.extracted_bl || latest.manual_bl;
+        const title = reference ? `${displayName} · BL ${reference}` : displayName;
+        openChat(requestId, latest.type === 'DISPUTE' ? 'conteste' : 'normal', title);
+      }
     } catch (error) {
       console.error('Failed to load conversations', error);
       if (!list.querySelector('.conversation-row')) {

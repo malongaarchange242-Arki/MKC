@@ -155,35 +155,35 @@ export class RequestsService {
       throw new Error('Unable to create request');
     }
 
-    logger.info('Request created', { requestId: data.id });
-      // If this request was created in PROCESSING (AD_ONLY), notify the client about the status
+    logger.info('Request created', { requestId: data.id, type: data.type });
+    void (async () => {
       try {
-        if (insertObj.status === 'PROCESSING') {
-          (async () => {
-            try {
-              const { NotificationsService } = await import('../notifications/notifications.service');
-              await NotificationsService.send({
-                userId: data.user_id,
-                type: 'REQUEST_STATUS_CHANGED',
-                title: 'Votre demande est en cours de traitement',
-                message: `Votre demande ${data.id} est en cours de traitement (PROCESSING).`,
-                entityType: 'request',
-                entityId: data.id,
-                channels: ['in_app', 'email'],
-                status: 'PROCESSING',
-                date: new Date().toISOString(),
-                admin_dashboard_url: process.env.ADMIN_DASHBOARD_URL || undefined
-              });
-            } catch (e) {
-              logger.warn('Failed to send initial PROCESSING notification', { requestId: data.id, e });
-            }
-          })();
+        const { NotificationsService } = await import('../notifications/notifications.service');
+        const result = await NotificationsService.send({
+          userId: data.user_id,
+          type: 'REQUEST_CREATED',
+          title: 'Votre demande a été reçue',
+          message: `Votre demande ${data.bl_number || data.manual_bl || data.ref || data.id} a bien été reçue.`,
+          requestRef: data.bl_number || data.manual_bl || data.ref || data.id,
+          entityType: 'request',
+          entityId: data.id,
+          channels: ['in_app', 'email'],
+          status: data.status,
+          date: new Date().toISOString(),
+          admin_dashboard_url: process.env.ADMIN_DASHBOARD_URL || undefined
+        });
+        if (!result.emailSent) {
+          logger.warn('Request created, but client confirmation email was not sent', {
+            requestId: data.id,
+            smtpConfigured: Boolean(process.env.SMTP_HOST)
+          });
         }
       } catch (e) {
-        logger.warn('Error while scheduling initial notification', { requestId: data.id, e });
+        logger.warn('Failed to send request creation notification', { requestId: data.id, e });
       }
+    })();
 
-      return data;
+    return data;
   }
 
   // ===============================
